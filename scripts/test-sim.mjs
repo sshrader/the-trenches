@@ -209,7 +209,7 @@ test('a grenade flies over cover and kills inside the lethal ring', () => {
   assert.ok(ev.some((x) => x.t === 'kill' && x.weapon === 'grenade'));
 });
 
-test('grenades spare friends and are blocked by cover', () => {
+test('grenades hurt friends and the thrower too (but give no kill credit), and cover still shields', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
   const f = addPlayer(w, { name: 'f', want: 'green' });
@@ -224,7 +224,9 @@ test('grenades spare friends and are blocked by cover', () => {
   step(w, 0.05, 1000);
   press(w, a, 200, 1);
   run(w, 3, 1050);
-  assert.equal(f.hp, CFG.HP, 'no friendly fire');
+  assert.equal(f.hp, 0, 'friendly blast kills a teammate');
+  assert.equal(a.kills, 1, 'only the enemy counts as a kill');
+  assert.equal(drainEvents(w).filter((x) => x.t === 'kill' && x.tk).length, 1);
   assert.equal(e.hp, 0, 'enemy next to the blast dies');
 
   // Now put cover between a fresh blast and a target.
@@ -317,7 +319,7 @@ test('artillery lands after 3 s, then gas kills a full-health enemy in 4 s, and 
   assert.ok(e.hp < CFG.HP && e.hp > 0, 'burning but alive early on');
   now = run(w, 3.6, now);
   assert.equal(e.hp, 0, 'a full 4 seconds kills');
-  assert.equal(f.hp, CFG.HP, 'friends are safe');
+  assert.equal(f.hp, 0, 'gas does not spare teammates');
   assert.equal(w.arty.length, 0, 'gas is gone after 4 s');
   a.hp = 0;
   a.respawnAt = now + 1;
@@ -400,6 +402,27 @@ test('a medic heals teammates next to him, not enemies or himself; the tent heal
   g.hp = 10;
   run(w, 1);
   assert.equal(g.hp, 10, "the other side's tent does not");
+});
+
+test('a short grenade throw hurts the thrower, and kills him with no credit', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  place(a, 500, openRow() * 32 + 16, 0);
+  press(w, a, 70, 0);
+  step(w, 0.05, 1000);
+  press(w, a, 70, 1); // lands 70 px away: inside the 100 px blast, outside the lethal 45
+  run(w, 3, 1050);
+  assert.ok(a.hp < CFG.HP && a.hp > 0, 'hurt by his own grenade, not dead');
+  assert.equal(a.kills, 0);
+  a.hp = 10;
+  a.protectUntil = 0;
+  a.grenades = 1;
+  a.lastNade = 0;
+  press(w, a, 70, 2);
+  const ev = (run(w, 3, 5000), drainEvents(w));
+  assert.equal(a.hp, 0);
+  assert.ok(ev.some((x) => x.t === 'kill' && x.self));
+  assert.equal(a.kills, 0, 'no credit for killing yourself');
 });
 
 test('leaving removes the player', () => {

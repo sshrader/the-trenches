@@ -141,7 +141,15 @@ export default function Play() {
             <div className="feed" aria-live="polite">
               {h.feed.map((f, i) => (
                 <p key={i}>
-                  <b className={f.kteam}>{f.killer}</b> {f.weapon === 'grenade' ? 'blew up' : f.weapon === 'gas' ? 'gassed' : 'eliminated'} <b className={f.vteam}>{f.victim}</b>
+                  {f.self ? (
+                    <>
+                      <b className={f.kteam}>{f.killer}</b> {f.weapon === 'gas' ? 'gassed themselves' : 'blew themselves up'}
+                    </>
+                  ) : (
+                    <>
+                      <b className={f.kteam}>{f.killer}</b> {f.tk ? (f.weapon === 'gas' ? 'gassed teammate' : 'blew up teammate') : f.weapon === 'grenade' ? 'blew up' : f.weapon === 'gas' ? 'gassed' : 'eliminated'} <b className={f.vteam}>{f.victim}</b>
+                    </>
+                  )}
                 </p>
               ))}
             </div>

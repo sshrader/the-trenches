@@ -12,7 +12,7 @@ export const CLASSES: { id: ClassId; label: string; mag: number; blurb: string }
   { id: 'medic', label: 'Medic', mag: 10, blurb: 'Pistol, 10 rounds. Heals teammates standing next to you.' },
 ];
 export type RoundInfo = { n: number; s: 'live' | 'ended'; l: number; w: string | null };
-export type FeedLine = { weapon: string; text: string; kteam: Team; vteam: Team; at: number; killer: string; victim: string };
+export type FeedLine = { self: boolean; tk: boolean; weapon: string; text: string; kteam: Team; vteam: Team; at: number; killer: string; victim: string };
 export type Score = { id: number; name: string; team: Team; k: number; d: number };
 export type World = {
   me: number;
@@ -168,7 +168,7 @@ export function useGame() {
             w.progress = m.c;
             w.round = m.r;
           } else if (m.t === 'kill') {
-            feed.current = [...feed.current.slice(-4), { text: '', kteam: m.kteam, vteam: m.vteam, killer: m.killer, victim: m.victim, weapon: m.weapon ?? 'rifle', at: Date.now() }];
+            feed.current = [...feed.current.slice(-4), { text: '', kteam: m.kteam, vteam: m.vteam, killer: m.killer, victim: m.victim, weapon: m.weapon ?? 'rifle', self: !!m.self, tk: !!m.tk, at: Date.now() }];
           } else if (m.t === 'boom') {
             w.booms.push({ x: m.x, y: m.y, at: Date.now(), big: !!m.big });
             const me = w.units.get(w.me);

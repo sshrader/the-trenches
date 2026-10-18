@@ -48,8 +48,8 @@ const spot = (w, h, x0, x1, minCap) => {
   return null;
 };
 // The medic tent sits behind the capture point on each side.
-claim(capX - 13, capY - 2, 4, 3);
-props.push({ kind: 'tent', x: capX - 13, y: capY - 2, w: 4, h: 3 });
+claim(capX - 25, capY - 2, 4, 3);
+props.push({ kind: 'tent', x: capX - 25, y: capY - 2, w: 4, h: 3 });
 // Ruined buildings: 'B' brick walls with doorways and a broken wall, 'f' floor inside.
 for (let i = 0; i < 6; i++) {
   const w = 6 + Math.floor(rnd() * 3);

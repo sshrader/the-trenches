@@ -32,6 +32,7 @@ export const CFG = {
   ARTY_COOLDOWN_MS: 1000,
   CRATE_R: 24, // walk this close to your own crate to resupply
   CRATE_COOLDOWN_S: 30,
+  FRIENDLY_BLASTS: true, // grenades and gas hurt your own side and yourself (bullets still do not)
   GRENADES: 2, // per life
   NADE_FLIGHT_S: 0.7, // in the air (flies over cover)
   NADE_FUSE_S: 2.0, // from the throw to the bang
@@ -228,14 +229,15 @@ function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   t.fire = false;
   t.wantNade = t.wantReload = t.wantArty = false;
   const k = w.players.get(ownerId);
-  if (k) k.kills++;
-  w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon });
+  const own = !!k && k.team === t.team; // killed himself or a teammate: no credit
+  if (k && !own) k.kills++;
+  w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon, self: k === t, tk: own && k !== t });
 }
 
 function explode(w, n, now) {
   w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y) });
   for (const t of w.players.values()) {
-    if (t.team === n.team || t.hp <= 0 || now < t.protectUntil) continue;
+    if ((!CFG.FRIENDLY_BLASTS && t.team === n.team) || t.hp <= 0 || now < t.protectUntil) continue;
     const d = Math.hypot(t.x - n.x, t.y - n.y);
     if (d > CFG.NADE_RADIUS || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
     const dmg =
@@ -382,7 +384,7 @@ export function step(w, dt, now = Date.now()) {
     } else {
       a.gas -= dt;
       for (const t of w.players.values()) {
-        if (t.team === a.team || t.hp <= 0 || now < t.protectUntil) continue;
+        if ((!CFG.FRIENDLY_BLASTS && t.team === a.team) || t.hp <= 0 || now < t.protectUntil) continue;
         if (Math.hypot(t.x - a.x, t.y - a.y) <= CFG.ARTY_RADIUS) hurt(w, t, CFG.ARTY_DPS * dt, a.owner, a.team, now, 'gas');
       }
     }
