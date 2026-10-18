@@ -4,7 +4,7 @@ import { WALLET_LOGIN } from '../config';
 import { playBoom, playCannon, playPickup, playShot, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
-export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number };
+export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean };
 export type ClassId = 'rifleman' | 'smg' | 'medic';
 export const CLASSES: { id: ClassId; label: string; mag: number; blurb: string }[] = [
   { id: 'rifleman', label: 'Rifleman', mag: 8, blurb: 'Bolt rifle. One hit kills and it reaches farthest, but it fires slowly.' },
@@ -30,7 +30,7 @@ export type Input = { dx: number; dy: number; aim: number; fire: boolean; nade: 
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type Hud = { round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
-const newUnit = (id: number, name: string, team: Team): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100 });
+const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot });
 const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, cam: { x: 0, y: 0 } });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
@@ -133,14 +133,14 @@ export function useGame() {
           if (m.t === 'welcome') {
             w.me = m.id;
             training.current = !!m.training;
-            for (const p of m.players) w.units.set(p.id, newUnit(p.id, p.name, p.team));
+            for (const p of m.players) w.units.set(p.id, newUnit(p.id, p.name, p.team, !!p.bot));
             board.current = m.sb ?? [];
             setStatus('playing');
           } else if (m.t === 'team') {
             const u = w.units.get(m.id);
             if (u) u.team = m.team;
           } else if (m.t === 'join') {
-            w.units.set(m.id, newUnit(m.id, m.name, m.team));
+            w.units.set(m.id, newUnit(m.id, m.name, m.team, !!m.bot));
           } else if (m.t === 'leave') {
             w.units.delete(m.id);
           } else if (m.t === 's') {

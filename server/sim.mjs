@@ -584,7 +584,7 @@ export function snapshot(w, now = Date.now()) {
   };
 }
 
-export const roster = (w) => [...w.players.values()].map((p) => ({ id: p.id, name: p.name, team: p.team }));
+export const roster = (w) => [...w.players.values()].map((p) => ({ id: p.id, name: p.name, team: p.team, bot: !!p.isBot }));
 
 export function scoreboard(w) {
   return [...w.players.values()]

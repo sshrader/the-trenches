@@ -621,6 +621,17 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       ctx.stroke();
       for (const u of alive) {
         if (u.team !== myTeam) continue;
+        if (u.bot) {
+          // test bots: a bigger amber dot with a white ring, easy to spot
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(mx + u.x * k, my + u.y * k, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          continue;
+        }
         ctx.fillStyle = u.id === w.me ? '#ffffff' : teamColor(u.team);
         ctx.fillRect(mx + u.x * k - 1.5, my + u.y * k - 1.5, 3, 3);
       }

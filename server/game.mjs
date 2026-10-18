@@ -116,7 +116,7 @@ export function attachGame(server) {
       if (m.t === 'dummy') {
         if (!TRAINING) return;
         const b = sim.addBot(world, me.id);
-        if (b) broadcast({ t: 'join', id: b.id, name: b.name, team: b.team });
+        if (b) broadcast({ t: 'join', id: b.id, name: b.name, team: b.team, bot: true });
         return;
       }
 
