@@ -98,6 +98,17 @@ test('fire rate is limited by the server', () => {
   assert.ok(shots <= Math.ceil(2000 / CFG.FIRE_MS) + 1, `fired ${shots} times in 2s`);
 });
 
+test('shots are reported once for sound and flashes', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  place(a, 400, 300, 0);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  step(w, 0.05, 1000);
+  assert.deepEqual(snapshot(w, 1000).f, [[400, 300, a.id]]);
+  step(w, 0.05, 1050);
+  assert.deepEqual(snapshot(w, 1050).f, [], 'not repeated on the next tick');
+});
+
 test('three hits kill, then the player respawns protected', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });

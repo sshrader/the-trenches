@@ -47,53 +47,188 @@ function drawTile(ctx: CanvasRenderingContext2D, c: string, tx: number, ty: numb
   }
 }
 
-function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: number, mine: boolean, myTeam: string) {
+const UNIFORM: Record<string, string> = { green: '#5a7a3b', red: '#93402f' };
+const GEAR: Record<string, string> = { green: '#3f5528', red: '#6a2c20' };
+const HELMET: Record<string, string> = { green: '#6b7d4a', red: '#5b6166' };
+
+/** A WWI rifleman seen from above, drawn facing right and then rotated to face where he aims.
+ *  Green wears a round "dish" helmet, Red a deeper helmet with a neck guard. */
+function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: number, mine: boolean, myTeam: string, now: number) {
+  const step = Math.sin(u.walk / 6);
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
-  ctx.ellipse(sx, sy + 8, 11, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx + 2, sy + 4, 13, 11, 0, 0, Math.PI * 2);
   ctx.fill();
-  // rifle
-  ctx.strokeStyle = '#1b1b1b';
-  ctx.lineWidth = 4;
+
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(u.aim);
+  const dark = 'rgba(0,0,0,0.5)';
+
+  // boots, stepping as he walks
+  ctx.fillStyle = '#2a2118';
+  ctx.beginPath();
+  ctx.ellipse(step * 4, -5, 5, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(-step * 4, 5, 5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // pack on his back
+  ctx.fillStyle = GEAR[u.team];
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(-14, -7, 9, 14, 3);
+  ctx.fill();
+  ctx.stroke();
+
+  // rifle: wooden stock, steel barrel
   ctx.lineCap = 'round';
+  ctx.strokeStyle = '#7a4e2a';
+  ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.moveTo(sx + Math.cos(u.aim) * 6, sy + Math.sin(u.aim) * 6);
-  ctx.lineTo(sx + Math.cos(u.aim) * 22, sy + Math.sin(u.aim) * 22);
+  ctx.moveTo(1, 2);
+  ctx.lineTo(14, 2);
   ctx.stroke();
-  // body
+  ctx.strokeStyle = '#2b2f33';
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(14, 2);
+  ctx.lineTo(32, 2);
+  ctx.stroke();
+
+  // torso
+  ctx.fillStyle = UNIFORM[u.team];
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 8, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // webbing straps
+  ctx.strokeStyle = 'rgba(214,196,150,0.7)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-5, -9);
+  ctx.lineTo(5, 6);
+  ctx.moveTo(-5, 9);
+  ctx.lineTo(5, -6);
+  ctx.stroke();
+
+  // arms reaching for the rifle, hands on it
+  ctx.strokeStyle = UNIFORM[u.team];
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(0, -9);
+  ctx.lineTo(18, 1.5);
+  ctx.moveTo(0, 9);
+  ctx.lineTo(6, 3);
+  ctx.stroke();
+  ctx.fillStyle = '#d9b48c';
+  ctx.beginPath();
+  ctx.arc(19, 1.5, 2.6, 0, Math.PI * 2);
+  ctx.arc(6, 3, 2.6, 0, Math.PI * 2);
+  ctx.fill();
+  // team armband on the sleeve
   ctx.fillStyle = teamColor(u.team);
+  ctx.fillRect(1, 8, 4, 4);
+
+  // head and helmet
+  ctx.fillStyle = '#d9b48c';
   ctx.beginPath();
-  ctx.arc(sx, sy, 11, 0, Math.PI * 2);
+  ctx.arc(1, 0, 6, 0, Math.PI * 2);
   ctx.fill();
-  ctx.lineWidth = mine ? 3 : 2;
-  ctx.strokeStyle = mine ? '#ffffff' : 'rgba(0,0,0,0.55)';
+  ctx.fillStyle = HELMET[u.team];
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  if (u.team === 'green') {
+    ctx.arc(0.5, 0, 8.4, 0, Math.PI * 2); // wide brim
+  } else {
+    ctx.ellipse(0, 0, 9, 8.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(-8, 0, 3.2, 7, 0, 0, Math.PI * 2); // neck guard
+  }
+  ctx.fill();
   ctx.stroke();
-  // helmet mark
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)'; // crown highlight
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(sx - Math.cos(u.aim) * 2, sy - Math.sin(u.aim) * 2, 6, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.arc(0.5, 0, 4.4, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = teamColor(u.team); // team stripe on the front
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.arc(0.5, 0, 6.6, -0.7, 0.7);
+  ctx.stroke();
+
+  if (mine) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 17, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // muzzle flash
+  if (now < u.flash) {
+    const g = ctx.createRadialGradient(34, 2, 0, 34, 2, 13);
+    g.addColorStop(0, 'rgba(255,248,200,0.95)');
+    g.addColorStop(0.5, 'rgba(255,190,70,0.6)');
+    g.addColorStop(1, 'rgba(255,140,40,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(34, 2, 13, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
   if (u.prot) {
     ctx.strokeStyle = 'rgba(255,255,255,0.7)';
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
-    ctx.arc(sx, sy, 16, 0, Math.PI * 2);
+    ctx.arc(sx, sy, 20, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
   }
   if (u.hp < 100) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(sx - 14, sy - 24, 28, 5);
+    ctx.fillRect(sx - 14, sy - 28, 28, 5);
     ctx.fillStyle = u.hp > 50 ? '#4ade80' : u.hp > 25 ? '#fbbf24' : '#f87171';
-    ctx.fillRect(sx - 14, sy - 24, (28 * Math.max(0, u.hp)) / 100, 5);
+    ctx.fillRect(sx - 14, sy - 28, (28 * Math.max(0, u.hp)) / 100, 5);
   }
   if (u.team === myTeam && !mine) {
     ctx.font = '600 11px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillText(u.name, sx, sy - 30);
+    ctx.fillText(u.name, sx, sy - 34);
   }
+}
+
+/** A fallen soldier: lying down, faded, until he respawns. */
+function drawFallen(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: number) {
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.translate(sx, sy);
+  ctx.rotate(u.aim + 1.3);
+  ctx.fillStyle = UNIFORM[u.team];
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 8, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = HELMET[u.team];
+  ctx.beginPath();
+  ctx.arc(11, 0, 6.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#7a4e2a';
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(-6, 13);
+  ctx.lineTo(10, 15);
+  ctx.stroke();
+  ctx.restore();
 }
 
 export default function GameCanvas({ world, input, typing }: { world: MutableRefObject<World>; input: MutableRefObject<Input>; typing?: () => boolean }) {
@@ -150,8 +285,11 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     const frame = () => {
       const w = world.current;
       for (const u of w.units.values()) {
+        const px = u.x;
+        const py = u.y;
         u.x += (u.tx - u.x) * 0.4; // glide toward the latest server position
         u.y += (u.ty - u.y) * 0.4;
+        u.walk += Math.hypot(u.x - px, u.y - py); // drives the walking animation
       }
       const you = w.units.get(w.me);
       const camX = Math.max(0, Math.min(MAP_W - VIEW_W, (you?.x ?? CAP.x) - VIEW_W / 2));
@@ -190,8 +328,11 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       }
       // Soldiers (alive only), lowest first so the ones nearer the bottom draw on top
       const myTeam = you?.team ?? '';
-      const alive = [...w.units.values()].filter((u) => u.seen && u.hp > 0).sort((a, b) => a.y - b.y);
-      for (const u of alive) drawUnit(ctx, u, u.x - camX, u.y - camY, u.id === w.me, myTeam);
+      const seen = [...w.units.values()].filter((u) => u.seen);
+      const alive = seen.filter((u) => u.hp > 0).sort((a, b) => a.y - b.y);
+      const now = Date.now();
+      for (const u of seen) if (u.hp <= 0) drawFallen(ctx, u, u.x - camX, u.y - camY);
+      for (const u of alive) drawSoldier(ctx, u, u.x - camX, u.y - camY, u.id === w.me, myTeam, now);
 
       // Minimap: the whole field, your side's soldiers and the point. Enemies stay hidden.
       const mw = 168;

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WALLET_LOGIN } from '../config';
+import { playShot } from './audio';
 
 export type Team = 'green' | 'red';
-export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean };
+export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number };
 export type RoundInfo = { n: number; s: 'live' | 'ended'; l: number; w: string | null };
 export type FeedLine = { text: string; kteam: Team; vteam: Team; at: number; killer: string; victim: string };
 export type Score = { id: number; name: string; team: Team; k: number; d: number };
@@ -19,6 +20,7 @@ export type Input = { dx: number; dy: number; aim: number; fire: boolean };
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type Hud = { round: RoundInfo; progress: number; green: number; red: number; myHp: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
+const newUnit = (id: number, name: string, team: Team): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0 });
 const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, cam: { x: 0, y: 0 } });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
@@ -108,11 +110,11 @@ export function useGame() {
           const w = world.current;
           if (m.t === 'welcome') {
             w.me = m.id;
-            for (const p of m.players) w.units.set(p.id, { id: p.id, name: p.name, team: p.team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false });
+            for (const p of m.players) w.units.set(p.id, newUnit(p.id, p.name, p.team));
             board.current = m.sb ?? [];
             setStatus('playing');
           } else if (m.t === 'join') {
-            w.units.set(m.id, { id: m.id, name: m.name, team: m.team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false });
+            w.units.set(m.id, newUnit(m.id, m.name, m.team));
           } else if (m.t === 'leave') {
             w.units.delete(m.id);
           } else if (m.t === 's') {
@@ -129,6 +131,13 @@ export function useGame() {
               u.aim = aim;
               u.hp = hp;
               u.prot = prot === 1;
+            }
+            // Gunfire: flash the shooter's muzzle and play a quiet shot, fainter the farther it is from you.
+            const me = w.units.get(w.me);
+            for (const [sx, sy, sid] of (m.f ?? []) as [number, number, number][]) {
+              const shooter = w.units.get(sid);
+              if (shooter) shooter.flash = Date.now() + 90;
+              playShot(me ? Math.hypot(sx - me.tx, sy - me.ty) : 600);
             }
             w.bullets = m.b;
             w.progress = m.c;

@@ -37,6 +37,7 @@ export function createWorld(map, rng = Math.random) {
     progress: 0, // -1 red owns the point ... +1 green owns it
     round: { n: 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 },
     events: [],
+    shots: [], // [x, y, shooterId] fired during the latest step, for clients to draw flashes and play sounds
     nextId: 1,
   };
 }
@@ -140,6 +141,7 @@ function newRound(w, now) {
 
 /** Advance the world by dt seconds. `now` is a millisecond clock. */
 export function step(w, dt, now = Date.now()) {
+  w.shots = [];
   if (w.round.state === 'ended') {
     w.round.endLeft -= dt;
     if (w.round.endLeft <= 0) newRound(w, now);
@@ -164,6 +166,7 @@ export function step(w, dt, now = Date.now()) {
       p.lastFire = now;
       const c = Math.cos(p.aim);
       const s = Math.sin(p.aim);
+      w.shots.push([Math.round(p.x), Math.round(p.y), p.id]);
       w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: c * CFG.BULLET_SPEED, vy: s * CFG.BULLET_SPEED, life: CFG.BULLET_LIFE, owner: p.id, team: p.team });
     }
   }
@@ -235,6 +238,7 @@ export function snapshot(w, now = Date.now()) {
     t: 's',
     p,
     b,
+    f: w.shots,
     c: Math.round(w.progress * 1000) / 1000,
     r: { n: w.round.n, s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
   };

@@ -5,6 +5,7 @@ import GameCanvas from '../game/GameCanvas';
 import { useGame } from '../game/useGame';
 import type { Team } from '../game/useGame';
 import { WALLET_LOGIN } from '../config';
+import { isMuted, setMuted, unlockAudio } from '../game/audio';
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -20,6 +21,7 @@ export default function Play() {
   });
   const [useWalletLogin, setUseWalletLogin] = useState(false);
   const [showBoard, setShowBoard] = useState(false);
+  const [muted, setMutedState] = useState(isMuted());
 
   // Hold Tab to see the scoreboard.
   useEffect(() => {
@@ -39,6 +41,7 @@ export default function Play() {
   }, []);
 
   const start = (team: Team | 'random') => {
+    unlockAudio(); // joining is a click, so the browser allows sound from here on
     try {
       localStorage.setItem('trenches-name', name.trim());
     } catch {
@@ -96,6 +99,16 @@ export default function Play() {
             <span className="muted small">
               {h.green} v {h.red} · {fmt(h.round.l)}
             </span>
+            <button
+              className="btn"
+              aria-pressed={muted}
+              onClick={() => {
+                setMuted(!muted);
+                setMutedState(!muted);
+              }}
+            >
+              {muted ? 'Sound off' : 'Sound on'}
+            </button>
             <button className="btn" onClick={game.leave}>Leave</button>
           </div>
 
