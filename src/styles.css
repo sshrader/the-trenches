@@ -56,3 +56,6 @@ b.red { color: var(--red); }
 .class b { font-size: 15px; }
 .class span { font-size: 12px; opacity: 0.75; line-height: 1.35; }
 .class.on { border-color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+
+.classpick { position: relative; display: inline-block; }
+.classmenu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; width: 280px; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }

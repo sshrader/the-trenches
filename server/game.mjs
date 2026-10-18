@@ -112,6 +112,11 @@ export function attachGame(server) {
       }
       if (!me) return;
 
+      if (m.t === 'class') {
+        sim.setClass(world, me.id, m.cls);
+        return;
+      }
+
       if (m.t === 'in') {
         if (++inputs > 40) return;
         sim.setInput(world, me.id, m);

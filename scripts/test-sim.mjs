@@ -1,7 +1,7 @@
 // Plain-Node checks for the simulation.  node scripts/test-sim.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { CFG, addPlayer, createWorld, drainEvents, removePlayer, setInput, snapshot, step, teamCount } from '../server/sim.mjs';
+import { CFG, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, step, teamCount } from '../server/sim.mjs';
 
 const map = JSON.parse(fs.readFileSync(new URL('../shared/map.json', import.meta.url), 'utf8'));
 let seed = 7;
@@ -435,6 +435,50 @@ test('a short grenade throw hurts the thrower, and kills him with no credit', ()
   assert.equal(a.hp, 0);
   assert.ok(ev.some((x) => x.t === 'kill' && x.self));
   assert.equal(a.kills, 0, 'no credit for killing yourself');
+});
+
+test('class change: at once in your trench, next life elsewhere; cooldown between changes', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  setClass(w, a.id, 'smg', 10000);
+  assert.equal(a.cls, 'smg', 'in the trench it is immediate');
+  assert.equal(a.ammo, 20);
+  place(a, w.map.capture.x - 200, w.map.capture.y);
+  setClass(w, a.id, 'medic', 20000);
+  assert.equal(a.cls, 'smg', 'out in the field it waits');
+  assert.equal(a.nextCls, 'medic');
+  a.hp = 0;
+  a.respawnAt = 20001;
+  run(w, 1, 20100);
+  assert.equal(a.cls, 'medic', 'applied on respawn');
+  assert.equal(a.ammo, 10);
+});
+
+test('teams are rebalanced when one side gets ahead', () => {
+  const w = fresh();
+  const gs = [1, 2, 3, 4].map((i) => addPlayer(w, { name: 'g' + i, want: 'green' }));
+  void gs;
+  assert.equal(teamCount(w, 'green'), 2);
+  assert.equal(teamCount(w, 'red'), 2);
+  for (const p of [...w.players.values()].filter((q) => q.team === 'red')) w.players.delete(p.id); // two red players leave: 2 v 0
+  assert.equal(teamCount(w, 'red'), 0);
+  const victim = [...w.players.values()].sort((a, b) => b.id - a.id)[0];
+  victim.hp = 0;
+  victim.respawnAt = 1e12;
+  run(w, 0.2);
+  assert.equal(teamCount(w, 'green'), 1, 'a dead soldier is moved across');
+  assert.equal(teamCount(w, 'red'), 1);
+  const ev = drainEvents(w).filter((x) => x.t === 'team');
+  assert.equal(ev.length, 1);
+  // new round: living players are moved too
+  const w2 = fresh();
+  for (let i = 0; i < 4; i++) addPlayer(w2, { name: 'p' + i, want: 'green' });
+  for (const p of [...w2.players.values()].filter((q) => q.team === 'red')) w2.players.delete(p.id);
+  w2.round.state = 'ended';
+  w2.round.endLeft = 0.01;
+  run(w2, 0.2);
+  assert.equal(teamCount(w2, 'green'), 1);
+  assert.equal(teamCount(w2, 'red'), 1);
 });
 
 test('leaving removes the player', () => {

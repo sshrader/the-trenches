@@ -108,6 +108,10 @@ function spawnPoint(w, team) {
 }
 
 function respawn(w, p, now) {
+  if (p.nextCls) {
+    p.cls = p.nextCls; // a class change waits for the next life
+    p.nextCls = null;
+  }
   const s = spawnPoint(w, p.team);
   p.x = s.x;
   p.y = s.y;
@@ -168,6 +172,8 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' 
     deaths: 0,
     tentReadyAt: 0,
     tentUsing: false,
+    nextCls: null,
+    lastClassChange: 0,
   };
   respawn(w, p, now);
   w.players.set(p.id, p);
@@ -200,6 +206,47 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty }
   }
 }
 
+/** Ask for another class. Takes effect on the next life, or at once while dead or standing in your own trench. */
+export function setClass(w, id, wantCls, now = Date.now()) {
+  const p = w.players.get(id);
+  if (!p || !CLASS_IDS.includes(wantCls)) return;
+  if (wantCls === p.cls && !p.nextCls) return;
+  if (now - p.lastClassChange < 5000) return;
+  p.lastClassChange = now;
+  const z = w.map.spawns[p.team];
+  const home = p.x >= z.x0 && p.x <= z.x1;
+  if (wantCls === p.cls) {
+    p.nextCls = null;
+  } else if (p.hp <= 0) {
+    p.nextCls = wantCls; // applied when he respawns
+  } else if (home) {
+    p.cls = wantCls;
+    p.nextCls = null;
+    p.ammo = cls(p).mag;
+    p.reloadLeft = 0;
+    p.fire = false;
+  } else {
+    p.nextCls = wantCls;
+  }
+}
+
+/** Keep the sides within one player of each other. `force` moves living players too (used between rounds). */
+function rebalance(w, now, force) {
+  for (let guard = 0; guard < 60; guard++) {
+    const g = teamCount(w, 'green');
+    const r = teamCount(w, 'red');
+    if (Math.abs(g - r) < 2) return;
+    const big = g > r ? 'green' : 'red';
+    const mine = [...w.players.values()].filter((p) => p.team === big);
+    const pick = mine.filter((p) => p.hp <= 0).sort((a, b) => b.id - a.id)[0] || (force ? mine.sort((a, b) => b.id - a.id)[0] : null);
+    if (!pick) return;
+    pick.team = otherTeam(big);
+    pick.tentUsing = false;
+    w.events.push({ t: 'team', id: pick.id, team: pick.team });
+    if (pick.hp > 0) respawn(w, pick, now);
+  }
+}
+
 function endRound(w, winner) {
   w.round.state = 'ended';
   w.round.winner = winner;
@@ -221,6 +268,7 @@ function newRound(w, now) {
   w.nades = [];
   w.arty = [];
   for (const c of w.crates) c.readyAt = 0;
+  rebalance(w, now, true);
   for (const p of w.players.values()) respawn(w, p, now);
 }
 
@@ -285,6 +333,8 @@ export function step(w, dt, now = Date.now()) {
     if (w.round.endLeft <= 0) newRound(w, now);
     return;
   }
+
+  rebalance(w, now, false); // someone left? a dead soldier on the bigger side is moved over
 
   // Players: respawn, move, shoot.
   for (const p of w.players.values()) {
@@ -462,7 +512,7 @@ export function step(w, dt, now = Date.now()) {
 /** What every client needs each tick. Kept small. */
 export function snapshot(w, now = Date.now()) {
   const p = [];
-  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000))]);
+  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1]);
   const b = w.bullets.map((x) => [Math.round(x.x), Math.round(x.y)]);
   return {
     t: 's',
