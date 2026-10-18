@@ -246,6 +246,8 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (typing?.()) return;
       const k = e.key.toLowerCase();
       if (k === ' ') input.current.fire = true;
+      if (k === 'r' && !e.repeat) input.current.reload += 1;
+      if (k === 't' && !e.repeat) input.current.arty += 1;
       if (k === 'g' && !e.repeat) input.current.nade += 1; // the server counts presses, so a lost packet cannot eat a throw
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) return;
       e.preventDefault();
@@ -340,6 +342,42 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       for (const u of seen) if (u.hp <= 0) drawFallen(ctx, u, u.x - camX, u.y - camY);
       for (const u of alive) drawSoldier(ctx, u, u.x - camX, u.y - camY, u.id === w.me, myTeam, now);
 
+      // Artillery: a warning ring while the shell is on its way, then a green gas cloud that fades as it thins out
+      const gt = Date.now();
+      for (const [ax, ay, phase, left] of w.gas) {
+        const sx = ax - camX;
+        const sy = ay - camY;
+        if (phase === 0) {
+          ctx.strokeStyle = `rgba(248,113,113,${0.5 + 0.4 * Math.abs(Math.sin(gt / 150))})`;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.arc(sx, sy, 120, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.arc(sx, sy, 120 * (1 - left), 0, Math.PI * 2); // closes in as the shell gets near
+          ctx.stroke();
+          ctx.fillStyle = '#fca5a5';
+          ctx.font = '12px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${(left * 3).toFixed(1)}s`, sx, sy + 4);
+        } else {
+          for (let i = 0; i < 7; i++) {
+            const ang = i * 2.4 + gt / 2500;
+            const rr = 22 + (i % 3) * 30;
+            ctx.fillStyle = `rgba(163,230,53,${0.12 + 0.1 * left})`;
+            ctx.beginPath();
+            ctx.arc(sx + Math.cos(ang) * rr, sy + Math.sin(ang) * rr, 55 + (i % 2) * 8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.strokeStyle = `rgba(190,242,100,${0.25 + 0.4 * left})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 120, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
       // Grenades: a shadow stays on the ground while the grenade itself arcs up and over cover
       for (const [gx, gy, f] of w.nades) {
         const lift = Math.sin(Math.min(1, f) * Math.PI) * 46;

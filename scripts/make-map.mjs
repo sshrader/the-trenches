@@ -2,8 +2,8 @@
 // '.' mud, 'T' trench floor, '#' wall, 'c' cover (blocks movement and bullets), 'o' crater (walkable, decoration).
 import fs from 'node:fs';
 
-const W = 60;
-const H = 34;
+const W = 120; // twice the size in each direction
+const H = 68;
 const TILE = 32;
 const g = Array.from({ length: H }, () => Array(W).fill('.'));
 
@@ -19,18 +19,42 @@ const put = (x, y, c) => {
 // Trench: floor columns 2..6, parapet (cover) at column 7 with a gap every 5 rows to climb out.
 for (let y = 1; y < H - 1; y++) {
   for (let x = 1; x <= 6; x++) put(x, y, 'T');
-  if (y % 5 !== 0) put(7, y, 'c');
+  if (y % 5 !== 0) put(7, y, "c");
 }
-// Cover in no-man's land: [x, y, w, h]
-const cover = [
-  [11, 4, 2, 1], [12, 9, 1, 3], [10, 14, 3, 1], [13, 18, 1, 2], [11, 23, 2, 1], [12, 28, 3, 1],
-  [16, 6, 1, 1], [17, 12, 2, 2], [16, 21, 2, 2], [17, 27, 1, 1],
-  [21, 9, 1, 2], [22, 16, 2, 1], [21, 24, 1, 2],
-  [25, 13, 1, 3], [25, 19, 1, 3], [27, 7, 2, 1], [27, 26, 2, 1], [28, 3, 1, 2], [28, 29, 1, 2],
-];
-for (const [x, y, w, h] of cover) for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) put(x + dx, y + dy, 'c');
+// Cover in no-man's land: scattered walls and blocks, placed with a fixed seed so the map is always the same.
+let seed = 1337;
+const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+const taken = new Set();
+const free = (x, y, w, h) => {
+  for (let dy = -1; dy <= h; dy++) for (let dx = -1; dx <= w; dx++) if (taken.has(`${x + dx},${y + dy}`)) return false;
+  return true;
+};
+const capX = W / 2;
+const capY = H / 2;
+let placed = 0;
+for (let tries = 0; tries < 4000 && placed < 120; tries++) {
+  const horiz = rnd() < 0.5;
+  const w = horiz ? 1 + Math.floor(rnd() * 3) : 1 + Math.floor(rnd() * 2);
+  const h = horiz ? 1 + Math.floor(rnd() * 2) : 1 + Math.floor(rnd() * 3);
+  const x = 10 + Math.floor(rnd() * (W / 2 - 14)); // columns 10..~55, clear of the parapet and the centre line
+  const y = 2 + Math.floor(rnd() * (H - 5));
+  if (x + w >= capX - 1) continue;
+  if (Math.hypot(x + w / 2 - capX, y + h / 2 - capY) < 5.5) continue; // keep the point itself fairly open
+  if (!free(x, y, w, h)) continue;
+  for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) {
+    put(x + dx, y + dy, 'c');
+    taken.add(`${x + dx},${y + dy}`);
+  }
+  placed++;
+}
+// A few sandbag rings right at the capture point so it can be held
+for (const [x, y] of [[capX - 6, capY - 4], [capX - 6, capY + 3], [capX - 8, capY]]) put(x, y, 'c');
 // Craters (walkable decoration)
-for (const [x, y] of [[9, 7], [15, 16], [19, 4], [20, 19], [23, 12], [24, 22], [14, 11], [18, 30]]) put(x, y, 'o');
+for (let i = 0; i < 40; i++) {
+  const x = 9 + Math.floor(rnd() * (W / 2 - 10));
+  const y = 2 + Math.floor(rnd() * (H - 4));
+  if (!taken.has(`${x},${y}`)) put(x, y, 'o');
+}
 
 for (let y = 0; y < H; y++) {
   for (let x = 0; x < W / 2; x++) {

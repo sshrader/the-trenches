@@ -84,7 +84,7 @@ export default function Play() {
           </div>
           <p className="muted small">If one side has more soldiers, you will be placed on the other to keep it fair.</p>
           {game.error && <p className="status" role="alert">{game.error}</p>}
-          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · Grenade: G (lands at your cursor, 2 per life) · Scoreboard: hold Tab</p>
+          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · 8 shots then a 2 s reload (R reloads early) · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
         </section>
       )}
 
@@ -96,7 +96,9 @@ export default function Play() {
               <div className="mid" />
               {h.progress >= 0 ? <div className="fill green" style={{ left: '50%', width: `${h.progress * 50}%` }} /> : <div className="fill red" style={{ right: '50%', width: `${-h.progress * 50}%` }} />}
             </div>
+            <span className="pill" title="R to reload">{h.myReload > 0 ? 'Reloading…' : `Ammo ${h.myAmmo}/8`}</span>
             <span className="pill" title="Press G to throw">Grenades: {h.myGren} [G]</span>
+            <span className="pill" title="Press T to call in a gas strike">Gas strike: {h.myArty} [T]</span>
             <span className="muted small">
               {h.green} v {h.red} · {fmt(h.round.l)}
             </span>
@@ -118,7 +120,7 @@ export default function Play() {
             <div className="feed" aria-live="polite">
               {h.feed.map((f, i) => (
                 <p key={i}>
-                  <b className={f.kteam}>{f.killer}</b> {f.weapon === 'grenade' ? 'blew up' : 'eliminated'} <b className={f.vteam}>{f.victim}</b>
+                  <b className={f.kteam}>{f.killer}</b> {f.weapon === 'grenade' ? 'blew up' : f.weapon === 'gas' ? 'gassed' : 'eliminated'} <b className={f.vteam}>{f.victim}</b>
                 </p>
               ))}
             </div>

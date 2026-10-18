@@ -262,6 +262,58 @@ test('two grenades per life, with a cooldown, refilled on respawn', () => {
   assert.equal(a.grenades, CFG.GRENADES);
 });
 
+test('8 rounds, then a 2 second reload', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  place(a, 500, openRow() * 32 + 16, 0);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  let now = 1000;
+  for (let i = 0; i < 8; i++) {
+    now += 500;
+    step(w, 0.05, now);
+  }
+  assert.equal(a.ammo, 0);
+  assert.ok(a.reloadLeft > 1.9, 'reload starts on its own when empty');
+  now += 500;
+  step(w, 0.05, now);
+  assert.equal(a.ammo, 0, 'no shots while reloading');
+  now = run(w, 2.2, now);
+  assert.ok(a.ammo >= CFG.MAG - 2, 'magazine is back after the reload');
+});
+
+test('artillery lands after 3 s, then gas kills a full-health enemy in 4 s, and never hurts friends', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  const e = addPlayer(w, { name: 'e', want: 'red' });
+  const f = addPlayer(w, { name: 'f', want: 'green' });
+  const y = openRow() * 32 + 16;
+  place(a, 500, y, 0);
+  place(e, 650, y, 0);
+  place(f, 640, y + 10, 0);
+  e.dx = e.dy = 0;
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false, range: 150, arty: 0 });
+  step(w, 0.05, 1000);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false, range: 150, arty: 1 });
+  let now = 1050;
+  step(w, 0.05, now);
+  assert.equal(a.arty, 0);
+  assert.equal(w.arty.length, 1);
+  now = run(w, 2.5, now);
+  assert.equal(e.hp, CFG.HP, 'still in the air');
+  assert.equal(snapshot(w, now).a[0][2], 0);
+  now = run(w, 1, now); // impact
+  assert.equal(snapshot(w, now).a[0][2], 1, 'gas is down');
+  assert.ok(e.hp < CFG.HP && e.hp > 0, 'burning but alive early on');
+  now = run(w, 3.6, now);
+  assert.equal(e.hp, 0, 'a full 4 seconds kills');
+  assert.equal(f.hp, CFG.HP, 'friends are safe');
+  assert.equal(w.arty.length, 0, 'gas is gone after 4 s');
+  a.hp = 0;
+  a.respawnAt = now + 1;
+  run(w, 1, now + 100);
+  assert.equal(a.arty, CFG.ARTY);
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

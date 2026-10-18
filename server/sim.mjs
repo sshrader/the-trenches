@@ -18,6 +18,14 @@ export const CFG = {
   ROUND_S: 360,
   END_S: 10,
   MAX_PER_TEAM: 30,
+  MAG: 8, // rifle rounds before a reload
+  RELOAD_S: 2,
+  ARTY: 1, // artillery strikes per life
+  ARTY_DELAY_S: 3, // call-in to impact
+  ARTY_GAS_S: 4, // how long the gas lingers
+  ARTY_DPS: 26, // 4 s in the cloud is 104 damage: a full-health soldier does not survive
+  ARTY_RADIUS: 120,
+  ARTY_COOLDOWN_MS: 1000,
   GRENADES: 2, // per life
   NADE_FLIGHT_S: 0.7, // in the air (flies over cover)
   NADE_FUSE_S: 2.0, // from the throw to the bang
@@ -45,6 +53,7 @@ export function createWorld(map, rng = Math.random) {
     players: new Map(),
     bullets: [],
     nades: [],
+    arty: [], // incoming strikes and lingering gas clouds
     progress: 0, // -1 red owns the point ... +1 green owns it
     round: { n: 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 },
     events: [],
@@ -94,6 +103,9 @@ function respawn(w, p, now) {
   p.protectUntil = now + CFG.PROTECT_S * 1000;
   p.respawnAt = 0;
   p.grenades = CFG.GRENADES;
+  p.arty = CFG.ARTY;
+  p.ammo = CFG.MAG;
+  p.reloadLeft = 0;
   // Face the enemy.
   p.aim = p.team === 'green' ? 0 : Math.PI;
 }
@@ -122,8 +134,16 @@ export function addPlayer(w, { name, want = 'random' }, now = Date.now()) {
     fire: false,
     lastFire: 0,
     grenades: CFG.GRENADES,
+    arty: CFG.ARTY,
+    ammo: CFG.MAG,
+    reloadLeft: 0, // seconds until the magazine is back
     nadeSeq: null,
+    reloadSeq: null,
+    artySeq: null,
     wantNade: false,
+    wantReload: false,
+    wantArty: false,
+    lastArty: 0,
     nadeRange: 200,
     lastNade: 0,
     protectUntil: 0,
@@ -138,7 +158,7 @@ export function addPlayer(w, { name, want = 'random' }, now = Date.now()) {
 
 export const removePlayer = (w, id) => w.players.delete(id);
 
-export function setInput(w, id, { dx, dy, aim, fire, nade, range }) {
+export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty }) {
   const p = w.players.get(id);
   if (!p) return;
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -152,6 +172,14 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range }) {
     if (p.nadeSeq !== null) p.wantNade = true;
     p.nadeSeq = nade;
   }
+  if (reload !== undefined && reload !== p.reloadSeq) {
+    if (p.reloadSeq !== null) p.wantReload = true;
+    p.reloadSeq = reload;
+  }
+  if (arty !== undefined && arty !== p.artySeq) {
+    if (p.artySeq !== null) p.wantArty = true;
+    p.artySeq = arty;
+  }
 }
 
 function endRound(w, winner) {
@@ -160,6 +188,7 @@ function endRound(w, winner) {
   w.round.endLeft = CFG.END_S;
   w.bullets = [];
   w.nades = [];
+  w.arty = [];
   for (const p of w.players.values()) {
     p.dx = p.dy = 0;
     p.fire = false;
@@ -172,6 +201,7 @@ function newRound(w, now) {
   w.progress = 0;
   w.bullets = [];
   w.nades = [];
+  w.arty = [];
   for (const p of w.players.values()) respawn(w, p, now);
 }
 
@@ -183,7 +213,7 @@ function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   t.respawnAt = now + CFG.RESPAWN_S * 1000;
   t.dx = t.dy = 0;
   t.fire = false;
-  t.wantNade = false;
+  t.wantNade = t.wantReload = t.wantArty = false;
   const k = w.players.get(ownerId);
   if (k) k.kills++;
   w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon });
@@ -215,6 +245,17 @@ function throwNade(w, p, now) {
   w.nades.push({ sx: p.x, sy: p.y, x: p.x, y: p.y, tx: p.x + c * dist, ty: p.y + s * dist, flight: CFG.NADE_FLIGHT_S, fuse: CFG.NADE_FUSE_S, owner: p.id, team: p.team });
 }
 
+function callArty(w, p, now) {
+  if (p.hp <= 0 || p.arty <= 0 || now - p.lastArty < CFG.ARTY_COOLDOWN_MS) return;
+  p.arty--;
+  p.lastArty = now;
+  const c = Math.cos(p.aim);
+  const s = Math.sin(p.aim);
+  let dist = p.nadeRange; // same reach as a grenade
+  while (dist > CFG.NADE_MIN / 2 && solidAt(w, p.x + c * dist, p.y + s * dist)) dist -= 8;
+  w.arty.push({ x: p.x + c * dist, y: p.y + s * dist, delay: CFG.ARTY_DELAY_S, gas: 0, owner: p.id, team: p.team });
+}
+
 /** Advance the world by dt seconds. `now` is a millisecond clock. */
 export function step(w, dt, now = Date.now()) {
   w.shots = [];
@@ -238,8 +279,21 @@ export function step(w, dt, now = Date.now()) {
       const ny = p.y + p.dy * k;
       if (!blockedAt(w, p.x, ny)) p.y = ny;
     }
-    if (p.fire && now - p.lastFire >= CFG.FIRE_MS) {
+    if (p.reloadLeft > 0) {
+      p.reloadLeft -= dt;
+      if (p.reloadLeft <= 0) {
+        p.reloadLeft = 0;
+        p.ammo = CFG.MAG;
+      }
+    }
+    if (p.wantReload) {
+      p.wantReload = false;
+      if (p.reloadLeft <= 0 && p.ammo < CFG.MAG) p.reloadLeft = CFG.RELOAD_S;
+    }
+    if (p.fire && p.reloadLeft <= 0 && p.ammo > 0 && now - p.lastFire >= CFG.FIRE_MS) {
       p.lastFire = now;
+      p.ammo--;
+      if (p.ammo <= 0) p.reloadLeft = CFG.RELOAD_S; // empty: reload on its own
       const c = Math.cos(p.aim);
       const s = Math.sin(p.aim);
       w.shots.push([Math.round(p.x), Math.round(p.y), p.id]);
@@ -251,6 +305,10 @@ export function step(w, dt, now = Date.now()) {
     if (p.wantNade) {
       p.wantNade = false;
       throwNade(w, p, now);
+    }
+    if (p.wantArty) {
+      p.wantArty = false;
+      callArty(w, p, now);
     }
   }
 
@@ -296,6 +354,27 @@ export function step(w, dt, now = Date.now()) {
   }
   w.nades = live;
 
+  // Artillery: the shell is on its way for a few seconds, lands, and leaves gas that burns anyone standing in it.
+  const clouds = [];
+  for (const a of w.arty) {
+    if (a.delay > 0) {
+      a.delay -= dt;
+      if (a.delay <= 0) {
+        a.delay = 0;
+        a.gas = CFG.ARTY_GAS_S;
+        w.events.push({ t: 'boom', x: Math.round(a.x), y: Math.round(a.y) });
+      }
+    } else {
+      a.gas -= dt;
+      for (const t of w.players.values()) {
+        if (t.team === a.team || t.hp <= 0 || now < t.protectUntil) continue;
+        if (Math.hypot(t.x - a.x, t.y - a.y) <= CFG.ARTY_RADIUS) hurt(w, t, CFG.ARTY_DPS * dt, a.owner, a.team, now, 'gas');
+      }
+    }
+    if (a.delay > 0 || a.gas > 0) clouds.push(a);
+  }
+  w.arty = clouds;
+
   // Capture point.
   const cap = w.map.capture;
   const inside = { green: 0, red: 0 };
@@ -320,7 +399,7 @@ export function step(w, dt, now = Date.now()) {
 /** What every client needs each tick. Kept small. */
 export function snapshot(w, now = Date.now()) {
   const p = [];
-  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, q.hp, now < q.protectUntil ? 1 : 0, q.grenades]);
+  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / CFG.RELOAD_S) * 100) / 100 : 0, q.arty]);
   const b = w.bullets.map((x) => [Math.round(x.x), Math.round(x.y)]);
   return {
     t: 's',
@@ -328,6 +407,7 @@ export function snapshot(w, now = Date.now()) {
     b,
     f: w.shots,
     g: w.nades.map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
+    a: w.arty.map((a) => [Math.round(a.x), Math.round(a.y), a.delay > 0 ? 0 : 1, a.delay > 0 ? Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100 : Math.round((a.gas / CFG.ARTY_GAS_S) * 100) / 100]),
     c: Math.round(w.progress * 1000) / 1000,
     r: { n: w.round.n, s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
   };
