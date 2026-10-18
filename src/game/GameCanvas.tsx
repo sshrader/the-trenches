@@ -246,6 +246,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (typing?.()) return;
       const k = e.key.toLowerCase();
       if (k === ' ') input.current.fire = true;
+      if (k === 'g' && !e.repeat) input.current.nade += 1; // the server counts presses, so a lost packet cannot eat a throw
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) return;
       e.preventDefault();
       keys.add(k);
@@ -296,7 +297,12 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       const camY = Math.max(0, Math.min(MAP_H - VIEW_H, (you?.y ?? CAP.y) - VIEW_H / 2));
       w.cam.x = camX;
       w.cam.y = camY;
-      if (you) input.current.aim = Math.atan2(mouse.current.y - (you.y - camY), mouse.current.x - (you.x - camX));
+      if (you) {
+        const mdx = mouse.current.x - (you.x - camX);
+        const mdy = mouse.current.y - (you.y - camY);
+        input.current.aim = Math.atan2(mdy, mdx);
+        input.current.range = Math.hypot(mdx, mdy); // grenades land where the cursor is
+      }
 
       ctx.fillStyle = '#16181a';
       ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -333,6 +339,55 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       const now = Date.now();
       for (const u of seen) if (u.hp <= 0) drawFallen(ctx, u, u.x - camX, u.y - camY);
       for (const u of alive) drawSoldier(ctx, u, u.x - camX, u.y - camY, u.id === w.me, myTeam, now);
+
+      // Grenades: a shadow stays on the ground while the grenade itself arcs up and over cover
+      for (const [gx, gy, f] of w.nades) {
+        const lift = Math.sin(Math.min(1, f) * Math.PI) * 46;
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(gx - camX, gy - camY, 6, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#3f4a36';
+        ctx.beginPath();
+        ctx.arc(gx - camX, gy - camY - lift, 5 + lift / 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        if (f <= 0 && Math.floor(Date.now() / 120) % 2 === 0) {
+          ctx.fillStyle = '#f87171'; // sizzling fuse once it has landed
+          ctx.fillRect(gx - camX - 1, gy - camY - 8, 2, 3);
+        }
+      }
+      // Explosions
+      const tNow = Date.now();
+      w.booms = w.booms.filter((b) => tNow - b.at < 450);
+      for (const b of w.booms) {
+        const a = (tNow - b.at) / 450;
+        const r = 30 + a * 70;
+        ctx.fillStyle = `rgba(253,186,116,${0.55 * (1 - a)})`;
+        ctx.beginPath();
+        ctx.arc(b.x - camX, b.y - camY, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255,240,200,${0.9 * (1 - a)})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = `rgba(40,36,32,${0.5 * (1 - a)})`;
+        ctx.beginPath();
+        ctx.arc(b.x - camX, b.y - camY - a * 18, r * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Aim marker for where a grenade would land
+      if (you && you.hp > 0) {
+        const rg = Math.max(70, Math.min(380, input.current.range));
+        const lx = you.x - camX + Math.cos(input.current.aim) * rg;
+        const ly = you.y - camY + Math.sin(input.current.aim) * rg;
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
       // Minimap: the whole field, your side's soldiers and the point. Enemies stay hidden.
       const mw = 168;

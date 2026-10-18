@@ -169,6 +169,99 @@ test('time up decides by who is ahead', () => {
   assert.equal(w.round.winner, 'red');
 });
 
+// Press G: the client raises a counter and sends where the cursor is.
+const press = (w, p, range, n) => setInput(w, p.id, { dx: 0, dy: 0, aim: p.aim, fire: false, nade: n, range });
+const openRow = () => map.rows.findIndex((r) => r.slice(12, 40) === '.'.repeat(28));
+
+test('a grenade flies over cover and kills inside the lethal ring', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  const e = addPlayer(w, { name: 'e', want: 'red' });
+  // Shooter behind a cover tile, target 200 px away on the other side of it.
+  const ty = 12;
+  const tx = map.rows[ty].indexOf('c', 10);
+  place(a, (tx - 2) * 32 + 16, ty * 32 + 16, 0);
+  place(e, (tx - 2) * 32 + 16 + 200, ty * 32 + 16);
+  press(w, a, 200, 0);
+  step(w, 0.05, 1000);
+  press(w, a, 200, 1);
+  assert.equal(a.wantNade, true);
+  let now = run(w, 1, 1050);
+  assert.equal(w.nades.length, 1, 'still in play');
+  assert.equal(e.hp, CFG.HP, 'not hurt before the bang');
+  now = run(w, 1.4, now);
+  assert.equal(w.nades.length, 0);
+  assert.equal(e.hp, 0, 'killed by the blast');
+  assert.equal(a.grenades, CFG.GRENADES - 1);
+  const ev = drainEvents(w);
+  assert.ok(ev.some((x) => x.t === 'boom'));
+  assert.ok(ev.some((x) => x.t === 'kill' && x.weapon === 'grenade'));
+});
+
+test('grenades spare friends and are blocked by cover', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  const f = addPlayer(w, { name: 'f', want: 'green' });
+  f.team = 'green';
+  const e = addPlayer(w, { name: 'e', want: 'red' });
+  e.team = 'red';
+  const ty = openRow();
+  place(a, 500, ty * 32 + 16, 0);
+  place(f, 700, ty * 32 + 16);
+  place(e, 700, ty * 32 + 16 + 30);
+  press(w, a, 200, 0);
+  step(w, 0.05, 1000);
+  press(w, a, 200, 1);
+  run(w, 3, 1050);
+  assert.equal(f.hp, CFG.HP, 'no friendly fire');
+  assert.equal(e.hp, 0, 'enemy next to the blast dies');
+
+  // Now put cover between a fresh blast and a target.
+  const w2 = fresh();
+  const a2 = addPlayer(w2, { name: 'a', want: 'green' });
+  const e2 = addPlayer(w2, { name: 'e', want: 'red' });
+  const row = 12;
+  const cx = map.rows[row].indexOf('c', 10);
+  place(a2, (cx - 3) * 32 + 16, row * 32 + 16, 0);
+  place(e2, (cx + 2) * 32 + 16, row * 32 + 16);
+  // Land the grenade just before the cover, so the cover sits between the blast and the target.
+  press(w2, a2, 2 * 32, 0);
+  step(w2, 0.05, 1000);
+  press(w2, a2, 2 * 32, 1);
+  run(w2, 3, 1050);
+  assert.equal(e2.hp, CFG.HP, 'cover shields from the blast');
+});
+
+test('two grenades per life, with a cooldown, refilled on respawn', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  place(a, 500, openRow() * 32 + 16, 0);
+  press(w, a, 150, 0);
+  step(w, 0.05, 1000);
+  let n = 1;
+  let now = 1050;
+  press(w, a, 150, n++);
+  step(w, 0.05, now);
+  assert.equal(a.grenades, 1);
+  press(w, a, 150, n++); // too soon: cooldown
+  now += 50;
+  step(w, 0.05, now);
+  assert.equal(a.grenades, 1, 'cooldown holds');
+  now = run(w, 1, now);
+  press(w, a, 150, n++);
+  step(w, 0.05, now + 50);
+  assert.equal(a.grenades, 0);
+  now = run(w, 1, now + 50);
+  press(w, a, 150, n++);
+  step(w, 0.05, now + 50);
+  assert.equal(a.grenades, 0, 'a third throw does nothing');
+  assert.equal(snapshot(w, now).p[0][6], 0, 'count is in the snapshot');
+  a.hp = 0;
+  a.respawnAt = now + 1;
+  run(w, 1, now + 100);
+  assert.equal(a.grenades, CFG.GRENADES);
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

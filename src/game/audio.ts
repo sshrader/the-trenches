@@ -39,6 +39,38 @@ export function setMuted(m: boolean) {
   }
 }
 
+/** A grenade going off, `dist` pixels away. Deeper and a little longer than a rifle shot, still quiet. */
+export function playBoom(dist: number) {
+  if (muted || !ctx || !noise || ctx.state !== 'running') return;
+  const v = (volume * 1.2) / (1 + dist / 420);
+  if (v < 0.012) return;
+  const t = ctx.currentTime;
+  const src = ctx.createBufferSource();
+  src.buffer = noise;
+  src.playbackRate.value = 0.5 + Math.random() * 0.1;
+  const low = ctx.createBiquadFilter();
+  low.type = 'lowpass';
+  low.frequency.value = 500 / (1 + dist / 600) + 160;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(v, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+  src.connect(low).connect(g).connect(ctx.destination);
+  src.start(t);
+  src.stop(t + 0.6);
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(75, t);
+  osc.frequency.exponentialRampToValueAtTime(28, t + 0.35);
+  const og = ctx.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(v * 0.9, t + 0.01);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+  osc.connect(og).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.45);
+}
+
 /** One rifle shot, `dist` pixels away from you. Far shots are quieter and duller. */
 export function playShot(dist: number) {
   if (muted || !ctx || !noise || ctx.state !== 'running') return;

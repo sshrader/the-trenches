@@ -18,6 +18,16 @@ export const CFG = {
   ROUND_S: 360,
   END_S: 10,
   MAX_PER_TEAM: 30,
+  GRENADES: 2, // per life
+  NADE_FLIGHT_S: 0.7, // in the air (flies over cover)
+  NADE_FUSE_S: 2.0, // from the throw to the bang
+  NADE_COOLDOWN_MS: 800,
+  NADE_MIN: 70, // throw range limits in px
+  NADE_MAX: 380,
+  NADE_RADIUS: 100, // blast reach
+  NADE_LETHAL: 45, // inside this, it kills
+  NADE_OUTER_MAX: 70, // damage just outside the lethal ring ...
+  NADE_OUTER_MIN: 20, // ... fading to this at the edge
 };
 
 const TEAMS = ['green', 'red'];
@@ -34,6 +44,7 @@ export function createWorld(map, rng = Math.random) {
     rng,
     players: new Map(),
     bullets: [],
+    nades: [],
     progress: 0, // -1 red owns the point ... +1 green owns it
     round: { n: 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 },
     events: [],
@@ -51,6 +62,17 @@ export const solidAt = (w, px, py) => {
 };
 export const blockedAt = (w, x, y, r = CFG.RADIUS) =>
   solidAt(w, x - r, y - r) || solidAt(w, x + r, y - r) || solidAt(w, x - r, y + r) || solidAt(w, x + r, y + r);
+
+/** Is there open ground (no wall or cover) between two points? Used so a blast does not go through cover. */
+export function lineClear(w, x1, y1, x2, y2) {
+  const d = Math.hypot(x2 - x1, y2 - y1);
+  const n = Math.max(1, Math.ceil(d / 8));
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    if (solidAt(w, x1 + (x2 - x1) * t, y1 + (y2 - y1) * t)) return false;
+  }
+  return true;
+}
 
 export const teamCount = (w, team) => [...w.players.values()].filter((p) => p.team === team).length;
 
@@ -71,6 +93,7 @@ function respawn(w, p, now) {
   p.hp = CFG.HP;
   p.protectUntil = now + CFG.PROTECT_S * 1000;
   p.respawnAt = 0;
+  p.grenades = CFG.GRENADES;
   // Face the enemy.
   p.aim = p.team === 'green' ? 0 : Math.PI;
 }
@@ -98,6 +121,11 @@ export function addPlayer(w, { name, want = 'random' }, now = Date.now()) {
     dy: 0,
     fire: false,
     lastFire: 0,
+    grenades: CFG.GRENADES,
+    nadeSeq: null,
+    wantNade: false,
+    nadeRange: 200,
+    lastNade: 0,
     protectUntil: 0,
     respawnAt: 0,
     kills: 0,
@@ -110,7 +138,7 @@ export function addPlayer(w, { name, want = 'random' }, now = Date.now()) {
 
 export const removePlayer = (w, id) => w.players.delete(id);
 
-export function setInput(w, id, { dx, dy, aim, fire }) {
+export function setInput(w, id, { dx, dy, aim, fire, nade, range }) {
   const p = w.players.get(id);
   if (!p) return;
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -118,6 +146,12 @@ export function setInput(w, id, { dx, dy, aim, fire }) {
   p.dy = clamp(n(dy), -1, 1);
   if (Number.isFinite(Number(aim))) p.aim = Number(aim) % (Math.PI * 2);
   p.fire = !!fire;
+  if (Number.isFinite(Number(range))) p.nadeRange = clamp(Number(range), CFG.NADE_MIN, CFG.NADE_MAX);
+  // A throw is a counter going up (one press = +1), so a repeated message can never throw twice.
+  if (nade !== undefined && nade !== p.nadeSeq) {
+    if (p.nadeSeq !== null) p.wantNade = true;
+    p.nadeSeq = nade;
+  }
 }
 
 function endRound(w, winner) {
@@ -125,6 +159,7 @@ function endRound(w, winner) {
   w.round.winner = winner;
   w.round.endLeft = CFG.END_S;
   w.bullets = [];
+  w.nades = [];
   for (const p of w.players.values()) {
     p.dx = p.dy = 0;
     p.fire = false;
@@ -136,7 +171,48 @@ function newRound(w, now) {
   w.round = { n: w.round.n + 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
   w.bullets = [];
+  w.nades = [];
   for (const p of w.players.values()) respawn(w, p, now);
+}
+
+function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
+  t.hp -= amount;
+  if (t.hp > 0) return;
+  t.hp = 0;
+  t.deaths++;
+  t.respawnAt = now + CFG.RESPAWN_S * 1000;
+  t.dx = t.dy = 0;
+  t.fire = false;
+  t.wantNade = false;
+  const k = w.players.get(ownerId);
+  if (k) k.kills++;
+  w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon });
+}
+
+function explode(w, n, now) {
+  w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y) });
+  for (const t of w.players.values()) {
+    if (t.team === n.team || t.hp <= 0 || now < t.protectUntil) continue;
+    const d = Math.hypot(t.x - n.x, t.y - n.y);
+    if (d > CFG.NADE_RADIUS || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
+    const dmg =
+      d <= CFG.NADE_LETHAL
+        ? CFG.HP
+        : CFG.NADE_OUTER_MAX - ((CFG.NADE_OUTER_MAX - CFG.NADE_OUTER_MIN) * (d - CFG.NADE_LETHAL)) / (CFG.NADE_RADIUS - CFG.NADE_LETHAL);
+    hurt(w, t, dmg, n.owner, n.team, now, 'grenade');
+  }
+}
+
+function throwNade(w, p, now) {
+  if (p.hp <= 0 || p.grenades <= 0 || now - p.lastNade < CFG.NADE_COOLDOWN_MS) return;
+  p.grenades--;
+  p.lastNade = now;
+  const c = Math.cos(p.aim);
+  const s = Math.sin(p.aim);
+  let dist = p.nadeRange;
+  // It lands on open ground: if the target is inside a wall or cover, pull it back toward the thrower.
+  while (dist > CFG.NADE_MIN / 2 && solidAt(w, p.x + c * dist, p.y + s * dist)) dist -= 8;
+  w.nades.push({ sx: p.x, sy: p.y, x: p.x, y: p.y, tx: p.x + c * dist, ty: p.y + s * dist, flight: CFG.NADE_FLIGHT_S, fuse: CFG.NADE_FUSE_S, owner: p.id, team: p.team });
 }
 
 /** Advance the world by dt seconds. `now` is a millisecond clock. */
@@ -171,6 +247,13 @@ export function step(w, dt, now = Date.now()) {
     }
   }
 
+  for (const p of w.players.values()) {
+    if (p.wantNade) {
+      p.wantNade = false;
+      throwNade(w, p, now);
+    }
+  }
+
   // Bullets: move in small steps so they cannot jump through cover or a player.
   const alive = [];
   for (const b of w.bullets) {
@@ -187,18 +270,8 @@ export function step(w, dt, now = Date.now()) {
       for (const t of w.players.values()) {
         if (t.team === b.team || t.hp <= 0 || now < t.protectUntil) continue;
         if (Math.hypot(t.x - b.x, t.y - b.y) <= CFG.RADIUS + CFG.BULLET_R) {
-          t.hp -= CFG.DAMAGE;
           dead = true;
-          if (t.hp <= 0) {
-            t.hp = 0;
-            t.deaths++;
-            t.respawnAt = now + CFG.RESPAWN_S * 1000;
-            t.dx = t.dy = 0;
-            t.fire = false;
-            const k = w.players.get(b.owner);
-            if (k) k.kills++;
-            w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: b.team, victim: t.name, vteam: t.team });
-          }
+          hurt(w, t, CFG.DAMAGE, b.owner, b.team, now, 'rifle');
           break;
         }
       }
@@ -207,6 +280,21 @@ export function step(w, dt, now = Date.now()) {
     if (!dead && b.life > 0) alive.push(b);
   }
   w.bullets = alive;
+
+  // Grenades fly in an arc (over cover), land, then go off when the fuse runs out.
+  const live = [];
+  for (const n of w.nades) {
+    if (n.flight > 0) {
+      n.flight = Math.max(0, n.flight - dt);
+      const k = 1 - n.flight / CFG.NADE_FLIGHT_S;
+      n.x = n.sx + (n.tx - n.sx) * k;
+      n.y = n.sy + (n.ty - n.sy) * k;
+    }
+    n.fuse -= dt;
+    if (n.fuse <= 0) explode(w, n, now);
+    else live.push(n);
+  }
+  w.nades = live;
 
   // Capture point.
   const cap = w.map.capture;
@@ -232,13 +320,14 @@ export function step(w, dt, now = Date.now()) {
 /** What every client needs each tick. Kept small. */
 export function snapshot(w, now = Date.now()) {
   const p = [];
-  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, q.hp, now < q.protectUntil ? 1 : 0]);
+  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, q.hp, now < q.protectUntil ? 1 : 0, q.grenades]);
   const b = w.bullets.map((x) => [Math.round(x.x), Math.round(x.y)]);
   return {
     t: 's',
     p,
     b,
     f: w.shots,
+    g: w.nades.map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
     c: Math.round(w.progress * 1000) / 1000,
     r: { n: w.round.n, s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
   };

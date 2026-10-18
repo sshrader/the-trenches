@@ -84,7 +84,7 @@ export default function Play() {
           </div>
           <p className="muted small">If one side has more soldiers, you will be placed on the other to keep it fair.</p>
           {game.error && <p className="status" role="alert">{game.error}</p>}
-          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · Scoreboard: hold Tab</p>
+          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · Grenade: G (lands at your cursor, 2 per life) · Scoreboard: hold Tab</p>
         </section>
       )}
 
@@ -96,6 +96,7 @@ export default function Play() {
               <div className="mid" />
               {h.progress >= 0 ? <div className="fill green" style={{ left: '50%', width: `${h.progress * 50}%` }} /> : <div className="fill red" style={{ right: '50%', width: `${-h.progress * 50}%` }} />}
             </div>
+            <span className="pill" title="Press G to throw">Grenades: {h.myGren} [G]</span>
             <span className="muted small">
               {h.green} v {h.red} · {fmt(h.round.l)}
             </span>
@@ -117,7 +118,7 @@ export default function Play() {
             <div className="feed" aria-live="polite">
               {h.feed.map((f, i) => (
                 <p key={i}>
-                  <b className={f.kteam}>{f.killer}</b> eliminated <b className={f.vteam}>{f.victim}</b>
+                  <b className={f.kteam}>{f.killer}</b> {f.weapon === 'grenade' ? 'blew up' : 'eliminated'} <b className={f.vteam}>{f.victim}</b>
                 </p>
               ))}
             </div>
