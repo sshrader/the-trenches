@@ -402,6 +402,18 @@ test('a medic heals teammates next to him, not enemies or himself; the tent heal
   g.hp = 10;
   run(w, 1);
   assert.equal(g.hp, 10, "the other side's tent does not");
+  // Cooldown: heal to full at the tent, then it will not heal again for 30 s.
+  place(g, tent.x, tent.y);
+  g.hp = 30;
+  let now = run(w, 5, 100000);
+  assert.equal(g.hp, CFG.HP);
+  assert.ok(snapshot(w, now).p.find((q) => q[0] === g.id)[12] > 20, 'cooldown shows in the snapshot');
+  g.hp = 30;
+  now = run(w, 5, now);
+  assert.equal(g.hp, 30, 'on cooldown');
+  now = run(w, 28, now);
+  now = run(w, 5, now);
+  assert.equal(g.hp, CFG.HP, 'ready again after 30 s');
 });
 
 test('a short grenade throw hurts the thrower, and kills him with no credit', () => {

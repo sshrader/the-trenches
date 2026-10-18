@@ -16,6 +16,7 @@ export const CFG = {
   HEAL_RATE: 18, // ... at this many HP per second
   TENT_R: 80, // the medic tent heals anyone on its side this close
   TENT_RATE: 24,
+  TENT_COOLDOWN_S: 30, // after using the tent, each soldier waits this long before it heals him again
   RESPAWN_S: 4,
   PROTECT_S: 1.5, // can't be hurt just after spawning
   CAP_RATE: 0.012, // capture progress per second per player in the circle (up to CAP_MAX)
@@ -117,6 +118,8 @@ function respawn(w, p, now) {
   p.arty = CFG.ARTY;
   p.ammo = cls(p).mag;
   p.reloadLeft = 0;
+  p.tentReadyAt = 0;
+  p.tentUsing = false;
   // Face the enemy.
   p.aim = p.team === 'green' ? 0 : Math.PI;
 }
@@ -163,6 +166,8 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' 
     respawnAt: 0,
     kills: 0,
     deaths: 0,
+    tentReadyAt: 0,
+    tentUsing: false,
   };
   respawn(w, p, now);
   w.players.set(p.id, p);
@@ -403,10 +408,16 @@ export function step(w, dt, now = Date.now()) {
       m.healing = true;
     }
   }
-  for (const tent of w.tents) {
-    for (const t of w.players.values()) {
-      if (t.team !== tent.team || t.hp <= 0 || t.hp >= CFG.HP) continue;
-      if (Math.hypot(t.x - tent.x, t.y - tent.y) <= CFG.TENT_R) t.hp = Math.min(CFG.HP, t.hp + CFG.TENT_RATE * dt);
+  // The tent heals a soldier while he stands in it; once he is full or walks away, he must wait out the cooldown.
+  for (const t of w.players.values()) {
+    const inTent = t.hp > 0 && w.tents.some((tent) => tent.team === t.team && Math.hypot(t.x - tent.x, t.y - tent.y) <= CFG.TENT_R);
+    if (t.tentUsing && (!inTent || t.hp >= CFG.HP)) {
+      t.tentUsing = false;
+      t.tentReadyAt = now + CFG.TENT_COOLDOWN_S * 1000;
+    }
+    if (inTent && t.hp < CFG.HP && (t.tentUsing || now >= t.tentReadyAt)) {
+      t.tentUsing = true;
+      t.hp = Math.min(CFG.HP, t.hp + CFG.TENT_RATE * dt);
     }
   }
 
@@ -451,7 +462,7 @@ export function step(w, dt, now = Date.now()) {
 /** What every client needs each tick. Kept small. */
 export function snapshot(w, now = Date.now()) {
   const p = [];
-  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0]);
+  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000))]);
   const b = w.bullets.map((x) => [Math.round(x.x), Math.round(x.y)]);
   return {
     t: 's',
