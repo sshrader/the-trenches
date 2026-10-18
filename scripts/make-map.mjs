@@ -47,6 +47,9 @@ const spot = (w, h, x0, x1, minCap) => {
   }
   return null;
 };
+// The medic tent sits behind the capture point on each side.
+claim(capX - 13, capY - 2, 4, 3);
+props.push({ kind: 'tent', x: capX - 13, y: capY - 2, w: 4, h: 3 });
 // Ruined buildings: 'B' brick walls with doorways and a broken wall, 'f' floor inside.
 for (let i = 0; i < 6; i++) {
   const w = 6 + Math.floor(rnd() * 3);
@@ -127,6 +130,12 @@ const rows = g.map((r) => r.join(''));
 // Mirror the props and crates onto the other side. Tanks and the like face the enemy on both sides.
 const mirrored = props.map((q) => ({ ...q, x: W - q.x - q.w, flip: true }));
 const tile = (q) => ({ x: (q.x + 0.5) * TILE, y: (q.y + 0.5) * TILE });
+const tentAt = (q) => ({ x: (q.x + q.w / 2) * TILE, y: (q.y + q.h / 2) * TILE });
+const tentSrc = props.find((q) => q.kind === 'tent');
+const tents = [
+  { ...tentAt(tentSrc), team: 'green' },
+  { x: W * TILE - tentAt(tentSrc).x, y: tentAt(tentSrc).y, team: 'red' },
+];
 const crateList = [
   ...crates.map((q) => ({ ...tile(q), team: 'green' })),
   ...crates.map((q) => ({ x: W * TILE - tile(q).x, y: tile(q).y, team: 'red' })),
@@ -138,6 +147,7 @@ const map = {
   rows,
   props: [...props, ...mirrored],
   crates: crateList,
+  tents,
   capture: { x: cx, y: cy, r: 3.5 * TILE },
   spawns: {
     green: { x0: 1 * TILE, x1: 7 * TILE, y0: 2 * TILE, y1: (H - 2) * TILE },

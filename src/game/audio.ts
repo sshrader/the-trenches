@@ -142,14 +142,15 @@ export function playPickup() {
 }
 
 /** One rifle shot, `dist` pixels away from you. Far shots are quieter and duller. */
-export function playShot(dist: number) {
+/** `kind`: 0 rifle, 1 SMG (lighter and snappier), 2 pistol (thin). */
+export function playShot(dist: number, kind = 0) {
   if (muted || !ctx || !noise || ctx.state !== 'running') return;
   const now = performance.now();
   recent = recent.filter((t) => now - t < 150);
   if (recent.length >= 8) return; // a crowd firing at once must not turn into a wall of noise
   recent.push(now);
 
-  const v = volume / (1 + dist / 260);
+  const v = (volume * [1, 0.7, 0.75][kind]) / (1 + dist / 260);
   if (v < 0.01) return;
   const t = ctx.currentTime;
   const near = 1 / (1 + dist / 400);
@@ -157,7 +158,7 @@ export function playShot(dist: number) {
   // The crack: a short burst of noise, shaped by distance.
   const src = ctx.createBufferSource();
   src.buffer = noise;
-  src.playbackRate.value = 0.9 + Math.random() * 0.25;
+  src.playbackRate.value = 0.9 + Math.random() * 0.25 + [0, 0.35, 0.55][kind];
   const band = ctx.createBiquadFilter();
   band.type = 'bandpass';
   band.frequency.value = 700 + 1800 * near;
@@ -165,7 +166,7 @@ export function playShot(dist: number) {
   const g = ctx.createGain();
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(v, t + 0.003);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16 + (1 - near) * 0.12);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + [0.16, 0.08, 0.11][kind] + (1 - near) * 0.12);
   src.connect(band).connect(g).connect(ctx.destination);
   src.start(t);
   src.stop(t + 0.35);

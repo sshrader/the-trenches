@@ -50,3 +50,9 @@ b.red { color: var(--red); }
 .board tr.green td:first-child { color: var(--green); }
 .board tr.red td:first-child { color: var(--red); }
 .foot { text-align: center; padding: 24px 16px; }
+
+.classes { display: flex; flex-wrap: wrap; gap: 10px; }
+.class { flex: 1 1 180px; text-align: left; border: 2px solid var(--line); background: var(--panel); color: var(--text); font: inherit; padding: 10px 12px; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.class b { font-size: 15px; }
+.class span { font-size: 12px; opacity: 0.75; line-height: 1.35; }
+.class.on { border-color: #fbbf24; background: rgba(251, 191, 36, 0.1); }

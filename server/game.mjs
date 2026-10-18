@@ -102,7 +102,7 @@ export function attachGame(server) {
           if (old && old !== ws) old.close(4000, 'signed in elsewhere');
           byWallet.set(wallet, ws);
         }
-        const p = sim.addPlayer(world, { name, want: m.team });
+        const p = sim.addPlayer(world, { name, want: m.team, cls: m.cls });
         if (!p) return send(ws, { t: 'err', msg: 'Both sides are full. Try again in a moment.' });
         me = p;
         sockets.set(p.id, ws);

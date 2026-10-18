@@ -138,6 +138,33 @@ function drawTree(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number
   ctx.fill();
 }
 
+/** Field hospital tent: canvas roof seen from above with a red cross, and a faint healing circle around it. */
+function drawTent(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number) {
+  const w = p.w * TILE;
+  const h = p.h * TILE;
+  ctx.strokeStyle = 'rgba(134,239,172,0.3)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.arc(sx + w / 2, sy + h / 2, 80, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(sx + 6, sy + 8, w - 8, h - 8);
+  ctx.fillStyle = '#c9c2a4';
+  ctx.fillRect(sx + 2, sy + 2, w - 8, h - 8);
+  ctx.fillStyle = '#b3ab8b'; // the ridge line and two roof panels
+  ctx.fillRect(sx + 2, sy + 2 + (h - 8) / 2 - 2, w - 8, 4);
+  ctx.strokeStyle = '#6f6850';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(sx + 2, sy + 2, w - 8, h - 8);
+  ctx.fillStyle = '#dc2626';
+  const cx = sx + 2 + (w - 8) / 2;
+  const cy = sy + 2 + (h - 8) / 2;
+  ctx.fillRect(cx - 5, cy - 16, 10, 32);
+  ctx.fillRect(cx - 16, cy - 5, 32, 10);
+}
+
 /** A wooden resupply crate with a team-coloured band; dimmed while it is being restocked. */
 function drawCrate(ctx: CanvasRenderingContext2D, team: string, ready: boolean, sx: number, sy: number) {
   ctx.globalAlpha = ready ? 1 : 0.35;
@@ -305,11 +332,28 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
     ctx.stroke();
     ctx.setLineDash([]);
   }
-  if (u.hp < 100) {
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(sx - 14, sy - 28, 28, 5);
-    ctx.fillStyle = u.hp > 50 ? '#4ade80' : u.hp > 25 ? '#fbbf24' : '#f87171';
-    ctx.fillRect(sx - 14, sy - 28, (28 * Math.max(0, u.hp)) / 100, 5);
+  if (u.cls === 2) {
+    // A medic's healing reach: a soft ring, brighter while he is actually mending someone
+    ctx.strokeStyle = u.healing ? 'rgba(134,239,172,0.8)' : 'rgba(134,239,172,0.22)';
+    ctx.lineWidth = u.healing ? 2 : 1;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 60, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // Health bar over everyone, so you can see how hurt a soldier is (yours and theirs)
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(sx - 16, sy - 29, 32, 7);
+  ctx.fillStyle = u.hp > 50 ? '#4ade80' : u.hp > 25 ? '#fbbf24' : '#f87171';
+  ctx.fillRect(sx - 15, sy - 28, (30 * Math.max(0, Math.min(100, u.hp))) / 100, 5);
+  ctx.strokeStyle = teamColor(u.team);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(sx - 16.5, sy - 29.5, 33, 8);
+  if (u.cls === 2) {
+    ctx.fillStyle = '#fff'; // medic badge: a red cross on white
+    ctx.fillRect(sx - 29, sy - 30, 10, 10);
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(sx - 25, sy - 29, 2, 8);
+    ctx.fillRect(sx - 28, sy - 26, 8, 2);
   }
   if (u.team === myTeam && !mine) {
     ctx.font = '600 11px system-ui, sans-serif';
@@ -440,6 +484,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         if (px < -200 || py < -200 || px > VIEW_W + 100 || py > VIEW_H + 100) continue;
         if (pr.kind === 'tank') drawTank(ctx, pr, px, py);
         else if (pr.kind === 'tree') drawTree(ctx, pr, px, py);
+        else if (pr.kind === 'tent') drawTent(ctx, pr, px, py);
       }
       CRATES.forEach((cr, i) => {
         const px = cr.x - camX;

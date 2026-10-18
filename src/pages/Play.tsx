@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import GameCanvas from '../game/GameCanvas';
-import { useGame } from '../game/useGame';
-import type { Team } from '../game/useGame';
+import { CLASSES, useGame } from '../game/useGame';
+import type { ClassId, Team } from '../game/useGame';
 import { WALLET_LOGIN } from '../config';
 import { isMuted, setMuted, unlockAudio } from '../game/audio';
 
@@ -40,14 +40,23 @@ export default function Play() {
     };
   }, []);
 
+  const [cls, setCls] = useState<ClassId>(() => {
+    try {
+      const c = localStorage.getItem('trenches-class');
+      return c === 'smg' || c === 'medic' ? c : 'rifleman';
+    } catch {
+      return 'rifleman';
+    }
+  });
   const start = (team: Team | 'random') => {
     unlockAudio(); // joining is a click, so the browser allows sound from here on
     try {
       localStorage.setItem('trenches-name', name.trim());
+      localStorage.setItem('trenches-class', cls);
     } catch {
       /* private window: the name just is not remembered */
     }
-    void game.join(team, name.trim(), useWalletLogin && connected);
+    void game.join(team, name.trim(), useWalletLogin && connected, cls);
   };
 
   const busy = game.status === 'signing' || game.status === 'connecting';
@@ -77,6 +86,18 @@ export default function Play() {
             </div>
           )}
 
+          <div className="field">
+            <label>Class</label>
+            <div className="classes" role="radiogroup" aria-label="Class">
+              {CLASSES.map((c) => (
+                <button key={c.id} type="button" role="radio" aria-checked={cls === c.id} className={`class ${cls === c.id ? 'on' : ''}`} onClick={() => setCls(c.id)}>
+                  <b>{c.label}</b>
+                  <span>{c.blurb}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="sides">
             <button className="side green" disabled={busy} onClick={() => start('green')}>Join Green</button>
             <button className="side random" disabled={busy} onClick={() => start('random')}>{busy ? (game.status === 'signing' ? 'Check your wallet…' : 'Connecting…') : 'Random side'}</button>
@@ -84,7 +105,7 @@ export default function Play() {
           </div>
           <p className="muted small">If one side has more soldiers, you will be placed on the other to keep it fair.</p>
           {game.error && <p className="status" role="alert">{game.error}</p>}
-          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · 8 shots then a 2 s reload (R reloads early) · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
+          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a medic tent behind the point · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
         </section>
       )}
 
@@ -96,7 +117,7 @@ export default function Play() {
               <div className="mid" />
               {h.progress >= 0 ? <div className="fill green" style={{ left: '50%', width: `${h.progress * 50}%` }} /> : <div className="fill red" style={{ right: '50%', width: `${-h.progress * 50}%` }} />}
             </div>
-            <span className="pill" title="R to reload">{h.myReload > 0 ? 'Reloading…' : `Ammo ${h.myAmmo}/8`}</span>
+            <span className="pill" title="R to reload">{h.myClass} · {h.myReload > 0 ? 'Reloading…' : `Ammo ${h.myAmmo}/${h.myMag}`}</span>
             <span className="pill" title="Press G to throw">Grenades: {h.myGren} [G]</span>
             <span className="pill" title="Press T to call in a gas strike">Gas strike: {h.myArty} [T]</span>
             <span className="muted small">

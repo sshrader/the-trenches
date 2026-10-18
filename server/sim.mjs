@@ -5,11 +5,17 @@ export const CFG = {
   SPEED: 150, // px per second
   RADIUS: 11, // player body
   HP: 100,
-  DAMAGE: 34, // three hits to kill
-  FIRE_MS: 450, // rifle: one shot per 450 ms
-  BULLET_SPEED: 720,
-  BULLET_LIFE: 1.1, // seconds
   BULLET_R: 3,
+  // Classes. `life` is how long a bullet flies, so speed x life is the weapon's reach.
+  CLASSES: {
+    rifleman: { label: 'Rifleman', weapon: 'rifle', mag: 8, reloadS: 2, fireMs: 700, damage: 100, speed: 760, life: 1.5 }, // one hit kills, longest reach
+    smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6 }, // five hits kill, short reach
+    medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, // heals teammates next to him
+  },
+  HEAL_RADIUS: 60, // a medic heals teammates this close ...
+  HEAL_RATE: 18, // ... at this many HP per second
+  TENT_R: 80, // the medic tent heals anyone on its side this close
+  TENT_RATE: 24,
   RESPAWN_S: 4,
   PROTECT_S: 1.5, // can't be hurt just after spawning
   CAP_RATE: 0.012, // capture progress per second per player in the circle (up to CAP_MAX)
@@ -18,8 +24,6 @@ export const CFG = {
   ROUND_S: 360,
   END_S: 10,
   MAX_PER_TEAM: 30,
-  MAG: 8, // rifle rounds before a reload
-  RELOAD_S: 2,
   ARTY: 1, // artillery strikes per life
   ARTY_DELAY_S: 3, // call-in to impact
   ARTY_GAS_S: 4, // how long the gas lingers
@@ -40,6 +44,8 @@ export const CFG = {
   NADE_OUTER_MIN: 20, // ... fading to this at the edge
 };
 
+export const CLASS_IDS = ['rifleman', 'smg', 'medic'];
+const cls = (p) => CFG.CLASSES[p.cls];
 const TEAMS = ['green', 'red'];
 const otherTeam = (t) => (t === 'green' ? 'red' : 'green');
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -55,6 +61,7 @@ export function createWorld(map, rng = Math.random) {
     players: new Map(),
     bullets: [],
     nades: [],
+    tents: map.tents || [],
     crates: (map.crates || []).map((c) => ({ x: c.x, y: c.y, team: c.team, readyAt: 0 })),
     arty: [], // incoming strikes and lingering gas clouds
     progress: 0, // -1 red owns the point ... +1 green owns it
@@ -107,14 +114,14 @@ function respawn(w, p, now) {
   p.respawnAt = 0;
   p.grenades = CFG.GRENADES;
   p.arty = CFG.ARTY;
-  p.ammo = CFG.MAG;
+  p.ammo = cls(p).mag;
   p.reloadLeft = 0;
   // Face the enemy.
   p.aim = p.team === 'green' ? 0 : Math.PI;
 }
 
 /** Adds a player. `want` is 'green' | 'red' | 'random'. Returns the player, or null when both teams are full. */
-export function addPlayer(w, { name, want = 'random' }, now = Date.now()) {
+export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' }, now = Date.now()) {
   const g = teamCount(w, 'green');
   const r = teamCount(w, 'red');
   let team = want === 'green' || want === 'red' ? want : g === r ? TEAMS[Math.floor(w.rng() * 2)] : g < r ? 'green' : 'red';
@@ -138,7 +145,9 @@ export function addPlayer(w, { name, want = 'random' }, now = Date.now()) {
     lastFire: 0,
     grenades: CFG.GRENADES,
     arty: CFG.ARTY,
-    ammo: CFG.MAG,
+    cls: CLASS_IDS.includes(wantCls) ? wantCls : 'rifleman',
+    healing: false,
+    ammo: 0,
     reloadLeft: 0, // seconds until the magazine is back
     nadeSeq: null,
     reloadSeq: null,
@@ -288,21 +297,22 @@ export function step(w, dt, now = Date.now()) {
       p.reloadLeft -= dt;
       if (p.reloadLeft <= 0) {
         p.reloadLeft = 0;
-        p.ammo = CFG.MAG;
+        p.ammo = cls(p).mag;
       }
     }
     if (p.wantReload) {
       p.wantReload = false;
-      if (p.reloadLeft <= 0 && p.ammo < CFG.MAG) p.reloadLeft = CFG.RELOAD_S;
+      if (p.reloadLeft <= 0 && p.ammo < cls(p).mag) p.reloadLeft = cls(p).reloadS;
     }
-    if (p.fire && p.reloadLeft <= 0 && p.ammo > 0 && now - p.lastFire >= CFG.FIRE_MS) {
+    if (p.fire && p.reloadLeft <= 0 && p.ammo > 0 && now - p.lastFire >= cls(p).fireMs) {
       p.lastFire = now;
       p.ammo--;
-      if (p.ammo <= 0) p.reloadLeft = CFG.RELOAD_S; // empty: reload on its own
+      if (p.ammo <= 0) p.reloadLeft = cls(p).reloadS; // empty: reload on its own
       const c = Math.cos(p.aim);
       const s = Math.sin(p.aim);
       w.shots.push([Math.round(p.x), Math.round(p.y), p.id]);
-      w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: c * CFG.BULLET_SPEED, vy: s * CFG.BULLET_SPEED, life: CFG.BULLET_LIFE, owner: p.id, team: p.team });
+      const k = cls(p);
+      w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: c * k.speed, vy: s * k.speed, speed: k.speed, damage: k.damage, weapon: k.weapon, life: k.life, owner: p.id, team: p.team });
     }
   }
 
@@ -320,7 +330,7 @@ export function step(w, dt, now = Date.now()) {
   // Bullets: move in small steps so they cannot jump through cover or a player.
   const alive = [];
   for (const b of w.bullets) {
-    const dist = CFG.BULLET_SPEED * dt;
+    const dist = b.speed * dt;
     const steps = Math.max(1, Math.ceil(dist / 6));
     let dead = false;
     for (let i = 0; i < steps && !dead; i++) {
@@ -334,7 +344,7 @@ export function step(w, dt, now = Date.now()) {
         if (t.team === b.team || t.hp <= 0 || now < t.protectUntil) continue;
         if (Math.hypot(t.x - b.x, t.y - b.y) <= CFG.RADIUS + CFG.BULLET_R) {
           dead = true;
-          hurt(w, t, CFG.DAMAGE, b.owner, b.team, now, 'rifle');
+          hurt(w, t, b.damage, b.owner, b.team, now, b.weapon);
           break;
         }
       }
@@ -380,14 +390,32 @@ export function step(w, dt, now = Date.now()) {
   }
   w.arty = clouds;
 
+  // Healing: a medic mends teammates standing next to him, and each side's tent mends anyone close to it.
+  for (const p of w.players.values()) p.healing = false;
+  for (const m of w.players.values()) {
+    if (m.cls !== 'medic' || m.hp <= 0) continue;
+    for (const t of w.players.values()) {
+      if (t === m || t.team !== m.team || t.hp <= 0 || t.hp >= CFG.HP) continue;
+      if (Math.hypot(t.x - m.x, t.y - m.y) > CFG.HEAL_RADIUS) continue;
+      t.hp = Math.min(CFG.HP, t.hp + CFG.HEAL_RATE * dt);
+      m.healing = true;
+    }
+  }
+  for (const tent of w.tents) {
+    for (const t of w.players.values()) {
+      if (t.team !== tent.team || t.hp <= 0 || t.hp >= CFG.HP) continue;
+      if (Math.hypot(t.x - tent.x, t.y - tent.y) <= CFG.TENT_R) t.hp = Math.min(CFG.HP, t.hp + CFG.TENT_RATE * dt);
+    }
+  }
+
   // Resupply crates: a soldier on his own side's crate gets a full magazine, grenades and a gas strike back.
   for (let i = 0; i < w.crates.length; i++) {
     const c = w.crates[i];
     if (now < c.readyAt) continue;
     for (const p of w.players.values()) {
       if (p.team !== c.team || p.hp <= 0 || Math.hypot(p.x - c.x, p.y - c.y) > CFG.CRATE_R) continue;
-      if (p.ammo >= CFG.MAG && p.grenades >= CFG.GRENADES && p.arty >= CFG.ARTY) continue; // nothing to take
-      p.ammo = CFG.MAG;
+      if (p.ammo >= cls(p).mag && p.grenades >= CFG.GRENADES && p.arty >= CFG.ARTY) continue; // nothing to take
+      p.ammo = cls(p).mag;
       p.reloadLeft = 0;
       p.grenades = CFG.GRENADES;
       p.arty = CFG.ARTY;
@@ -421,7 +449,7 @@ export function step(w, dt, now = Date.now()) {
 /** What every client needs each tick. Kept small. */
 export function snapshot(w, now = Date.now()) {
   const p = [];
-  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / CFG.RELOAD_S) * 100) / 100 : 0, q.arty]);
+  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0]);
   const b = w.bullets.map((x) => [Math.round(x.x), Math.round(x.y)]);
   return {
     t: 's',

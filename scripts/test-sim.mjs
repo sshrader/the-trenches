@@ -78,7 +78,7 @@ test('a bullet hits an enemy, not a friend', () => {
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
   run(w, 0.5, t);
   assert.equal(f.hp, CFG.HP, 'friendly fire is off');
-  assert.equal(e.hp, CFG.HP - CFG.DAMAGE);
+  assert.equal(e.hp, 0);
 });
 
 test('cover blocks bullets', () => {
@@ -107,7 +107,7 @@ test('fire rate is limited by the server', () => {
     step(w, 0.05, now);
     if (w.bullets.length > before) shots++;
   }
-  assert.ok(shots <= Math.ceil(2000 / CFG.FIRE_MS) + 1, `fired ${shots} times in 2s`);
+  assert.ok(shots <= Math.ceil(2000 / CFG.CLASSES.rifleman.fireMs) + 1, `fired ${shots} times in 2s`);
 });
 
 test('shots are reported once for sound and flashes', () => {
@@ -121,14 +121,14 @@ test('shots are reported once for sound and flashes', () => {
   assert.deepEqual(snapshot(w, 1050).f, [], 'not repeated on the next tick');
 });
 
-test('three hits kill, then the player respawns protected', () => {
+test('one rifle hit kills, then the player respawns protected', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
   const e = addPlayer(w, { name: 'e', want: 'red' });
   place(a, 400, LANE, 0);
   place(e, 520, LANE);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
-  let now = run(w, 1.8);
+  let now = run(w, 0.6);
   assert.equal(e.hp, 0);
   assert.equal(a.kills, 1);
   assert.equal(e.deaths, 1);
@@ -280,7 +280,7 @@ test('8 rounds, then a 2 second reload', () => {
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
   let now = 1000;
   for (let i = 0; i < 8; i++) {
-    now += 500;
+    now += 800;
     step(w, 0.05, now);
   }
   assert.equal(a.ammo, 0);
@@ -289,7 +289,7 @@ test('8 rounds, then a 2 second reload', () => {
   step(w, 0.05, now);
   assert.equal(a.ammo, 0, 'no shots while reloading');
   now = run(w, 2.2, now);
-  assert.ok(a.ammo >= CFG.MAG - 2, 'magazine is back after the reload');
+  assert.ok(a.ammo >= CFG.CLASSES.rifleman.mag - 2, 'magazine is back after the reload');
 });
 
 test('artillery lands after 3 s, then gas kills a full-health enemy in 4 s, and never hurts friends', () => {
@@ -337,7 +337,7 @@ test('a resupply crate refills only its own side, then needs 30 s', () => {
   a.arty = 0;
   e.ammo = 2;
   let now = run(w, 0.1);
-  assert.equal(a.ammo, CFG.MAG);
+  assert.equal(a.ammo, CFG.CLASSES.rifleman.mag);
   assert.equal(a.grenades, CFG.GRENADES);
   assert.equal(a.arty, CFG.ARTY);
   assert.equal(e.ammo, 2, 'the enemy cannot use it');
@@ -346,7 +346,60 @@ test('a resupply crate refills only its own side, then needs 30 s', () => {
   now = run(w, 5, now);
   assert.equal(a.ammo, 1, 'still restocking');
   now = run(w, 26, now);
-  assert.equal(a.ammo, CFG.MAG, 'ready again after 30 s');
+  assert.equal(a.ammo, CFG.CLASSES.rifleman.mag, 'ready again after 30 s');
+});
+
+test('SMG: five hits to kill and much faster fire; medic pistol; class weapon on the kill', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green', cls: 'smg' });
+  const e = addPlayer(w, { name: 'e', want: 'red' });
+  place(a, 400, LANE, 0);
+  place(e, 480, LANE);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  let now = 1000;
+  let hits = 0;
+  while (e.hp > 0 && hits < 10) {
+    now += 50;
+    const before = e.hp;
+    step(w, 0.05, now);
+    if (e.hp < before) hits++;
+  }
+  assert.equal(hits, 5, 'five hits');
+  assert.equal(drainEvents(w).find((x) => x.t === 'kill').weapon, 'smg');
+  assert.ok(a.ammo < 20 && a.ammo >= 10, 'smg uses its own 20-round magazine');
+  const m = addPlayer(w, { name: 'm', want: 'green', cls: 'medic' });
+  assert.equal(m.ammo, 10);
+  assert.equal(snapshot(w, now).p.find((q) => q[0] === m.id)[10], 2, 'class is in the snapshot');
+});
+
+test('a medic heals teammates next to him, not enemies or himself; the tent heals its side', () => {
+  const w = fresh();
+  const m = addPlayer(w, { name: 'm', want: 'green', cls: 'medic' });
+  const f = addPlayer(w, { name: 'f', want: 'red' });
+  const g = addPlayer(w, { name: 'g', want: 'green' });
+  const e = addPlayer(w, { name: 'e', want: 'red' });
+  place(m, 400, LANE);
+  place(g, 430, LANE);
+  place(e, 440, LANE);
+  place(f, 440, LANE + 5);
+  g.hp = 40;
+  e.hp = 40;
+  m.hp = 60;
+  run(w, 2);
+  assert.ok(g.hp > 70, 'teammate healed');
+  assert.equal(e.hp, 40, 'enemy not healed');
+  assert.equal(m.hp, 60, 'medic does not heal himself');
+  assert.ok(snapshot(w, 3000).p.find((q) => q[0] === m.id)[11] === 1 || g.hp >= CFG.HP);
+  const tent = w.tents.find((t) => t.team === 'green');
+  place(g, tent.x, tent.y);
+  g.hp = 10;
+  run(w, 2);
+  assert.ok(g.hp > 50, 'tent heals');
+  const redTent = w.tents.find((t) => t.team === 'red');
+  place(g, redTent.x, redTent.y);
+  g.hp = 10;
+  run(w, 1);
+  assert.equal(g.hp, 10, "the other side's tent does not");
 });
 
 test('leaving removes the player', () => {
