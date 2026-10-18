@@ -123,6 +123,7 @@ export default function Play() {
               <span className="pill" title="Your medkit holds 100 HP of healing and refills at 4 HP per second">Medkit: {h.myKit}/100</span>
             )}
             <span className="pill" title="The medic tent heals you while you stand in it, then needs 30 s before it heals you again">Tent: {h.myTent < 0 ? 'healing…' : h.myTent === 0 ? 'ready' : `${h.myTent}s`}</span>
+            <span className="pill" title="Your kills and deaths this session">K {h.myKills} · D {h.myDeaths}{h.myDeaths > 0 ? ` · ${(h.myKills / h.myDeaths).toFixed(2)}` : ''}</span>
             <span className="pill" title="Press G to throw">Grenades: {h.myGren} [G]</span>
             <span className="pill" title="Press T to call in a gas strike">Gas strike: {h.myArty} [T]</span>
             <span className="muted small">

@@ -368,6 +368,8 @@ test('SMG: five hits to kill and much faster fire; medic pistol; class weapon on
   }
   assert.equal(hits, 5, 'five hits');
   assert.equal(drainEvents(w).find((x) => x.t === 'kill').weapon, 'smg');
+  const row = snapshot(w, now).p.find((q) => q[0] === a.id);
+  assert.deepEqual([row[15], row[16]], [1, 0], 'kills and deaths are in the snapshot');
   assert.ok(a.ammo < 20 && a.ammo >= 10, 'smg uses its own 20-round magazine');
   const m = addPlayer(w, { name: 'm', want: 'green', cls: 'medic' });
   assert.equal(m.ammo, 10);
