@@ -119,6 +119,9 @@ export default function Play() {
               {h.progress >= 0 ? <div className="fill green" style={{ left: '50%', width: `${h.progress * 50}%` }} /> : <div className="fill red" style={{ right: '50%', width: `${-h.progress * 50}%` }} />}
             </div>
             <span className="pill" title="R to reload">{h.myClass}{h.myNext ? ` → ${h.myNext} next life` : ''} · {h.myReload > 0 ? 'Reloading…' : `Ammo ${h.myAmmo}/${h.myMag}`}</span>
+            {h.myClassId === 'medic' && (
+              <span className="pill" title="Your medkit holds 100 HP of healing and refills at 4 HP per second">Medkit: {h.myKit}/100</span>
+            )}
             <span className="pill" title="The medic tent heals you while you stand in it, then needs 30 s before it heals you again">Tent: {h.myTent < 0 ? 'healing…' : h.myTent === 0 ? 'ready' : `${h.myTent}s`}</span>
             <span className="pill" title="Press G to throw">Grenades: {h.myGren} [G]</span>
             <span className="pill" title="Press T to call in a gas strike">Gas strike: {h.myArty} [T]</span>
@@ -135,6 +138,11 @@ export default function Play() {
             >
               {muted ? 'Sound off' : 'Sound on'}
             </button>
+            {h.training && (
+              <button className="btn" title="Adds a stationary teammate at 30 HP next to you, to try out medic healing" onClick={game.addBot}>
+                Add wounded bot
+              </button>
+            )}
             <span className="classpick">
               <button className="btn" aria-expanded={pickOpen} onClick={() => setPickOpen(!pickOpen)}>
                 Change class

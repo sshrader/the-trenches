@@ -20,6 +20,7 @@ const world = sim.createWorld(MAP);
 const TICK_MS = 50;
 const MAX_PLAYERS = Number(process.env.MAX_PLAYERS || 60);
 const MAX_PER_IP = Number(process.env.MAX_CONN_PER_IP || 4);
+const TRAINING = process.env.TRAINING_BOT === '1' || (process.env.TRAINING_BOT !== '0' && process.env.NODE_ENV !== 'production'); // lets players add a wounded test bot
 const WALLET_REQUIRED = process.env.WALLET_REQUIRED === '1'; // default: guests may play, wallet sign-in is optional
 
 const clean = (s, max) => String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -106,11 +107,18 @@ export function attachGame(server) {
         if (!p) return send(ws, { t: 'err', msg: 'Both sides are full. Try again in a moment.' });
         me = p;
         sockets.set(p.id, ws);
-        send(ws, { t: 'welcome', id: p.id, team: p.team, players: sim.roster(world), sb: sim.scoreboard(world) });
+        send(ws, { t: 'welcome', training: TRAINING, id: p.id, team: p.team, players: sim.roster(world), sb: sim.scoreboard(world) });
         broadcast({ t: 'join', id: p.id, name: p.name, team: p.team });
         return;
       }
       if (!me) return;
+
+      if (m.t === 'dummy') {
+        if (!TRAINING) return;
+        const b = sim.addBot(world, me.id);
+        if (b) broadcast({ t: 'join', id: b.id, name: b.name, team: b.team });
+        return;
+      }
 
       if (m.t === 'class') {
         sim.setClass(world, me.id, m.cls);
@@ -130,6 +138,7 @@ export function attachGame(server) {
       if (wallet && byWallet.get(wallet) === ws) byWallet.delete(wallet);
       if (me) {
         sockets.delete(me.id);
+        for (const id of sim.removeBotsOf(world, me.id)) broadcast({ t: 'leave', id });
         sim.removePlayer(world, me.id);
         broadcast({ t: 'leave', id: me.id });
       }

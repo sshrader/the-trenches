@@ -4,7 +4,7 @@ import { WALLET_LOGIN } from '../config';
 import { playBoom, playCannon, playPickup, playShot, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
-export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number };
+export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number };
 export type ClassId = 'rifleman' | 'smg' | 'medic';
 export const CLASSES: { id: ClassId; label: string; mag: number; blurb: string }[] = [
   { id: 'rifleman', label: 'Rifleman', mag: 8, blurb: 'Bolt rifle. One hit kills and it reaches farthest, but it fires slowly.' },
@@ -28,9 +28,9 @@ export type World = {
 };
 export type Input = { dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number };
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
-export type Hud = { round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
+export type Hud = { round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
-const newUnit = (id: number, name: string, team: Team): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1 });
+const newUnit = (id: number, name: string, team: Team): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100 });
 const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, cam: { x: 0, y: 0 } });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
@@ -44,6 +44,7 @@ export function useGame() {
   const world = useRef<World>(emptyWorld());
   const input = useRef<Input>({ dx: 0, dy: 0, aim: 0, fire: false, nade: 0, range: 200, reload: 0, arty: 0 });
   const ws = useRef<WebSocket | null>(null);
+  const training = useRef(false);
   const feed = useRef<FeedLine[]>([]);
   const board = useRef<Score[]>([]);
 
@@ -86,6 +87,8 @@ export function useGame() {
         myGren: me?.gren ?? 0,
         myAmmo: me?.ammo ?? 0,
         myTent: me?.tent ?? 0,
+        myKit: me?.kit ?? 0,
+        training: training.current,
         myNext: me && me.next >= 0 ? CLASSES[me.next].label : '',
         myClassId: CLASSES[me?.cls ?? 0].id,
         myMag: CLASSES[me?.cls ?? 0].mag,
@@ -129,6 +132,7 @@ export function useGame() {
           const w = world.current;
           if (m.t === 'welcome') {
             w.me = m.id;
+            training.current = !!m.training;
             for (const p of m.players) w.units.set(p.id, newUnit(p.id, p.name, p.team));
             board.current = m.sb ?? [];
             setStatus('playing');
@@ -140,7 +144,7 @@ export function useGame() {
           } else if (m.t === 'leave') {
             w.units.delete(m.id);
           } else if (m.t === 's') {
-            for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next] of m.p as number[][]) {
+            for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next, kit] of m.p as number[][]) {
               const u = w.units.get(id);
               if (!u) continue;
               if (!u.seen || Math.hypot(x - u.tx, y - u.ty) > 120) {
@@ -161,6 +165,7 @@ export function useGame() {
               u.healing = heal === 1;
               u.tent = tent;
               u.next = next;
+              u.kit = kit;
             }
             // Gunfire: flash the shooter's muzzle and play a quiet shot, fainter the farther it is from you.
             const me = w.units.get(w.me);
@@ -220,9 +225,13 @@ export function useGame() {
     [wallet, setStatus],
   );
 
+  const addBot = useCallback(() => {
+    if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'dummy' }));
+  }, []);
+
   const setClass = useCallback((cls: ClassId) => {
     if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'class', cls }));
   }, []);
 
-  return { status, error, hud, world, input, join, leave, setClass };
+  return { status, error, hud, world, input, join, leave, setClass, addBot };
 }

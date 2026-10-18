@@ -14,6 +14,8 @@ export const CFG = {
   },
   HEAL_RADIUS: 60, // a medic heals teammates this close ...
   HEAL_RATE: 18, // ... at this many HP per second
+  HEAL_POOL: 100, // a medic's medkit: total HP he can give out before it runs dry ...
+  HEAL_REGEN: 4, // ... and how fast it refills per second, so standing on someone cannot keep him alive forever
   TENT_R: 80, // the medic tent heals anyone on its side this close
   TENT_RATE: 24,
   TENT_COOLDOWN_S: 30, // after using the tent, each soldier waits this long before it heals him again
@@ -95,7 +97,7 @@ export function lineClear(w, x1, y1, x2, y2) {
   return true;
 }
 
-export const teamCount = (w, team) => [...w.players.values()].filter((p) => p.team === team).length;
+export const teamCount = (w, team) => [...w.players.values()].filter((p) => p.team === team && !p.isBot).length;
 
 function spawnPoint(w, team) {
   const z = w.map.spawns[team];
@@ -108,11 +110,12 @@ function spawnPoint(w, team) {
 }
 
 function respawn(w, p, now) {
+  p.medkit = CFG.HEAL_POOL;
   if (p.nextCls) {
     p.cls = p.nextCls; // a class change waits for the next life
     p.nextCls = null;
   }
-  const s = spawnPoint(w, p.team);
+  const s = p.isBot ? p.post : spawnPoint(w, p.team);
   p.x = s.x;
   p.y = s.y;
   p.hp = CFG.HP;
@@ -180,6 +183,45 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' 
   return p;
 }
 
+/** A stationary, wounded teammate for testing medics. Stays at 30 HP: three seconds after being healed to full it is wounded again. */
+export function addBot(w, ownerId, now = Date.now()) {
+  const o = w.players.get(ownerId);
+  if (!o || o.hp <= 0) return null;
+  if ([...w.players.values()].filter((p) => p.isBot && p.owner === ownerId).length >= 2) return null;
+  let spot = null;
+  for (const [dx, dy] of [[70, 0], [-70, 0], [0, 70], [0, -70], [50, 50], [-50, -50], [50, -50], [-50, 50]]) {
+    if (!blockedAt(w, o.x + dx, o.y + dy, CFG.RADIUS + 2)) {
+      spot = { x: o.x + dx, y: o.y + dy };
+      break;
+    }
+  }
+  if (!spot) return null;
+  const p = addPlayer(w, { name: 'Wounded Bot', want: o.team }, now);
+  if (!p) return null;
+  w.players.delete(p.id);
+  p.team = o.team;
+  p.isBot = true;
+  p.owner = ownerId;
+  p.post = spot;
+  p.fullAt = 0;
+  respawn(w, p, now);
+  p.protectUntil = 0;
+  p.hp = 30;
+  w.players.set(p.id, p);
+  return p;
+}
+
+export function removeBotsOf(w, ownerId) {
+  const ids = [];
+  for (const p of [...w.players.values()]) {
+    if (p.isBot && p.owner === ownerId) {
+      w.players.delete(p.id);
+      ids.push(p.id);
+    }
+  }
+  return ids;
+}
+
 export const removePlayer = (w, id) => w.players.delete(id);
 
 export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty }) {
@@ -237,7 +279,7 @@ function rebalance(w, now, force) {
     const r = teamCount(w, 'red');
     if (Math.abs(g - r) < 2) return;
     const big = g > r ? 'green' : 'red';
-    const mine = [...w.players.values()].filter((p) => p.team === big);
+    const mine = [...w.players.values()].filter((p) => p.team === big && !p.isBot);
     const pick = mine.filter((p) => p.hp <= 0).sort((a, b) => b.id - a.id)[0] || (force ? mine.sort((a, b) => b.id - a.id)[0] : null);
     if (!pick) return;
     pick.team = otherTeam(big);
@@ -451,12 +493,27 @@ export function step(w, dt, now = Date.now()) {
   for (const p of w.players.values()) p.healing = false;
   for (const m of w.players.values()) {
     if (m.cls !== 'medic' || m.hp <= 0) continue;
+    m.medkit = Math.min(CFG.HEAL_POOL, m.medkit + CFG.HEAL_REGEN * dt);
     for (const t of w.players.values()) {
       if (t === m || t.team !== m.team || t.hp <= 0 || t.hp >= CFG.HP) continue;
       if (Math.hypot(t.x - m.x, t.y - m.y) > CFG.HEAL_RADIUS) continue;
-      t.hp = Math.min(CFG.HP, t.hp + CFG.HEAL_RATE * dt);
+      const amt = Math.min(CFG.HEAL_RATE * dt, CFG.HP - t.hp, m.medkit);
+      if (amt <= 0) continue;
+      t.hp += amt;
+      m.medkit -= amt;
       m.healing = true;
     }
+  }
+  // Test bots get wounded again a few seconds after they are fully healed.
+  for (const b of w.players.values()) {
+    if (!b.isBot || b.hp <= 0) continue;
+    if (b.hp >= CFG.HP) {
+      if (!b.fullAt) b.fullAt = now;
+      else if (now - b.fullAt > 3000) {
+        b.hp = 30;
+        b.fullAt = 0;
+      }
+    } else b.fullAt = 0;
   }
   // The tent heals a soldier while he stands in it; once he is full or walks away, he must wait out the cooldown.
   for (const t of w.players.values()) {
@@ -512,7 +569,7 @@ export function step(w, dt, now = Date.now()) {
 /** What every client needs each tick. Kept small. */
 export function snapshot(w, now = Date.now()) {
   const p = [];
-  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1]);
+  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit)]);
   const b = w.bullets.map((x) => [Math.round(x.x), Math.round(x.y)]);
   return {
     t: 's',
@@ -531,6 +588,7 @@ export const roster = (w) => [...w.players.values()].map((p) => ({ id: p.id, nam
 
 export function scoreboard(w) {
   return [...w.players.values()]
+    .filter((p) => !p.isBot)
     .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths)
     .slice(0, 10)
     .map((p) => ({ id: p.id, name: p.name, team: p.team, k: p.kills, d: p.deaths }));

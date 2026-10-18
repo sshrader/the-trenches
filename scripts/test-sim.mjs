@@ -1,7 +1,7 @@
 // Plain-Node checks for the simulation.  node scripts/test-sim.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { CFG, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, step, teamCount } from '../server/sim.mjs';
+import { CFG, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, step, teamCount } from '../server/sim.mjs';
 
 const map = JSON.parse(fs.readFileSync(new URL('../shared/map.json', import.meta.url), 'utf8'));
 let seed = 7;
@@ -479,6 +479,37 @@ test('teams are rebalanced when one side gets ahead', () => {
   run(w2, 0.2);
   assert.equal(teamCount(w2, 'green'), 1);
   assert.equal(teamCount(w2, 'red'), 1);
+});
+
+test('a medic has a limited medkit, so he cannot out-heal forever; wounded test bot', () => {
+  const w = fresh();
+  const m = addPlayer(w, { name: 'm', want: 'green', cls: 'medic' });
+  place(m, 500, openRow() * 32 + 16);
+  const bot = addBot(w, m.id, 1000);
+  assert.ok(bot && bot.isBot && bot.hp === 30 && bot.team === 'green');
+  assert.equal(teamCount(w, 'green'), 1, 'bots do not count for team balance');
+  assert.equal(snapshot(w, 1000).p.length, 2);
+  bot.x = m.x + 40;
+  bot.y = m.y;
+  assert.equal(addBot(w, m.id, 1000) ? 1 : 0, 1, 'a second bot is allowed');
+  assert.equal(addBot(w, m.id, 1000), null, 'but not a third');
+  // keep draining the bot's health: every time he is hurt, the medic spends medkit
+  let now = 1000;
+  let healed = 0;
+  let last = bot.hp;
+  for (let i = 0; i < 20 * 20; i++) {
+    now += 50;
+    if (i % 4 === 0) bot.hp = Math.max(1, bot.hp - 9); // 'damage': 180 HP per second is far more than a medic can heal
+    last = bot.hp;
+    step(w, 0.05, now);
+    healed += Math.max(0, bot.hp - last);
+  }
+  assert.ok(m.medkit < 20, 'medkit runs dry');
+  assert.ok(healed < CFG.HEAL_POOL + CFG.HEAL_REGEN * 20 + 5, `healed ${healed} in 20 s, at most pool + regen`);
+  // full heal: the bot is wounded again after ~3 s so the test can be repeated
+  bot.hp = CFG.HP;
+  now = run(w, 3.5, now);
+  assert.ok(bot.hp < 50, 'wounded again (the medic starts healing him once more)');
 });
 
 test('leaving removes the player', () => {
