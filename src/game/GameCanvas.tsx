@@ -11,12 +11,23 @@ const VIEW_H = 600;
 const MAP_W = COLS * TILE;
 const MAP_H = ROWS.length * TILE;
 const CAP = map.capture as { x: number; y: number; r: number };
+type Prop = { kind: string; x: number; y: number; w: number; h: number; flip?: boolean; v?: number };
+const PROPS = ((map as unknown as { props?: Prop[] }).props ?? []) as Prop[];
+const CRATES = ((map as unknown as { crates?: { x: number; y: number; team: string }[] }).crates ?? []);
 const GREEN = '#4ade80';
 const RED = '#f87171';
 const teamColor = (t: string) => (t === 'green' ? GREEN : RED);
 
 function drawTile(ctx: CanvasRenderingContext2D, c: string, tx: number, ty: number, sx: number, sy: number) {
   const noise = (tx * 7 + ty * 13) % 5;
+  if (c === 'f') {
+    ctx.fillStyle = (tx + ty) % 2 ? '#3a3226' : '#352e23'; // broken floorboards inside a ruin
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(sx, sy + 10, TILE, 1);
+    ctx.fillRect(sx, sy + 22, TILE, 1);
+    return;
+  }
   if (c === 'T') {
     ctx.fillStyle = (tx + ty) % 2 ? '#2c2820' : '#292519';
     ctx.fillRect(sx, sy, TILE, TILE);
@@ -39,12 +50,116 @@ function drawTile(ctx: CanvasRenderingContext2D, c: string, tx: number, ty: numb
     ctx.fillRect(sx + 3, sy + TILE / 2 + 1, TILE - 6, TILE / 2 - 6);
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(sx + 1, sy + TILE / 2 - 1, TILE - 2, 2);
+  } else if (c === 'B') {
+    ctx.fillStyle = '#2a211c'; // ruined brick wall
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#7a4a3a';
+    for (let r = 0; r < 4; r++) {
+      const off = r % 2 ? 8 : 0;
+      for (let b = -1; b < 3; b++) ctx.fillRect(sx + off + b * 16 + 1, sy + r * 8 + 1, 14, 6);
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    if ((tx * 3 + ty) % 3 === 0) ctx.fillRect(sx + 4, sy + 2, 10, 8); // missing bricks
   } else if (c === 'o') {
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.beginPath();
     ctx.ellipse(sx + TILE / 2, sy + TILE / 2, TILE * 0.42, TILE * 0.34, 0, 0, Math.PI * 2);
     ctx.fill();
   }
+}
+
+/** Wrecked tank, seen from above, barrel toward the enemy (`flip` points it left). */
+function drawTank(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number) {
+  const w = p.w * TILE;
+  const h = p.h * TILE;
+  ctx.save();
+  ctx.translate(sx + w / 2, sy + h / 2);
+  if (p.flip) ctx.scale(-1, 1);
+  ctx.fillStyle = '#1d1d1b';
+  ctx.fillRect(-w / 2 + 2, -h / 2 + 2, w - 4, 12); // tracks
+  ctx.fillRect(-w / 2 + 2, h / 2 - 14, w - 4, 12);
+  ctx.fillStyle = '#4a4a3c';
+  for (let x = -w / 2 + 6; x < w / 2 - 6; x += 8) {
+    ctx.fillRect(x, -h / 2 + 4, 4, 8);
+    ctx.fillRect(x, h / 2 - 12, 4, 8);
+  }
+  ctx.fillStyle = '#585a45'; // hull, rust-streaked
+  ctx.fillRect(-w / 2 + 6, -h / 2 + 12, w - 12, h - 24);
+  ctx.fillStyle = '#6b4a30';
+  ctx.fillRect(-w / 2 + 14, -h / 2 + 14, 10, 4);
+  ctx.fillRect(w / 2 - 28, h / 2 - 20, 6, 6);
+  ctx.fillStyle = '#4d4f3a'; // turret, knocked askew
+  ctx.beginPath();
+  ctx.arc(-4, 2, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2b2b25';
+  ctx.fillRect(8, -1, 30, 6); // bent barrel
+  ctx.fillRect(34, -1, 8, 4);
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.arc(-4, 2, 6, 0, Math.PI * 2); // open hatch
+  ctx.fill();
+  ctx.fillStyle = 'rgba(30,30,30,0.5)'; // scorch
+  ctx.beginPath();
+  ctx.ellipse(w / 2 - 18, -4, 14, 10, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** A burnt, broken tree: a thick trunk, bare branches, a snapped top. */
+function drawTree(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number) {
+  const cx = sx + TILE / 2;
+  const cy = sy + TILE / 2;
+  const v = p.v ?? 0;
+  ctx.strokeStyle = '#2b2118';
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 3;
+  const arms = v === 0 ? [[-0.6, 15], [2.4, 13], [1.2, 10]] : v === 1 ? [[0.3, 14], [-2.5, 15], [3.4, 9]] : [[-1.3, 13], [1.9, 16]];
+  for (const [a, len] of arms) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    const ex = cx + Math.cos(a) * len;
+    const ey = cy + Math.sin(a) * len;
+    ctx.lineTo(ex, ey);
+    ctx.lineTo(ex + Math.cos(a + 0.7) * 6, ey + Math.sin(a + 0.7) * 6);
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.arc(cx + 2, cy + 2, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#3b2c1f';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#5a4430'; // the splintered cut at the top
+  ctx.beginPath();
+  ctx.arc(cx - 1, cy - 1, 5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** A wooden resupply crate with a team-coloured band; dimmed while it is being restocked. */
+function drawCrate(ctx: CanvasRenderingContext2D, team: string, ready: boolean, sx: number, sy: number) {
+  ctx.globalAlpha = ready ? 1 : 0.35;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(sx - 13, sy - 11, 28, 26);
+  ctx.fillStyle = '#7a5a34';
+  ctx.fillRect(sx - 14, sy - 14, 28, 26);
+  ctx.strokeStyle = '#3d2c18';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(sx - 14, sy - 14, 28, 26);
+  ctx.beginPath();
+  ctx.moveTo(sx - 14, sy - 14);
+  ctx.lineTo(sx + 14, sy + 12);
+  ctx.moveTo(sx + 14, sy - 14);
+  ctx.lineTo(sx - 14, sy + 12);
+  ctx.stroke();
+  ctx.fillStyle = team === 'green' ? '#4ade80' : '#f87171';
+  ctx.fillRect(sx - 14, sy - 4, 28, 6);
+  ctx.fillStyle = '#f5f1e0';
+  ctx.fillRect(sx - 2, sy - 8, 4, 14); // a white cross
+  ctx.fillRect(sx - 7, sy - 3, 14, 4);
+  ctx.globalAlpha = 1;
 }
 
 const UNIFORM: Record<string, string> = { green: '#5a7a3b', red: '#93402f' };
@@ -318,6 +433,19 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       ctx.fillRect(-camX, -camY, 7 * TILE, MAP_H);
       ctx.fillStyle = 'rgba(248,113,113,0.07)';
       ctx.fillRect(MAP_W - 7 * TILE - camX, -camY, 7 * TILE, MAP_H);
+      // Scenery and supplies
+      for (const pr of PROPS) {
+        const px = pr.x * TILE - camX;
+        const py = pr.y * TILE - camY;
+        if (px < -200 || py < -200 || px > VIEW_W + 100 || py > VIEW_H + 100) continue;
+        if (pr.kind === 'tank') drawTank(ctx, pr, px, py);
+        else if (pr.kind === 'tree') drawTree(ctx, pr, px, py);
+      }
+      CRATES.forEach((cr, i) => {
+        const px = cr.x - camX;
+        const py = cr.y - camY;
+        if (px > -40 && py > -40 && px < VIEW_W + 40 && py < VIEW_H + 40) drawCrate(ctx, cr.team, w.crates[i] !== 0, px, py);
+      });
       // Capture point
       const p = w.progress;
       ctx.beginPath();
@@ -399,10 +527,10 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       }
       // Explosions
       const tNow = Date.now();
-      w.booms = w.booms.filter((b) => tNow - b.at < 450);
+      w.booms = w.booms.filter((b) => tNow - b.at < (b.big ? 800 : 450));
       for (const b of w.booms) {
-        const a = (tNow - b.at) / 450;
-        const r = 30 + a * 70;
+        const a = (tNow - b.at) / (b.big ? 800 : 450);
+        const r = b.big ? 50 + a * 140 : 30 + a * 70;
         ctx.fillStyle = `rgba(253,186,116,${0.55 * (1 - a)})`;
         ctx.beginPath();
         ctx.arc(b.x - camX, b.y - camY, r, 0, Math.PI * 2);

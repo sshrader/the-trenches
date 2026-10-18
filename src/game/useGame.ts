@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WALLET_LOGIN } from '../config';
-import { playBoom, playShot } from './audio';
+import { playBoom, playCannon, playPickup, playShot, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
 export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number };
@@ -14,7 +14,8 @@ export type World = {
   bullets: [number, number][];
   nades: [number, number, number][]; // x, y, and how much of the flight is left (0 = on the ground)
   gas: [number, number, number, number][]; // x, y, 0 incoming | 1 gas cloud, fraction of that phase left
-  booms: { x: number; y: number; at: number }[];
+  booms: { x: number; y: number; at: number; big?: boolean }[];
+  crates: number[]; // 1 = ready to use, in the same order as the crates in the map file
   progress: number;
   round: RoundInfo;
   cam: { x: number; y: number };
@@ -24,7 +25,7 @@ export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type Hud = { round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myReload: number; myArty: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1 });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, cam: { x: 0, y: 0 } });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, cam: { x: 0, y: 0 } });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -153,14 +154,24 @@ export function useGame() {
             w.bullets = m.b;
             w.nades = m.g ?? [];
             w.gas = m.a ?? [];
+            w.crates = m.k ?? [];
             w.progress = m.c;
             w.round = m.r;
           } else if (m.t === 'kill') {
             feed.current = [...feed.current.slice(-4), { text: '', kteam: m.kteam, vteam: m.vteam, killer: m.killer, victim: m.victim, weapon: m.weapon ?? 'rifle', at: Date.now() }];
           } else if (m.t === 'boom') {
-            w.booms.push({ x: m.x, y: m.y, at: Date.now() });
+            w.booms.push({ x: m.x, y: m.y, at: Date.now(), big: !!m.big });
             const me = w.units.get(w.me);
-            playBoom(me ? Math.hypot(m.x - me.tx, m.y - me.ty) : 600);
+            playBoom(me ? Math.hypot(m.x - me.tx, m.y - me.ty) : 600, !!m.big);
+          } else if (m.t === 'arty') {
+            // the gun fires now; the shell whistles in over the last second and a half
+            const me = w.units.get(w.me);
+            const near = (x: number, y: number) => (me ? Math.hypot(x - me.tx, y - me.ty) : 800);
+            playCannon(near(m.fx, m.fy));
+            const wait = Math.max(0, m.delay - 1.6);
+            window.setTimeout(() => playWhistle(near(m.x, m.y), Math.min(1.6, m.delay)), wait * 1000);
+          } else if (m.t === 'crate') {
+            if (m.who === w.me) playPickup();
           } else if (m.t === 'sb') {
             board.current = m.rows;
           } else if (m.t === 'err') {

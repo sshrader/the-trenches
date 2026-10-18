@@ -40,35 +40,105 @@ export function setMuted(m: boolean) {
 }
 
 /** A grenade going off, `dist` pixels away. Deeper and a little longer than a rifle shot, still quiet. */
-export function playBoom(dist: number) {
+export function playBoom(dist: number, big = false) {
   if (muted || !ctx || !noise || ctx.state !== 'running') return;
-  const v = (volume * 1.2) / (1 + dist / 420);
+  const m = big ? 2.2 : 1; // an artillery shell is much bigger and longer
+  const v = (volume * 1.2 * m) / (1 + dist / (big ? 900 : 420));
   if (v < 0.012) return;
   const t = ctx.currentTime;
   const src = ctx.createBufferSource();
   src.buffer = noise;
-  src.playbackRate.value = 0.5 + Math.random() * 0.1;
+  src.playbackRate.value = (big ? 0.34 : 0.5) + Math.random() * 0.06;
   const low = ctx.createBiquadFilter();
   low.type = 'lowpass';
   low.frequency.value = 500 / (1 + dist / 600) + 160;
   const g = ctx.createGain();
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(v, t + 0.006);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + (big ? 1.1 : 0.55));
   src.connect(low).connect(g).connect(ctx.destination);
   src.start(t);
-  src.stop(t + 0.6);
+  src.stop(t + (big ? 1.2 : 0.6));
   const osc = ctx.createOscillator();
   osc.type = 'sine';
-  osc.frequency.setValueAtTime(75, t);
-  osc.frequency.exponentialRampToValueAtTime(28, t + 0.35);
+  osc.frequency.setValueAtTime(big ? 55 : 75, t);
+  osc.frequency.exponentialRampToValueAtTime(big ? 20 : 28, t + (big ? 0.8 : 0.35));
   const og = ctx.createGain();
   og.gain.setValueAtTime(0.0001, t);
   og.gain.exponentialRampToValueAtTime(v * 0.9, t + 0.01);
-  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + (big ? 1.0 : 0.4));
   osc.connect(og).connect(ctx.destination);
   osc.start(t);
-  osc.stop(t + 0.45);
+  osc.stop(t + (big ? 1.05 : 0.45));
+}
+
+/** The gun firing, heard from `dist` px away: a flat crack and a heavy thump. */
+export function playCannon(dist: number) {
+  if (muted || !ctx || !noise || ctx.state !== 'running') return;
+  const v = (volume * 1.4) / (1 + dist / 1100);
+  if (v < 0.012) return;
+  const t = ctx.currentTime;
+  const src = ctx.createBufferSource();
+  src.buffer = noise;
+  src.playbackRate.value = 0.7;
+  const f = ctx.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = 900 / (1 + dist / 900) + 200;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(v, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+  src.connect(f).connect(g).connect(ctx.destination);
+  src.start(t);
+  src.stop(t + 0.5);
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(95, t);
+  osc.frequency.exponentialRampToValueAtTime(34, t + 0.3);
+  const og = ctx.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(v, t + 0.01);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+  osc.connect(og).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.55);
+}
+
+/** The shell coming down: a falling whistle lasting `secs`, louder the closer it lands. */
+export function playWhistle(dist: number, secs: number) {
+  if (muted || !ctx || ctx.state !== 'running') return;
+  const v = (volume * 0.5) / (1 + dist / 500);
+  if (v < 0.008) return;
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(2100, t);
+  osc.frequency.exponentialRampToValueAtTime(520, t + secs);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(v, t + secs * 0.7);
+  g.gain.linearRampToValueAtTime(0.0001, t + secs);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + secs + 0.05);
+}
+
+/** A soft double click for picking up a resupply. */
+export function playPickup() {
+  if (muted || !ctx || ctx.state !== 'running') return;
+  const t = ctx.currentTime;
+  for (const [i, hz] of [520, 780].entries()) {
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = hz;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t + i * 0.09);
+    g.gain.exponentialRampToValueAtTime(volume * 0.5, t + i * 0.09 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.09 + 0.12);
+    o.connect(g).connect(ctx.destination);
+    o.start(t + i * 0.09);
+    o.stop(t + i * 0.09 + 0.15);
+  }
 }
 
 /** One rifle shot, `dist` pixels away from you. Far shots are quieter and duller. */

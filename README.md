@@ -2,7 +2,7 @@
 
 A top-down multiplayer shooter that runs in the browser. Two armies, Green and Red, dig in on either side of no-man's land. Use cover, hold the capture point in the middle, stay alive.
 
-- **Play:** pick a side (or random), move with W A S D, aim with the mouse, hold the left button (or space) to fire, press G to lob one of your 2 grenades to the cursor (it flies over cover; walls still shield the blast), hold Tab for the scoreboard. Rifle holds 8 rounds, then a 2 s reload (R reloads early). Press T for your one gas strike per life: it lands at the cursor (same reach as a grenade) after 3 s, and the gas burns enemies for 4 s, enough to kill a full-health soldier. The map is 120 x 68 tiles.
+- **Play:** pick a side (or random), move with W A S D, aim with the mouse, hold the left button (or space) to fire, press G to lob one of your 2 grenades to the cursor (it flies over cover; walls still shield the blast), hold Tab for the scoreboard. Rifle holds 8 rounds, then a 2 s reload (R reloads early). Press T for your one gas strike per life: it lands at the cursor (same reach as a grenade) after 3 s, and the gas burns enemies for 4 s, enough to kill a full-health soldier. The map is 120 x 68 tiles, with ruined buildings, tank wrecks and dead trees (all solid cover). Each side has 3 resupply crates: walk onto your own side's crate to refill rifle, grenades and gas strike (30 s to restock). The gas strike has a cannon shot, a falling-shell whistle and a big explosion.
 - **Guests welcome:** a callsign is enough. Wallet sign-in (free message signature, no transaction) is built but hidden until you set `VITE_WALLET_LOGIN=1`.
 - **Fair:** teams stay balanced, the map is a mirror image, and the server decides every shot.
 

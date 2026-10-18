@@ -21,6 +21,19 @@ const place = (p, x, y, aim = 0) => {
   p.aim = aim;
   p.protectUntil = 0;
 };
+// A row with open ground from x=380 to x=600 (the generated map has scenery almost everywhere).
+const LANE = (map.rows.findIndex((r, i) => i > 3 && [0, 1, 2].every((d) => map.rows[i + d].slice(11, 20) === '.'.repeat(9))) + 1) * 32 + 16;
+// A cover tile with 3 clear tiles of open ground on each side of it (and the row above/below it open), for line-of-fire tests.
+const coverSpot = () => {
+  for (let ty = 3; ty < map.rows.length - 3; ty++) {
+    for (let tx = 12; tx < 50; tx++) {
+      if (map.rows[ty][tx] !== 'c') continue;
+      const clear = (row, a, b) => map.rows[row].slice(a, b) === '.'.repeat(b - a);
+      if (clear(ty, tx - 4, tx) && clear(ty, tx + 1, tx + 5) && '.o'.includes(map.rows[ty - 1][tx]) && '.o'.includes(map.rows[ty + 1][tx])) return { tx, ty };
+    }
+  }
+  throw new Error('no cover spot in the map');
+};
 let n = 0;
 const test = (name, fn) => {
   fn();
@@ -57,9 +70,9 @@ test('a bullet hits an enemy, not a friend', () => {
   f.team = 'green'; // the balancer would have put a second joiner on red
   const e = addPlayer(w, { name: 'e', want: 'red' });
   e.team = 'red';
-  place(a, 400, 300, 0);
-  place(f, 460, 300);
-  place(e, 560, 300);
+  place(a, 400, LANE, 0);
+  place(f, 460, LANE);
+  place(e, 560, LANE);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
   const t = run(w, 0.4);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
@@ -73,8 +86,7 @@ test('cover blocks bullets', () => {
   const a = addPlayer(w, { name: 'a', want: 'green' });
   const e = addPlayer(w, { name: 'e', want: 'red' });
   // Find a cover tile in the open field and put the shooter and target on either side.
-  const ty = 12;
-  const tx = map.rows[ty].indexOf('c', 10);
+  const { tx, ty } = coverSpot();
   place(a, (tx - 3) * 32 + 16, ty * 32 + 16, 0);
   place(e, (tx + 3) * 32 + 16, ty * 32 + 16);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
@@ -85,7 +97,7 @@ test('cover blocks bullets', () => {
 test('fire rate is limited by the server', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
-  place(a, 400, 300, 0);
+  place(a, 400, LANE, 0);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
   let shots = 0;
   let now = 1000;
@@ -101,10 +113,10 @@ test('fire rate is limited by the server', () => {
 test('shots are reported once for sound and flashes', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
-  place(a, 400, 300, 0);
+  place(a, 400, LANE, 0);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
   step(w, 0.05, 1000);
-  assert.deepEqual(snapshot(w, 1000).f, [[400, 300, a.id]]);
+  assert.deepEqual(snapshot(w, 1000).f, [[400, LANE, a.id]]);
   step(w, 0.05, 1050);
   assert.deepEqual(snapshot(w, 1050).f, [], 'not repeated on the next tick');
 });
@@ -113,8 +125,8 @@ test('three hits kill, then the player respawns protected', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
   const e = addPlayer(w, { name: 'e', want: 'red' });
-  place(a, 400, 300, 0);
-  place(e, 520, 300);
+  place(a, 400, LANE, 0);
+  place(e, 520, LANE);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
   let now = run(w, 1.8);
   assert.equal(e.hp, 0);
@@ -171,15 +183,14 @@ test('time up decides by who is ahead', () => {
 
 // Press G: the client raises a counter and sends where the cursor is.
 const press = (w, p, range, n) => setInput(w, p.id, { dx: 0, dy: 0, aim: p.aim, fire: false, nade: n, range });
-const openRow = () => map.rows.findIndex((r) => r.slice(12, 40) === '.'.repeat(28));
+const openRow = () => map.rows.findIndex((r, i) => i > 3 && [0, 1].every((d) => map.rows[i + d].slice(12, 28) === '.'.repeat(16)));
 
 test('a grenade flies over cover and kills inside the lethal ring', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
   const e = addPlayer(w, { name: 'e', want: 'red' });
   // Shooter behind a cover tile, target 200 px away on the other side of it.
-  const ty = 12;
-  const tx = map.rows[ty].indexOf('c', 10);
+  const { tx, ty } = coverSpot();
   place(a, (tx - 2) * 32 + 16, ty * 32 + 16, 0);
   place(e, (tx - 2) * 32 + 16 + 200, ty * 32 + 16);
   press(w, a, 200, 0);
@@ -312,6 +323,30 @@ test('artillery lands after 3 s, then gas kills a full-health enemy in 4 s, and 
   a.respawnAt = now + 1;
   run(w, 1, now + 100);
   assert.equal(a.arty, CFG.ARTY);
+});
+
+test('a resupply crate refills only its own side, then needs 30 s', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  const e = addPlayer(w, { name: 'e', want: 'red' });
+  const mine = w.crates.find((c) => c.team === 'green');
+  place(a, mine.x, mine.y);
+  place(e, mine.x + 4, mine.y);
+  a.ammo = 2;
+  a.grenades = 0;
+  a.arty = 0;
+  e.ammo = 2;
+  let now = run(w, 0.1);
+  assert.equal(a.ammo, CFG.MAG);
+  assert.equal(a.grenades, CFG.GRENADES);
+  assert.equal(a.arty, CFG.ARTY);
+  assert.equal(e.ammo, 2, 'the enemy cannot use it');
+  assert.ok(snapshot(w, now).k.includes(0), 'crate shows as used');
+  a.ammo = 1;
+  now = run(w, 5, now);
+  assert.equal(a.ammo, 1, 'still restocking');
+  now = run(w, 26, now);
+  assert.equal(a.ammo, CFG.MAG, 'ready again after 30 s');
 });
 
 test('leaving removes the player', () => {

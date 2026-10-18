@@ -26,6 +26,8 @@ export const CFG = {
   ARTY_DPS: 26, // 4 s in the cloud is 104 damage: a full-health soldier does not survive
   ARTY_RADIUS: 120,
   ARTY_COOLDOWN_MS: 1000,
+  CRATE_R: 24, // walk this close to your own crate to resupply
+  CRATE_COOLDOWN_S: 30,
   GRENADES: 2, // per life
   NADE_FLIGHT_S: 0.7, // in the air (flies over cover)
   NADE_FUSE_S: 2.0, // from the throw to the bang
@@ -53,6 +55,7 @@ export function createWorld(map, rng = Math.random) {
     players: new Map(),
     bullets: [],
     nades: [],
+    crates: (map.crates || []).map((c) => ({ x: c.x, y: c.y, team: c.team, readyAt: 0 })),
     arty: [], // incoming strikes and lingering gas clouds
     progress: 0, // -1 red owns the point ... +1 green owns it
     round: { n: 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 },
@@ -67,7 +70,7 @@ export const solidAt = (w, px, py) => {
   const ty = Math.floor(py / w.tile);
   if (tx < 0 || ty < 0 || tx >= w.W || ty >= w.H) return true;
   const c = w.rows[ty][tx];
-  return c === '#' || c === 'c';
+  return c === '#' || c === 'c' || c === 'B' || c === 'K' || c === 'Y'; // wall, sandbags, ruin, tank wreck, tree
 };
 export const blockedAt = (w, x, y, r = CFG.RADIUS) =>
   solidAt(w, x - r, y - r) || solidAt(w, x + r, y - r) || solidAt(w, x - r, y + r) || solidAt(w, x + r, y + r);
@@ -202,6 +205,7 @@ function newRound(w, now) {
   w.bullets = [];
   w.nades = [];
   w.arty = [];
+  for (const c of w.crates) c.readyAt = 0;
   for (const p of w.players.values()) respawn(w, p, now);
 }
 
@@ -253,6 +257,7 @@ function callArty(w, p, now) {
   const s = Math.sin(p.aim);
   let dist = p.nadeRange; // same reach as a grenade
   while (dist > CFG.NADE_MIN / 2 && solidAt(w, p.x + c * dist, p.y + s * dist)) dist -= 8;
+  w.events.push({ t: 'arty', x: Math.round(p.x + c * dist), y: Math.round(p.y + s * dist), fx: Math.round(w.map.tile * (p.team === 'green' ? 3 : w.W - 3)), fy: Math.round(p.y), delay: CFG.ARTY_DELAY_S });
   w.arty.push({ x: p.x + c * dist, y: p.y + s * dist, delay: CFG.ARTY_DELAY_S, gas: 0, owner: p.id, team: p.team });
 }
 
@@ -362,7 +367,7 @@ export function step(w, dt, now = Date.now()) {
       if (a.delay <= 0) {
         a.delay = 0;
         a.gas = CFG.ARTY_GAS_S;
-        w.events.push({ t: 'boom', x: Math.round(a.x), y: Math.round(a.y) });
+        w.events.push({ t: 'boom', x: Math.round(a.x), y: Math.round(a.y), big: true });
       }
     } else {
       a.gas -= dt;
@@ -374,6 +379,23 @@ export function step(w, dt, now = Date.now()) {
     if (a.delay > 0 || a.gas > 0) clouds.push(a);
   }
   w.arty = clouds;
+
+  // Resupply crates: a soldier on his own side's crate gets a full magazine, grenades and a gas strike back.
+  for (let i = 0; i < w.crates.length; i++) {
+    const c = w.crates[i];
+    if (now < c.readyAt) continue;
+    for (const p of w.players.values()) {
+      if (p.team !== c.team || p.hp <= 0 || Math.hypot(p.x - c.x, p.y - c.y) > CFG.CRATE_R) continue;
+      if (p.ammo >= CFG.MAG && p.grenades >= CFG.GRENADES && p.arty >= CFG.ARTY) continue; // nothing to take
+      p.ammo = CFG.MAG;
+      p.reloadLeft = 0;
+      p.grenades = CFG.GRENADES;
+      p.arty = CFG.ARTY;
+      c.readyAt = now + CFG.CRATE_COOLDOWN_S * 1000;
+      w.events.push({ t: 'crate', who: p.id });
+      break;
+    }
+  }
 
   // Capture point.
   const cap = w.map.capture;
@@ -408,6 +430,7 @@ export function snapshot(w, now = Date.now()) {
     f: w.shots,
     g: w.nades.map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
     a: w.arty.map((a) => [Math.round(a.x), Math.round(a.y), a.delay > 0 ? 0 : 1, a.delay > 0 ? Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100 : Math.round((a.gas / CFG.ARTY_GAS_S) * 100) / 100]),
+    k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,
     r: { n: w.round.n, s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
   };
