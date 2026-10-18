@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+.devnet-keypair.json
+server/data
+*.keypair.json
+keypair*.json

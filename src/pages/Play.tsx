@@ -1,0 +1,142 @@
+import { useEffect, useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import GameCanvas from '../game/GameCanvas';
+import { useGame } from '../game/useGame';
+import type { Team } from '../game/useGame';
+import { WALLET_LOGIN } from '../config';
+
+const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+export default function Play() {
+  const { connected } = useWallet();
+  const game = useGame();
+  const [name, setName] = useState(() => {
+    try {
+      return localStorage.getItem('trenches-name') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [useWalletLogin, setUseWalletLogin] = useState(false);
+  const [showBoard, setShowBoard] = useState(false);
+
+  // Hold Tab to see the scoreboard.
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setShowBoard(true);
+      }
+    };
+    const up = (e: KeyboardEvent) => e.key === 'Tab' && setShowBoard(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, []);
+
+  const start = (team: Team | 'random') => {
+    try {
+      localStorage.setItem('trenches-name', name.trim());
+    } catch {
+      /* private window: the name just is not remembered */
+    }
+    void game.join(team, name.trim(), useWalletLogin && connected);
+  };
+
+  const busy = game.status === 'signing' || game.status === 'connecting';
+  const h = game.hud;
+
+  return (
+    <div className="wrap">
+      {game.status !== 'playing' && (
+        <section className="hero">
+          <p className="eyebrow">Multiplayer · Green vs Red</p>
+          <h1>The Trenches</h1>
+          <p className="lede">Two armies dig in on either side of no-man's land. Use the cover, hold the point in the middle, and keep your head down.</p>
+
+          <div className="field">
+            <label htmlFor="callsign">Callsign (optional)</label>
+            <input id="callsign" className="in" value={name} maxLength={16} placeholder="Recruit" autoComplete="off" onChange={(e) => setName(e.target.value)} disabled={useWalletLogin && connected} />
+          </div>
+
+          {WALLET_LOGIN && (
+            <div className="field">
+              <WalletMultiButton />
+              {connected && (
+                <label className="check">
+                  <input type="checkbox" checked={useWalletLogin} onChange={(e) => setUseWalletLogin(e.target.checked)} /> Sign in with this wallet (free, no transaction)
+                </label>
+              )}
+            </div>
+          )}
+
+          <div className="sides">
+            <button className="side green" disabled={busy} onClick={() => start('green')}>Join Green</button>
+            <button className="side random" disabled={busy} onClick={() => start('random')}>{busy ? (game.status === 'signing' ? 'Check your wallet…' : 'Connecting…') : 'Random side'}</button>
+            <button className="side red" disabled={busy} onClick={() => start('red')}>Join Red</button>
+          </div>
+          <p className="muted small">If one side has more soldiers, you will be placed on the other to keep it fair.</p>
+          {game.error && <p className="status" role="alert">{game.error}</p>}
+          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · Scoreboard: hold Tab</p>
+        </section>
+      )}
+
+      {game.status === 'playing' && h && (
+        <section className="stage">
+          <div className="hud-top">
+            <span className={`pill ${h.myTeam ?? ''}`}>You: {h.myTeam === 'green' ? 'Green' : 'Red'}</span>
+            <div className="capbar" role="img" aria-label={`Capture point: ${Math.round(Math.abs(h.progress) * 100)}% ${h.progress >= 0 ? 'green' : 'red'}`}>
+              <div className="mid" />
+              {h.progress >= 0 ? <div className="fill green" style={{ left: '50%', width: `${h.progress * 50}%` }} /> : <div className="fill red" style={{ right: '50%', width: `${-h.progress * 50}%` }} />}
+            </div>
+            <span className="muted small">
+              {h.green} v {h.red} · {fmt(h.round.l)}
+            </span>
+            <button className="btn" onClick={game.leave}>Leave</button>
+          </div>
+
+          <div className="canvas-wrap">
+            <GameCanvas world={game.world} input={game.input} />
+            <div className="feed" aria-live="polite">
+              {h.feed.map((f, i) => (
+                <p key={i}>
+                  <b className={f.kteam}>{f.killer}</b> eliminated <b className={f.vteam}>{f.victim}</b>
+                </p>
+              ))}
+            </div>
+            {h.myHp <= 0 && h.round.s === 'live' && <div className="overlay">Eliminated. Back in the trench shortly…</div>}
+            {h.round.s === 'ended' && (
+              <div className="overlay big">
+                {h.round.w === 'draw' ? 'Draw' : `${h.round.w === 'green' ? 'Green' : 'Red'} holds the point`}
+                <small>Next round in {h.round.l}s</small>
+              </div>
+            )}
+            {showBoard && (
+              <div className="board">
+                <table>
+                  <thead>
+                    <tr><th>Soldier</th><th>K</th><th>D</th></tr>
+                  </thead>
+                  <tbody>
+                    {h.board.map((r) => (
+                      <tr key={r.id} className={r.team}>
+                        <td>{r.name}</td>
+                        <td>{r.k}</td>
+                        <td>{r.d}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          {game.error && <p className="status" role="alert">{game.error}</p>}
+        </section>
+      )}
+    </div>
+  );
+}
