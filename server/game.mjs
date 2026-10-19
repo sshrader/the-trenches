@@ -27,6 +27,9 @@ const clean = (s, max) => String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, ''
 const shortName = (w) => `${w.slice(0, 4)}…${w.slice(-4)}`;
 const guestName = () => `Recruit-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
 
+// Quick team chat: the client sends only a number, the words live here so nobody can type anything into the game.
+const SAY = ['', 'Cover me!', "I'll cover you!", 'Throw a grenade!', 'Call in artillery!', "Let's go for the CP!"];
+
 const sockets = new Map(); // player id -> ws
 const byWallet = new Map(); // wallet -> ws
 const perIp = new Map();
@@ -112,6 +115,18 @@ export function attachGame(server) {
         return;
       }
       if (!me) return;
+
+      if (m.t === 'say') {
+        const n = Math.floor(Number(m.n));
+        const nowMs = Date.now();
+        if (!(n >= 1 && n < SAY.length) || nowMs - (me.lastSay || 0) < 1200) return;
+        me.lastSay = nowMs;
+        const raw = JSON.stringify({ t: 'chat', id: me.id, name: me.name, team: me.team, text: SAY[n] });
+        for (const [pid, sock] of sockets) {
+          if (sock.readyState === 1 && world.players.get(pid)?.team === me.team) sock.send(raw); // team only
+        }
+        return;
+      }
 
       if (m.t === 'dummy') {
         if (!TRAINING) return;

@@ -4,7 +4,7 @@ import { WALLET_LOGIN } from '../config';
 import { playBoom, playCannon, playPickup, playShot, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
-export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number };
+export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number };
 export type ClassId = 'rifleman' | 'smg' | 'medic';
 export const CLASSES: { id: ClassId; label: string; mag: number; blurb: string }[] = [
   { id: 'rifleman', label: 'Rifleman', mag: 8, blurb: 'Bolt rifle. One hit kills and it reaches farthest, but it fires slowly.' },
@@ -29,9 +29,10 @@ export type World = {
 };
 export type Input = { dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number };
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
-export type Hud = { score: [number, number, number, number]; round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
+export type ChatLine = { name: string; team: Team; text: string; at: number };
+export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
-const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0 });
+const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0 });
 const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 } });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
@@ -46,6 +47,7 @@ export function useGame() {
   const input = useRef<Input>({ dx: 0, dy: 0, aim: 0, fire: false, nade: 0, range: 200, reload: 0, arty: 0 });
   const ws = useRef<WebSocket | null>(null);
   const training = useRef(false);
+  const chat = useRef<ChatLine[]>([]);
   const feed = useRef<FeedLine[]>([]);
   const board = useRef<Score[]>([]);
 
@@ -60,6 +62,7 @@ export function useGame() {
     ws.current = null;
     world.current = emptyWorld();
     feed.current = [];
+    chat.current = [];
     board.current = [];
     setHud(null);
     setStatus('idle');
@@ -89,6 +92,7 @@ export function useGame() {
         myAmmo: me?.ammo ?? 0,
         myTent: me?.tent ?? 0,
         myKit: me?.kit ?? 0,
+        chat: chat.current.filter((c) => Date.now() - c.at < 9000),
         score: w.score,
         myKills: me?.kills ?? 0,
         myDeaths: me?.deaths ?? 0,
@@ -140,6 +144,13 @@ export function useGame() {
             for (const p of m.players) w.units.set(p.id, newUnit(p.id, p.name, p.team, !!p.bot));
             board.current = m.sb ?? [];
             setStatus('playing');
+          } else if (m.t === 'chat') {
+            chat.current = [...chat.current.slice(-4), { name: m.name, team: m.team, text: m.text, at: Date.now() }];
+            const u = w.units.get(m.id);
+            if (u) {
+              u.say = m.text;
+              u.sayUntil = Date.now() + 4000;
+            }
           } else if (m.t === 'team') {
             const u = w.units.get(m.id);
             if (u) u.team = m.team;
@@ -232,6 +243,10 @@ export function useGame() {
     [wallet, setStatus],
   );
 
+  const say = useCallback((n: number) => {
+    if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'say', n }));
+  }, []);
+
   const addBot = useCallback(() => {
     if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'dummy' }));
   }, []);
@@ -240,5 +255,5 @@ export function useGame() {
     if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'class', cls }));
   }, []);
 
-  return { status, error, hud, world, input, join, leave, setClass, addBot };
+  return { status, error, hud, world, input, join, leave, setClass, addBot, say };
 }

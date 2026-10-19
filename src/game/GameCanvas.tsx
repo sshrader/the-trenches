@@ -361,6 +361,19 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
     ctx.fillText(u.name, sx, sy - 34);
   }
+  if (u.say && u.sayUntil > now) {
+    // quick-chat bubble above a teammate's head
+    ctx.font = '600 12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    const tw = ctx.measureText(u.say).width + 12;
+    ctx.fillStyle = 'rgba(10,16,18,0.85)';
+    ctx.fillRect(sx - tw / 2, sy - 62, tw, 18);
+    ctx.strokeStyle = teamColor(u.team);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(sx - tw / 2 + 0.5, sy - 61.5, tw - 1, 17);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(u.say, sx, sy - 49);
+  }
 }
 
 /** A fallen soldier: lying down, faded, until he respawns. */

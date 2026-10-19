@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import GameCanvas from '../game/GameCanvas';
@@ -49,6 +49,31 @@ export default function Play() {
     }
   });
   const [pickOpen, setPickOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [showKeys, setShowKeys] = useState(true);
+  const playing = game.status === 'playing';
+  const sayRef = useRef(game.say);
+  sayRef.current = game.say;
+  // N opens the quick team chat; 1-5 sends a line; N or Esc closes it. Only while playing and not typing in a field.
+  useEffect(() => {
+    if (!playing) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      const k = e.key.toLowerCase();
+      if (k === 'n') {
+        setChatOpen((o) => !o);
+      } else if (k === 'escape') {
+        setChatOpen(false);
+      } else if (chatOpen && k >= '1' && k <= '5') {
+        e.preventDefault();
+        sayRef.current(Number(k));
+        setChatOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [playing, chatOpen]);
   const start = (team: Team | 'random') => {
     unlockAudio(); // joining is a click, so the browser allows sound from here on
     try {
@@ -178,6 +203,38 @@ export default function Play() {
 
           <div className="canvas-wrap">
             <GameCanvas world={game.world} input={game.input} />
+            <aside className="keys" aria-label="Controls">
+              <button className="keys-toggle" onClick={() => setShowKeys(!showKeys)} aria-expanded={showKeys}>
+                {showKeys ? 'Hide keys' : 'Keys'}
+              </button>
+              {showKeys && (
+                <dl>
+                  <dt>W A S D</dt><dd>Move</dd>
+                  <dt>Mouse</dt><dd>Aim</dd>
+                  <dt>Click / Space</dt><dd>Fire</dd>
+                  <dt>R</dt><dd>Reload</dd>
+                  <dt>G</dt><dd>Grenade</dd>
+                  <dt>T</dt><dd>Gas strike</dd>
+                  <dt>N</dt><dd>Team chat</dd>
+                  <dt>Tab (hold)</dt><dd>Scoreboard</dd>
+                </dl>
+              )}
+            </aside>
+            {chatOpen && (
+              <div className="quickchat" role="menu" aria-label="Team chat">
+                <p className="muted small">Team chat · press a number</p>
+                {['Cover me!', "I'll cover you!", 'Throw a grenade!', 'Call in artillery!', "Let's go for the CP!"].map((t, i) => (
+                  <button key={t} role="menuitem" onClick={() => { game.say(i + 1); setChatOpen(false); }}>
+                    <kbd>{i + 1}</kbd> {t}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="chatlog" aria-live="polite">
+              {h.chat.map((c, i) => (
+                <p key={i}><b className={c.team}>{c.name}:</b> {c.text}</p>
+              ))}
+            </div>
             <div className="feed" aria-live="polite">
               {h.feed.map((f, i) => (
                 <p key={i}>
