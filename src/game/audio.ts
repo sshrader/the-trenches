@@ -184,3 +184,43 @@ export function playShot(dist: number, kind = 0) {
   osc.start(t);
   osc.stop(t + 0.2);
 }
+
+/** A quiet mechanical click: a very short filtered noise burst at `when` (seconds from now). */
+function click(when: number, hz: number, v: number, len = 0.035) {
+  if (!ctx || !noise) return;
+  const t = ctx.currentTime + when;
+  const src = ctx.createBufferSource();
+  src.buffer = noise;
+  src.playbackRate.value = 1.5;
+  const f = ctx.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.value = hz;
+  f.Q.value = 3;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(v, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  src.connect(f).connect(g).connect(ctx.destination);
+  src.start(t);
+  src.stop(t + len + 0.02);
+}
+
+/** Reloading, heard from `dist` px away. Rifle: bolt open, rounds loaded, bolt shut. SMG/pistol: magazine out, slap in. */
+export function playReload(dist: number, kind = 0) {
+  if (muted || !ctx || !noise || ctx.state !== 'running') return;
+  const v = (volume * 0.9) / (1 + dist / 220);
+  if (v < 0.01) return;
+  if (kind === 0) {
+    click(0, 1400, v); // bolt lifts
+    click(0.12, 900, v * 0.8, 0.05); // and draws back
+    for (let i = 0; i < 4; i++) click(0.6 + i * 0.28, 2200, v * 0.7, 0.025); // rounds pushed into the magazine
+    click(1.75, 1000, v, 0.05); // bolt forward
+    click(1.85, 1700, v * 0.9, 0.04); // and locked down
+  } else {
+    click(0.05, 1200, v, 0.04); // release
+    click(0.35, 800, v * 0.7, 0.07); // magazine drops out
+    click(1.2, 1000, v * 0.8, 0.07); // new magazine
+    click(1.35, 1900, v, 0.045); // seated
+    click(1.8, 1500, v * 0.8, 0.04); // slide / cocking
+  }
+}

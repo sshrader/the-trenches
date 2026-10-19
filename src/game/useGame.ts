@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WALLET_LOGIN } from '../config';
-import { playBoom, playCannon, playPickup, playShot, playWhistle } from './audio';
+import { playBoom, playCannon, playPickup, playReload, playShot, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
 export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean };
@@ -176,6 +176,10 @@ export function useGame() {
               u.prot = prot === 1;
               u.gren = gren;
               u.ammo = ammo;
+              if (u.reload === 0 && reload > 0 && u.hp > 0) {
+                const me2 = w.units.get(w.me);
+                playReload(me2 ? Math.hypot(u.tx - me2.tx, u.ty - me2.ty) : 400, ci === 0 ? 0 : 1);
+              }
               u.reload = reload;
               u.arty = arty;
               u.cls = ci;
