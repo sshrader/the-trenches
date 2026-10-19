@@ -68,6 +68,8 @@ export function createWorld(map, rng = Math.random) {
     tents: map.tents || [],
     crates: (map.crates || []).map((c) => ({ x: c.x, y: c.y, team: c.team, readyAt: 0 })),
     arty: [], // incoming strikes and lingering gas clouds
+    teamKills: { green: 0, red: 0 }, // kills this round
+    wins: { green: 0, red: 0 }, // rounds won since the server started
     progress: 0, // -1 red owns the point ... +1 green owns it
     round: { n: 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 },
     events: [],
@@ -300,10 +302,12 @@ function endRound(w, winner) {
     p.dx = p.dy = 0;
     p.fire = false;
   }
+  if (winner === 'green' || winner === 'red') w.wins[winner]++;
   w.events.push({ t: 'round', winner });
 }
 
 function newRound(w, now) {
+  w.teamKills = { green: 0, red: 0 };
   w.round = { n: w.round.n + 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
   w.bullets = [];
@@ -325,7 +329,10 @@ function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   t.wantNade = t.wantReload = t.wantArty = false;
   const k = w.players.get(ownerId);
   const own = !!k && k.team === t.team; // killed himself or a teammate: no credit
-  if (k && !own) k.kills++;
+  if (k && !own) {
+    k.kills++;
+    w.teamKills[k.team]++;
+  }
   w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon, self: k === t, tk: own && k !== t });
 }
 
@@ -578,6 +585,7 @@ export function snapshot(w, now = Date.now()) {
     f: w.shots,
     g: w.nades.map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
     a: w.arty.map((a) => [Math.round(a.x), Math.round(a.y), a.delay > 0 ? 0 : 1, a.delay > 0 ? Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100 : Math.round((a.gas / CFG.ARTY_GAS_S) * 100) / 100]),
+    ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,
     r: { n: w.round.n, s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },

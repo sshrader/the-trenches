@@ -24,14 +24,15 @@ export type World = {
   crates: number[]; // 1 = ready to use, in the same order as the crates in the map file
   progress: number;
   round: RoundInfo;
+  score: [number, number, number, number]; // green kills, red kills this round, green wins, red wins
   cam: { x: number; y: number };
 };
 export type Input = { dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number };
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
-export type Hud = { round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
+export type Hud = { score: [number, number, number, number]; round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0 });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, cam: { x: 0, y: 0 } });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 } });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -88,6 +89,7 @@ export function useGame() {
         myAmmo: me?.ammo ?? 0,
         myTent: me?.tent ?? 0,
         myKit: me?.kit ?? 0,
+        score: w.score,
         myKills: me?.kills ?? 0,
         myDeaths: me?.deaths ?? 0,
         training: training.current,
@@ -184,6 +186,7 @@ export function useGame() {
             w.crates = m.k ?? [];
             w.progress = m.c;
             w.round = m.r;
+            w.score = m.ts ?? [0, 0, 0, 0];
           } else if (m.t === 'kill') {
             feed.current = [...feed.current.slice(-4), { text: '', kteam: m.kteam, vteam: m.vteam, killer: m.killer, victim: m.victim, weapon: m.weapon ?? 'rifle', self: !!m.self, tk: !!m.tk, at: Date.now() }];
           } else if (m.t === 'boom') {

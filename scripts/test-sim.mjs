@@ -514,6 +514,24 @@ test('a medic has a limited medkit, so he cannot out-heal forever; wounded test 
   assert.ok(bot.hp < 50, 'wounded again (the medic starts healing him once more)');
 });
 
+test('team score: kills this round, rounds won across rounds', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  const e = addPlayer(w, { name: 'e', want: 'red' });
+  place(a, 400, LANE, 0);
+  place(e, 520, LANE);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  const now = run(w, 0.6);
+  assert.deepEqual(snapshot(w, now).ts, [1, 0, 0, 0]);
+  w.progress = 0.999; // green captures: round won
+  place(a, w.map.capture.x, w.map.capture.y);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
+  const t2 = run(w, 1, now);
+  assert.deepEqual(snapshot(w, t2).ts, [1, 0, 1, 0]);
+  run(w, 11, t2); // next round starts: kills reset, wins stay
+  assert.deepEqual(snapshot(w, t2 + 11000).ts, [0, 0, 1, 0]);
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

@@ -126,6 +126,10 @@ export default function Play() {
             <span className="pill" title="Your kills and deaths this session">K {h.myKills} · D {h.myDeaths}{h.myDeaths > 0 ? ` · ${(h.myKills / h.myDeaths).toFixed(2)}` : ''}</span>
             <span className="pill" title="Press G to throw">Grenades: {h.myGren} [G]</span>
             <span className="pill" title="Press T to call in a gas strike">Gas strike: {h.myArty} [T]</span>
+            <span className="pill score" title={`Kills this round. Rounds won: Green ${h.score[2]}, Red ${h.score[3]}`}>
+              <b className="green">{h.score[0]}</b> – <b className="red">{h.score[1]}</b>
+              <small> · Round {h.round.n} · won {h.score[2]}–{h.score[3]}</small>
+            </span>
             <span className="muted small">
               {h.green} v {h.red} · {fmt(h.round.l)}
             </span>
