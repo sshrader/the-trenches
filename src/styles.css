@@ -82,3 +82,8 @@ b.red { color: var(--red); }
 .play-row { display: flex; gap: 12px; align-items: flex-start; }
 .play-row .canvas-wrap { flex: 1 1 auto; min-width: 0; }
 @media (max-width: 900px) { .play-row { flex-direction: column; } .keys { flex-basis: auto; width: 100%; } .keys dl { grid-template-columns: auto 1fr auto 1fr; } }
+
+.pill.stamina { display: inline-flex; align-items: center; gap: 6px; }
+.pill.stamina i { display: inline-block; width: 60px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; }
+.pill.stamina u { display: block; height: 100%; background: #38bdf8; text-decoration: none; }
+.pill.stamina.winded u { background: #f87171; }

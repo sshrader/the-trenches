@@ -532,6 +532,31 @@ test('team score: kills this round, rounds won across rounds', () => {
   assert.deepEqual(snapshot(w, t2 + 11000).ts, [0, 0, 1, 0]);
 });
 
+test('sprint is faster, drains stamina in ~2.5 s, then must recover', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  const y = openRow() * 32 + 16;
+  place(a, 400, y, 0);
+  const go = (sprint) => setInput(w, a.id, { dx: 1, dy: 0, aim: 0, fire: false, sprint });
+  go(false);
+  let now = run(w, 1);
+  const walked = a.x - 400;
+  place(a, 400, y, 0);
+  go(true);
+  now = run(w, 1, now);
+  const sprinted = a.x - 400;
+  assert.ok(sprinted > walked * 1.5, `sprint ${sprinted} vs walk ${walked}`);
+  assert.ok(a.stamina < 70);
+  now = run(w, 2, now);
+  assert.ok(a.winded && a.stamina === 0, 'ran dry');
+  place(a, 400, y, 0);
+  now = run(w, 1, now);
+  assert.ok(Math.abs(a.x - 400 - walked) < 5, 'while winded he only walks');
+  go(false);
+  now = run(w, 4, now);
+  assert.ok(!a.winded && a.stamina > 50, 'recovered');
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

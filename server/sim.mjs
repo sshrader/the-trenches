@@ -3,6 +3,12 @@
 
 export const CFG = {
   SPEED: 150, // px per second
+  SPRINT_MULT: 1.6, // sprint speed
+  STAMINA: 100,
+  STAMINA_DRAIN: 40, // per second while sprinting: about 2.5 s
+  STAMINA_REGEN: 20, // per second, after a short rest
+  STAMINA_DELAY_S: 0.8,
+  STAMINA_RESUME: 25, // after running dry you must recover this much before sprinting again
   RADIUS: 11, // player body
   HP: 100,
   BULLET_R: 3,
@@ -113,6 +119,9 @@ function spawnPoint(w, team) {
 
 function respawn(w, p, now) {
   p.medkit = CFG.HEAL_POOL;
+  p.stamina = CFG.STAMINA;
+  p.winded = false;
+  p.sprintRest = 0;
   if (p.nextCls) {
     p.cls = p.nextCls; // a class change waits for the next life
     p.nextCls = null;
@@ -226,7 +235,7 @@ export function removeBotsOf(w, ownerId) {
 
 export const removePlayer = (w, id) => w.players.delete(id);
 
-export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty }) {
+export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint }) {
   const p = w.players.get(id);
   if (!p) return;
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -234,6 +243,7 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty }
   p.dy = clamp(n(dy), -1, 1);
   if (Number.isFinite(Number(aim))) p.aim = Number(aim) % (Math.PI * 2);
   p.fire = !!fire;
+  p.sprint = !!sprint;
   if (Number.isFinite(Number(range))) p.nadeRange = clamp(Number(range), CFG.NADE_MIN, CFG.NADE_MAX);
   // A throw is a counter going up (one press = +1), so a repeated message can never throw twice.
   if (nade !== undefined && nade !== p.nadeSeq) {
@@ -392,8 +402,18 @@ export function step(w, dt, now = Date.now()) {
       continue;
     }
     const len = Math.hypot(p.dx, p.dy);
+    const sprinting = p.sprint && len > 0 && !p.winded && p.stamina > 0;
+    if (sprinting) {
+      p.stamina = Math.max(0, p.stamina - CFG.STAMINA_DRAIN * dt);
+      p.sprintRest = CFG.STAMINA_DELAY_S;
+      if (p.stamina <= 0) p.winded = true;
+    } else {
+      p.sprintRest = Math.max(0, p.sprintRest - dt);
+      if (p.sprintRest <= 0) p.stamina = Math.min(CFG.STAMINA, p.stamina + CFG.STAMINA_REGEN * dt);
+      if (p.winded && p.stamina >= CFG.STAMINA_RESUME) p.winded = false;
+    }
     if (len > 0) {
-      const k = (len > 1 ? 1 / len : 1) * CFG.SPEED * dt;
+      const k = (len > 1 ? 1 / len : 1) * CFG.SPEED * (sprinting ? CFG.SPRINT_MULT : 1) * dt;
       const nx = p.x + p.dx * k;
       if (!blockedAt(w, nx, p.y)) p.x = nx;
       const ny = p.y + p.dy * k;
@@ -576,7 +596,7 @@ export function step(w, dt, now = Date.now()) {
 /** What every client needs each tick. Kept small. */
 export function snapshot(w, now = Date.now()) {
   const p = [];
-  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths]);
+  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0]);
   const b = w.bullets.map((x) => [Math.round(x.x), Math.round(x.y)]);
   return {
     t: 's',

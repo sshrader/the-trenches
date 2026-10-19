@@ -149,6 +149,9 @@ export default function Play() {
             )}
             <span className="pill" title="The medic tent heals you while you stand in it, then needs 30 s before it heals you again">Tent: {h.myTent < 0 ? 'healing…' : h.myTent === 0 ? 'ready' : `${h.myTent}s`}</span>
             <span className="pill" title="Your kills and deaths this session">K {h.myKills} · D {h.myDeaths}{h.myDeaths > 0 ? ` · ${(h.myKills / h.myDeaths).toFixed(2)}` : ''}</span>
+            <span className={`pill stamina ${h.myWinded ? 'winded' : ''}`} title="Sprint: hold Shift or the right mouse button. It runs out after about 2.5 s and then recovers.">
+              Sprint <i><u style={{ width: `${Math.max(0, Math.min(100, h.myStamina))}%` }} /></i>
+            </span>
             <span className="pill" title="Press G to throw">Grenades: {h.myGren} [G]</span>
             <span className="pill" title="Press T to call in a gas strike">Gas strike: {h.myArty} [T]</span>
             <span className="pill score" title={`Kills this round. Rounds won: Green ${h.score[2]}, Red ${h.score[3]}`}>
@@ -269,6 +272,7 @@ export default function Play() {
                   <dt>W A S D</dt><dd>Move</dd>
                   <dt>Mouse</dt><dd>Aim</dd>
                   <dt>Click / Space</dt><dd>Fire</dd>
+                  <dt>Shift / Right-click</dt><dd>Sprint</dd>
                   <dt>R</dt><dd>Reload</dd>
                   <dt>G</dt><dd>Grenade</dd>
                   <dt>T</dt><dd>Gas strike</dd>

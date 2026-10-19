@@ -414,9 +414,15 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       input.current.dx = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
       input.current.dy = (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0);
     };
+    let shift = false; // sprint: hold left Shift or the right mouse button
+    let right = false;
     const onDown = (e: KeyboardEvent) => {
       if (typing?.()) return;
       const k = e.key.toLowerCase();
+      if (k === 'shift') {
+        shift = true;
+        input.current.sprint = true;
+      }
       if (k === ' ') input.current.fire = true;
       if (k === 'r' && !e.repeat) input.current.reload += 1;
       if (k === 't' && !e.repeat) input.current.arty += 1;
@@ -428,21 +434,40 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     };
     const onUp = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
+      if (k === 'shift') {
+        shift = false;
+        input.current.sprint = right;
+      }
       keys.delete(k);
       if (k === ' ') input.current.fire = false;
       move();
     };
     const onBlur = () => {
       keys.clear();
+      shift = right = false;
+      input.current.sprint = false;
       input.current.dx = input.current.dy = 0;
       input.current.fire = false;
     };
-    const onMouseUp = () => (input.current.fire = false);
+    const onMouseUp = (e: globalThis.MouseEvent) => {
+      if (e.button === 2) {
+        right = false;
+        input.current.sprint = shift;
+      } else input.current.fire = false;
+    };
+    const onMouseDown = (e: globalThis.MouseEvent) => {
+      if (e.button === 2 && (e.target as HTMLElement | null)?.tagName === 'CANVAS') {
+        right = true;
+        input.current.sprint = true;
+      }
+    };
+    window.addEventListener('mousedown', onMouseDown);
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     window.addEventListener('blur', onBlur);
     window.addEventListener('mouseup', onMouseUp);
     return () => {
+      window.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
       window.removeEventListener('blur', onBlur);
