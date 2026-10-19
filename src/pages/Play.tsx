@@ -89,7 +89,7 @@ export default function Play() {
   const h = game.hud;
 
   return (
-    <div className="wrap">
+    <div className={`wrap${game.status === 'playing' ? ' wide' : ''}`}>
       {game.status !== 'playing' && (
         <section className="hero">
           <p className="eyebrow">Multiplayer · Green vs Red</p>
@@ -201,25 +201,9 @@ export default function Play() {
             <button className="btn" onClick={game.leave}>Leave</button>
           </div>
 
+          <div className="play-row">
           <div className="canvas-wrap">
             <GameCanvas world={game.world} input={game.input} />
-            <aside className="keys" aria-label="Controls">
-              <button className="keys-toggle" onClick={() => setShowKeys(!showKeys)} aria-expanded={showKeys}>
-                {showKeys ? 'Hide keys' : 'Keys'}
-              </button>
-              {showKeys && (
-                <dl>
-                  <dt>W A S D</dt><dd>Move</dd>
-                  <dt>Mouse</dt><dd>Aim</dd>
-                  <dt>Click / Space</dt><dd>Fire</dd>
-                  <dt>R</dt><dd>Reload</dd>
-                  <dt>G</dt><dd>Grenade</dd>
-                  <dt>T</dt><dd>Gas strike</dd>
-                  <dt>N</dt><dd>Team chat</dd>
-                  <dt>Tab (hold)</dt><dd>Scoreboard</dd>
-                </dl>
-              )}
-            </aside>
             {chatOpen && (
               <div className="quickchat" role="menu" aria-label="Team chat">
                 <p className="muted small">Team chat · press a number</p>
@@ -275,6 +259,24 @@ export default function Play() {
                 </table>
               </div>
             )}
+          </div>
+          <aside className="keys" aria-label="Controls">
+              <button className="keys-toggle" onClick={() => setShowKeys(!showKeys)} aria-expanded={showKeys}>
+                {showKeys ? 'Hide keys' : 'Keys'}
+              </button>
+              {showKeys && (
+                <dl>
+                  <dt>W A S D</dt><dd>Move</dd>
+                  <dt>Mouse</dt><dd>Aim</dd>
+                  <dt>Click / Space</dt><dd>Fire</dd>
+                  <dt>R</dt><dd>Reload</dd>
+                  <dt>G</dt><dd>Grenade</dd>
+                  <dt>T</dt><dd>Gas strike</dd>
+                  <dt>N</dt><dd>Team chat</dd>
+                  <dt>Tab (hold)</dt><dd>Scoreboard</dd>
+                </dl>
+              )}
+            </aside>
           </div>
           {game.error && <p className="status" role="alert">{game.error}</p>}
         </section>
