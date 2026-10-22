@@ -205,22 +205,60 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.save();
   ctx.translate(sx, sy);
   ctx.rotate(u.aim);
-  const dark = 'rgba(0,0,0,0.5)';
+  ctx.scale(1.25, 1.25); // drawn a little larger than the hitbox so the uniform reads clearly
+  const dark = 'rgba(0,0,0,0.55)';
+  const green = u.team === 'green';
+  const cloth = UNIFORM[u.team];
+  const trouser = green ? '#4a5a30' : '#6e3326';
+  const limb = (x1: number, y1: number, x2: number, y2: number, w: number, col: string) => {
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = dark; // dark outline under every limb so it stands out from the ground
+    ctx.lineWidth = w + 2;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  };
 
-  // boots, stepping as he walks
-  ctx.fillStyle = '#2a2118';
-  ctx.beginPath();
-  ctx.ellipse(step * 4, -5, 5, 3, 0, 0, Math.PI * 2);
-  ctx.ellipse(-step * 4, 5, 5, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // legs: trousers, wrapped puttees and boots, striding as he walks
+  for (const side of [-1, 1]) {
+    const stride = step * 12 * side;
+    const hx = -3;
+    const hy = side * 4;
+    const fx = hx + stride;
+    const fy = side * 6.5;
+    limb(hx, hy, fx, fy, 5.5, trouser);
+    const mx = hx + (fx - hx) * 0.55; // puttee wraps on the lower leg
+    const my = hy + (fy - hy) * 0.55;
+    limb(mx, my, fx, fy, 5.5, '#a89a6a');
+    ctx.fillStyle = '#2a2118'; // boot, toe pointing the way he faces
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(fx + 2, fy, 4.6, 3.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
 
-  // pack on his back
+  // pack on his back, with a rolled blanket
   ctx.fillStyle = GEAR[u.team];
   ctx.strokeStyle = dark;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.roundRect(-14, -7, 9, 14, 3);
+  ctx.roundRect(-11, -6, 6, 12, 2);
   ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#c9b88a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-8, -7);
+  ctx.lineTo(-8, 7);
   ctx.stroke();
 
   // rifle: wooden stock, steel barrel
@@ -238,16 +276,28 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.lineTo(32, 2);
   ctx.stroke();
 
-  // torso
-  ctx.fillStyle = UNIFORM[u.team];
+  // torso: tunic with shoulders, belt, collar and pockets
+  ctx.fillStyle = cloth;
   ctx.strokeStyle = dark;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.ellipse(0, 0, 8, 12, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, 8.5, 13, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.1)'; // lit upper chest
+  ctx.beginPath();
+  ctx.ellipse(1.5, 0, 4, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#3a2d1e'; // belt across the waist, brass buckle
+  ctx.fillRect(-3.5, -12, 3, 24);
+  ctx.fillStyle = '#d4b45a';
+  ctx.fillRect(-3.5, -1.5, 3, 3);
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; // pocket flaps
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(2, -9, 4, 4);
+  ctx.strokeRect(2, 5, 4, 4);
   // webbing straps
-  ctx.strokeStyle = 'rgba(214,196,150,0.7)';
+  ctx.strokeStyle = 'rgba(214,196,150,0.75)';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(-5, -9);
@@ -255,24 +305,27 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.moveTo(-5, 9);
   ctx.lineTo(5, -6);
   ctx.stroke();
+  // shoulder epaulettes in the team colour
+  ctx.fillStyle = teamColor(u.team);
+  ctx.fillRect(-1, -13, 5, 3);
+  ctx.fillRect(-1, 10, 5, 3);
 
-  // arms reaching for the rifle, hands on it
-  ctx.strokeStyle = UNIFORM[u.team];
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.moveTo(0, -9);
-  ctx.lineTo(18, 1.5);
-  ctx.moveTo(0, 9);
-  ctx.lineTo(6, 3);
-  ctx.stroke();
+  // arms: outlined sleeves with a lighter cuff, bare hands on the rifle
+  limb(0, -9, 18, 1.5, 5.5, cloth);
+  limb(0, 9, 6, 3, 5.5, cloth);
+  limb(15.5, 0.2, 17.6, 1.4, 5.5, '#c9b88a');
+  limb(4.6, 4.4, 5.8, 3.2, 5.5, '#c9b88a');
   ctx.fillStyle = '#d9b48c';
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(19, 1.5, 2.6, 0, Math.PI * 2);
-  ctx.arc(6, 3, 2.6, 0, Math.PI * 2);
+  ctx.arc(19.5, 1.5, 3, 0, Math.PI * 2);
+  ctx.arc(6.5, 3, 3, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
   // team armband on the sleeve
   ctx.fillStyle = teamColor(u.team);
-  ctx.fillRect(1, 8, 4, 4);
+  ctx.fillRect(4, 7, 4, 5);
 
   // head and helmet
   ctx.fillStyle = '#d9b48c';
