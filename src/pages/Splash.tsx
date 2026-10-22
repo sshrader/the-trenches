@@ -21,6 +21,7 @@ const OBJECTIVES = [
   'Fill the bar all the way to win the round. If the 6 minute clock runs out first, whoever is ahead on the bar wins.',
   'Use cover: walls, wrecks and trees all stop bullets. Grenades fly over cover, and blasts hurt your own side too.',
   'Heal at your medic tent or from a Medic, and restock at your crates. You respawn 4 seconds after you fall.',
+  'Your start trench is a safe zone (the shaded strip): nobody can hurt you there and the enemy cannot enter, but you cannot fire from inside it either.',
 ];
 
 // The first screen: artwork, a short briefing in three steps, and one big button to enter.

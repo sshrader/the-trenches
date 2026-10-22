@@ -27,6 +27,8 @@ export const CFG = {
   TENT_COOLDOWN_S: 30, // after using the tent, each soldier waits this long before it heals him again
   RESPAWN_S: 4,
   PROTECT_S: 1.5, // can't be hurt just after spawning
+  BASE_PAD: 32, // each side's safe zone: its spawn trench plus this much ground in front of it
+  BASE_NO_FIRE: true, // nobody inside his own safe zone can shoot, throw or call a strike out of it (no sniping from invulnerability)
   CAP_RATE: 0.012, // capture progress per second per player in the circle (up to CAP_MAX)
   CAP_MAX: 6,
   CAP_DECAY: 0.01, // an empty point drifts back to neutral
@@ -106,6 +108,15 @@ export function lineClear(w, x1, y1, x2, y2) {
 }
 
 export const teamCount = (w, team) => [...w.players.values()].filter((p) => p.team === team && !p.isBot).length;
+
+/** A side's safe zone (its spawn trench and a strip in front): its own soldiers cannot be hurt there and the enemy cannot enter. */
+export function inBase(w, team, x) {
+  const z = w.map.spawns[team];
+  return team === 'green' ? x <= z.x1 + CFG.BASE_PAD : x >= z.x0 - CFG.BASE_PAD;
+}
+export const isSafe = (w, p) => inBase(w, p.team, p.x);
+const enemyOf = (team) => (team === 'green' ? 'red' : 'green');
+export const inEnemyBase = (w, team, x) => inBase(w, enemyOf(team), x);
 
 function spawnPoint(w, team) {
   const z = w.map.spawns[team];
@@ -349,7 +360,7 @@ function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
 function explode(w, n, now) {
   w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y) });
   for (const t of w.players.values()) {
-    if ((!CFG.FRIENDLY_BLASTS && t.team === n.team) || t.hp <= 0 || now < t.protectUntil) continue;
+    if ((!CFG.FRIENDLY_BLASTS && t.team === n.team) || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
     const d = Math.hypot(t.x - n.x, t.y - n.y);
     if (d > CFG.NADE_RADIUS || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
     const dmg =
@@ -361,7 +372,7 @@ function explode(w, n, now) {
 }
 
 function throwNade(w, p, now) {
-  if (p.hp <= 0 || p.grenades <= 0 || now - p.lastNade < CFG.NADE_COOLDOWN_MS) return;
+  if (p.hp <= 0 || (CFG.BASE_NO_FIRE && isSafe(w, p)) || p.grenades <= 0 || now - p.lastNade < CFG.NADE_COOLDOWN_MS) return;
   p.grenades--;
   p.lastNade = now;
   const c = Math.cos(p.aim);
@@ -373,7 +384,7 @@ function throwNade(w, p, now) {
 }
 
 function callArty(w, p, now) {
-  if (p.hp <= 0 || p.arty <= 0 || now - p.lastArty < CFG.ARTY_COOLDOWN_MS) return;
+  if (p.hp <= 0 || (CFG.BASE_NO_FIRE && isSafe(w, p)) || p.arty <= 0 || now - p.lastArty < CFG.ARTY_COOLDOWN_MS) return;
   p.arty--;
   p.lastArty = now;
   const c = Math.cos(p.aim);
@@ -415,9 +426,14 @@ export function step(w, dt, now = Date.now()) {
     if (len > 0) {
       const k = (len > 1 ? 1 / len : 1) * CFG.SPEED * (sprinting ? CFG.SPRINT_MULT : 1) * dt;
       const nx = p.x + p.dx * k;
-      if (!blockedAt(w, nx, p.y)) p.x = nx;
+      if (!blockedAt(w, nx, p.y) && !inEnemyBase(w, p.team, nx)) p.x = nx;
       const ny = p.y + p.dy * k;
       if (!blockedAt(w, p.x, ny)) p.y = ny;
+    }
+    if (inEnemyBase(w, p.team, p.x)) {
+      const h = spawnPoint(w, p.team); // somehow inside the enemy's zone: send him home
+      p.x = h.x;
+      p.y = h.y;
     }
     if (p.reloadLeft > 0) {
       p.reloadLeft -= dt;
@@ -430,7 +446,7 @@ export function step(w, dt, now = Date.now()) {
       p.wantReload = false;
       if (p.reloadLeft <= 0 && p.ammo < cls(p).mag) p.reloadLeft = cls(p).reloadS;
     }
-    if (p.fire && p.reloadLeft <= 0 && p.ammo > 0 && now - p.lastFire >= cls(p).fireMs) {
+    if (p.fire && !(CFG.BASE_NO_FIRE && isSafe(w, p)) && p.reloadLeft <= 0 && p.ammo > 0 && now - p.lastFire >= cls(p).fireMs) {
       p.lastFire = now;
       p.ammo--;
       if (p.ammo <= 0) p.reloadLeft = cls(p).reloadS; // empty: reload on its own
@@ -467,7 +483,7 @@ export function step(w, dt, now = Date.now()) {
         break;
       }
       for (const t of w.players.values()) {
-        if (t.team === b.team || t.hp <= 0 || now < t.protectUntil) continue;
+        if (t.team === b.team || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
         if (Math.hypot(t.x - b.x, t.y - b.y) <= CFG.RADIUS + CFG.BULLET_R) {
           dead = true;
           hurt(w, t, b.damage, b.owner, b.team, now, b.weapon);
@@ -508,7 +524,7 @@ export function step(w, dt, now = Date.now()) {
     } else {
       a.gas -= dt;
       for (const t of w.players.values()) {
-        if ((!CFG.FRIENDLY_BLASTS && t.team === a.team) || t.hp <= 0 || now < t.protectUntil) continue;
+        if ((!CFG.FRIENDLY_BLASTS && t.team === a.team) || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
         if (Math.hypot(t.x - a.x, t.y - a.y) <= CFG.ARTY_RADIUS) hurt(w, t, CFG.ARTY_DPS * dt, a.owner, a.team, now, 'gas');
       }
     }

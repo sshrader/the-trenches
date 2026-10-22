@@ -510,11 +510,26 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       for (let ty = y0; ty <= y0 + VIEW_H / TILE + 1 && ty < ROWS.length; ty++) {
         for (let tx = x0; tx <= x0 + VIEW_W / TILE + 1 && tx < COLS; tx++) drawTile(ctx, ROWS[ty][tx], tx, ty, tx * TILE - camX, ty * TILE - camY);
       }
-      // Team zones
-      ctx.fillStyle = 'rgba(74,222,128,0.07)';
-      ctx.fillRect(-camX, -camY, 7 * TILE, MAP_H);
-      ctx.fillStyle = 'rgba(248,113,113,0.07)';
-      ctx.fillRect(MAP_W - 7 * TILE - camX, -camY, 7 * TILE, MAP_H);
+      // Safe zones: your side's trench and the strip in front of it (no enemies in, no damage, no firing out)
+      const ZW = 8 * TILE; // matches the server: spawn trench + BASE_PAD
+      ctx.fillStyle = 'rgba(74,222,128,0.09)';
+      ctx.fillRect(-camX, -camY, ZW, MAP_H);
+      ctx.fillStyle = 'rgba(248,113,113,0.09)';
+      ctx.fillRect(MAP_W - ZW - camX, -camY, ZW, MAP_H);
+      ctx.save();
+      ctx.setLineDash([10, 8]);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(74,222,128,0.55)';
+      ctx.beginPath();
+      ctx.moveTo(ZW - camX, -camY);
+      ctx.lineTo(ZW - camX, MAP_H - camY);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(248,113,113,0.55)';
+      ctx.beginPath();
+      ctx.moveTo(MAP_W - ZW - camX, -camY);
+      ctx.lineTo(MAP_W - ZW - camX, MAP_H - camY);
+      ctx.stroke();
+      ctx.restore();
       // Scenery and supplies
       for (const pr of PROPS) {
         const px = pr.x * TILE - camX;

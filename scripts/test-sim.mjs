@@ -557,6 +557,39 @@ test('sprint is faster, drains stamina in ~2.5 s, then must recover', () => {
   assert.ok(!a.winded && a.stamina > 50, 'recovered');
 });
 
+test('spawn protection: enemies cannot enter, soldiers at home are safe and cannot fire out', () => {
+  const w = fresh();
+  const g = addPlayer(w, { name: 'g', want: 'green' });
+  const r = addPlayer(w, { name: 'r', want: 'red' });
+  // The enemy walks toward the green trench and is stopped at its edge.
+  place(r, 600, LANE, Math.PI);
+  setInput(w, r.id, { dx: -1, dy: 0, aim: Math.PI });
+  let now = run(w, 6);
+  const edge = map.spawns.green.x1 + CFG.BASE_PAD;
+  assert.ok(r.x > edge, 'red stays out of the green zone');
+  // A red soldier shooting at a green soldier standing at home does no damage.
+  setInput(w, r.id, { dx: 0, dy: 0, aim: Math.PI });
+  place(g, edge - 10, LANE, 0);
+  place(r, edge + 60, LANE, Math.PI);
+  g.hp = r.hp = CFG.HP;
+  setInput(w, r.id, { dx: 0, dy: 0, aim: Math.PI, fire: true });
+  now = run(w, 2, now);
+  assert.equal(g.hp, CFG.HP, 'green at home takes no damage');
+  // The protected soldier cannot shoot out either.
+  setInput(w, r.id, { dx: 0, dy: 0, aim: Math.PI, fire: false });
+  setInput(w, g.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  const ammo = g.ammo;
+  now = run(w, 1, now);
+  assert.equal(g.ammo, ammo, 'no shooting from inside the zone');
+  assert.equal(r.hp, CFG.HP, 'red untouched');
+  // Once green steps out of the zone he can be hurt and can fire.
+  setInput(w, g.id, { dx: 0, dy: 0, aim: 0, fire: false });
+  place(g, edge + 30, LANE, 0);
+  setInput(w, r.id, { dx: 0, dy: 0, aim: Math.PI, fire: true });
+  now = run(w, 2, now);
+  assert.ok(g.hp < CFG.HP, 'outside the zone he can be hurt');
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

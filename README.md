@@ -41,3 +41,7 @@ The server sends every soldier to every player 20 times a second. One small inst
 ## Next
 
 See `docs/PROJECT_NOTES.md`.
+
+## Spawn protection
+
+Each side's spawn trench plus a 32 px strip in front of it is a safe zone (`CFG.BASE_PAD`). Enemies cannot walk in, soldiers inside take no damage from bullets, grenades or gas, and (with `CFG.BASE_NO_FIRE`) cannot shoot, throw or call a strike from inside. The shaded, dashed-edge strip on the map shows it.
