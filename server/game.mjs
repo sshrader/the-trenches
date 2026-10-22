@@ -52,6 +52,20 @@ const broadcast = (msg) => {
   const raw = JSON.stringify(msg);
   for (const ws of sockets.values()) if (ws.readyState === 1) ws.send(raw);
 };
+/** Send each side its own version of a message (fog of war). `make(team)` returns the message for that team, or null to skip it. */
+const broadcastByTeam = (make) => {
+  const raw = {};
+  for (const [id, ws] of sockets) {
+    if (ws.readyState !== 1) continue;
+    const team = world.players.get(id)?.team;
+    if (!team) continue;
+    if (!(team in raw)) {
+      const m = make(team);
+      raw[team] = m ? JSON.stringify(m) : null;
+    }
+    if (raw[team]) ws.send(raw[team]);
+  }
+};
 
 export function attachGame(server) {
   const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 1024 });
@@ -180,9 +194,19 @@ export function attachGame(server) {
         continue;
       }
       if (e.t === 'round') stats.recordRound(world.players.values(), e.winner, now);
+      if (e.t === 'boom' || e.t === 'arty') {
+        // fog of war: you hear a blast somewhat farther than you can see, and always your own side's strikes
+        const eyesBy = {};
+        broadcastByTeam((team) => {
+          eyesBy[team] ??= sim.eyesFor(world, team);
+          const near = sim.canSee(eyesBy[team], e.x, e.y, 200);
+          return near || (e.t === 'arty' && e.team === team) ? e : null;
+        });
+        continue;
+      }
       broadcast(e);
     }
-    broadcast(sim.snapshot(world, now));
+    broadcastByTeam((team) => sim.snapshot(world, now, team));
     if (++ticks % 40 === 0) broadcast({ t: 'sb', rows: sim.scoreboard(world) });
   }, TICK_MS).unref();
 

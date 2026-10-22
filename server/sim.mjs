@@ -27,6 +27,7 @@ export const CFG = {
   TENT_COOLDOWN_S: 30, // after using the tent, each soldier waits this long before it heals him again
   RESPAWN_S: 4,
   PROTECT_S: 1.5, // can't be hurt just after spawning
+  VISION: 420, // fog of war: a side sees enemies, shots and blasts only within this many px of one of its living soldiers
   BASE_PAD: 32, // each side's safe zone: its spawn trench plus this much ground in front of it
   BASE_NO_FIRE: true, // nobody inside his own safe zone can shoot, throw or call a strike out of it (no sniping from invulnerability)
   CAP_RATE: 0.012, // capture progress per second per player in the circle (up to CAP_MAX)
@@ -391,7 +392,7 @@ function callArty(w, p, now) {
   const s = Math.sin(p.aim);
   let dist = p.nadeRange; // same reach as a grenade
   while (dist > CFG.NADE_MIN / 2 && solidAt(w, p.x + c * dist, p.y + s * dist)) dist -= 8;
-  w.events.push({ t: 'arty', x: Math.round(p.x + c * dist), y: Math.round(p.y + s * dist), fx: Math.round(w.map.tile * (p.team === 'green' ? 3 : w.W - 3)), fy: Math.round(p.y), delay: CFG.ARTY_DELAY_S });
+  w.events.push({ t: 'arty', x: Math.round(p.x + c * dist), y: Math.round(p.y + s * dist), fx: Math.round(w.map.tile * (p.team === 'green' ? 3 : w.W - 3)), fy: Math.round(p.y), delay: CFG.ARTY_DELAY_S, team: p.team });
   w.arty.push({ x: p.x + c * dist, y: p.y + s * dist, delay: CFG.ARTY_DELAY_S, gas: 0, owner: p.id, team: p.team });
 }
 
@@ -609,18 +610,36 @@ export function step(w, dt, now = Date.now()) {
   if (w.round.left <= 0) endRound(w, w.progress > 0.05 ? 'green' : w.progress < -0.05 ? 'red' : 'draw');
 }
 
-/** What every client needs each tick. Kept small. */
-export function snapshot(w, now = Date.now()) {
+/** Who can a side see? Teammates are always visible; anything else only within VISION of a living teammate. */
+export function eyesFor(w, team) {
+  const mates = [...w.players.values()].filter((q) => q.team === team);
+  const live = mates.filter((q) => q.hp > 0);
+  return (live.length ? live : mates).map((q) => [q.x, q.y]);
+}
+export const canSee = (eyes, x, y, extra = 0) => {
+  const r = CFG.VISION + extra;
+  return eyes.some(([ex, ey]) => Math.hypot(ex - x, ey - y) <= r);
+};
+
+/** What a side's clients need each tick (fog of war applied when a team is given). Kept small. */
+export function snapshot(w, now = Date.now(), team = null) {
+  const eyes = team ? eyesFor(w, team) : null;
+  const vis = (x, y) => !eyes || canSee(eyes, x, y);
   const p = [];
-  for (const q of w.players.values()) p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0]);
-  const b = w.bullets.map((x) => [Math.round(x.x), Math.round(x.y)]);
+  for (const q of w.players.values()) {
+    if (team && q.team !== team && !vis(q.x, q.y)) continue; // hidden in the fog
+    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0]);
+  }
+  const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
+  const owner = (id) => w.players.get(id);
   return {
     t: 's',
+    v: CFG.VISION,
     p,
     b,
-    f: w.shots,
-    g: w.nades.map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
-    a: w.arty.map((a) => [Math.round(a.x), Math.round(a.y), a.delay > 0 ? 0 : 1, a.delay > 0 ? Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100 : Math.round((a.gas / CFG.ARTY_GAS_S) * 100) / 100]),
+    f: w.shots.filter(([x, y, id]) => vis(x, y) || owner(id)?.team === team),
+    g: w.nades.filter((n) => vis(n.x, n.y) || n.team === team).map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
+    a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), a.delay > 0 ? 0 : 1, a.delay > 0 ? Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100 : Math.round((a.gas / CFG.ARTY_GAS_S) * 100) / 100]),
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,

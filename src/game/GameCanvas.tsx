@@ -6,8 +6,8 @@ import type { Input, Unit, World } from './useGame';
 const TILE = map.tile as number;
 const ROWS = map.rows as string[];
 const COLS = ROWS[0].length;
-const VIEW_W = 960;
-const VIEW_H = 600;
+const VIEW_W = 1152; // a wider field of view than before: the camera is zoomed out a little
+const VIEW_H = 720;
 const MAP_W = COLS * TILE;
 const MAP_H = ROWS.length * TILE;
 const CAP = map.capture as { x: number; y: number; r: number };
@@ -188,6 +188,8 @@ function drawCrate(ctx: CanvasRenderingContext2D, team: string, ready: boolean, 
   ctx.fillRect(sx - 7, sy - 3, 14, 4);
   ctx.globalAlpha = 1;
 }
+
+let fogCv: HTMLCanvasElement | null = null;
 
 const UNIFORM: Record<string, string> = { green: '#5a7a3b', red: '#93402f' };
 const GEAR: Record<string, string> = { green: '#3f5528', red: '#6a2c20' };
@@ -706,6 +708,36 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         ctx.stroke();
       }
 
+      // Fog of war: the field outside your side's sight is dimmed. Teammates (alive) each light a circle around them.
+      {
+        fogCv ??= document.createElement('canvas');
+        if (fogCv.width !== VIEW_W) fogCv.width = VIEW_W;
+        if (fogCv.height !== VIEW_H) fogCv.height = VIEW_H;
+        const fc = fogCv.getContext('2d');
+        if (fc) {
+          fc.globalCompositeOperation = 'source-over';
+          fc.clearRect(0, 0, VIEW_W, VIEW_H);
+          fc.fillStyle = 'rgba(6,9,11,0.74)';
+          fc.fillRect(0, 0, VIEW_W, VIEW_H);
+          fc.globalCompositeOperation = 'destination-out';
+          const vr = w.vision;
+          for (const u of seen) {
+            if (u.team !== myTeam || u.hp <= 0) continue;
+            const ux = u.x - camX;
+            const uy = u.y - camY;
+            if (ux < -vr || uy < -vr || ux > VIEW_W + vr || uy > VIEW_H + vr) continue;
+            const g = fc.createRadialGradient(ux, uy, vr * 0.72, ux, uy, vr);
+            g.addColorStop(0, 'rgba(0,0,0,1)');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            fc.fillStyle = g;
+            fc.beginPath();
+            fc.arc(ux, uy, vr, 0, Math.PI * 2);
+            fc.fill();
+          }
+          ctx.drawImage(fogCv, 0, 0);
+        }
+      }
+
       // Minimap: the whole field, your side's soldiers and the point. Enemies stay hidden.
       const mw = 168;
       const mh = (mw * MAP_H) / MAP_W;
@@ -718,9 +750,9 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       ctx.strokeRect(mx, my, mw, mh);
       const k = mw / MAP_W;
       ctx.fillStyle = 'rgba(74,222,128,0.18)';
-      ctx.fillRect(mx, my, 7 * TILE * k, mh);
+      ctx.fillRect(mx, my, 8 * TILE * k, mh);
       ctx.fillStyle = 'rgba(248,113,113,0.18)';
-      ctx.fillRect(mx + mw - 7 * TILE * k, my, 7 * TILE * k, mh);
+      ctx.fillRect(mx + mw - 8 * TILE * k, my, 8 * TILE * k, mh);
       ctx.strokeStyle = 'rgba(255,255,255,0.6)';
       ctx.beginPath();
       ctx.arc(mx + CAP.x * k, my + CAP.y * k, CAP.r * k, 0, Math.PI * 2);

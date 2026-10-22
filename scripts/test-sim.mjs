@@ -590,6 +590,28 @@ test('spawn protection: enemies cannot enter, soldiers at home are safe and cann
   assert.ok(g.hp < CFG.HP, 'outside the zone he can be hurt');
 });
 
+test('fog of war: a side only receives enemies near its soldiers, but always its own', () => {
+  const w = fresh();
+  const g1 = addPlayer(w, { name: 'g1', want: 'green' });
+  const g2 = addPlayer(w, { name: 'g2', want: 'green' });
+  const r = addPlayer(w, { name: 'r', want: 'red' });
+  g1.team = g2.team = 'green'; // the join balancer may have put one elsewhere
+  r.team = 'red';
+  place(g1, 600, LANE);
+  place(g2, 2600, LANE);
+  place(r, 600 + CFG.VISION + 100, LANE);
+  const ids = (snap) => snap.p.map((q) => q[0]);
+  let snap = snapshot(w, 1000, 'green');
+  assert.ok(ids(snap).includes(g1.id) && ids(snap).includes(g2.id), 'teammates always listed');
+  assert.ok(!ids(snap).includes(r.id), 'an enemy beyond sight is hidden');
+  place(r, 600 + CFG.VISION - 50, LANE);
+  snap = snapshot(w, 1000, 'green');
+  assert.ok(ids(snap).includes(r.id), 'an enemy inside sight is shown');
+  const far = snapshot(w, 1000, 'red');
+  assert.ok(ids(far).includes(r.id) && !ids(far).includes(g2.id), 'red sees itself, not the far green soldier');
+  assert.equal(snapshot(w, 1000).p.length, 3, 'no team given: everyone');
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

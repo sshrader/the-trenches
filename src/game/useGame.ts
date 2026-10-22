@@ -26,6 +26,7 @@ export type World = {
   round: RoundInfo;
   score: [number, number, number, number]; // green kills, red kills this round, green wins, red wins
   cam: { x: number; y: number };
+  vision: number; // fog of war: how far your side sees from each living soldier
 };
 export type Input = { sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number };
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
@@ -33,7 +34,7 @@ export type ChatLine = { name: string; team: Team; text: string; at: number };
 export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 } });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420 });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -161,9 +162,11 @@ export function useGame() {
           } else if (m.t === 'leave') {
             w.units.delete(m.id);
           } else if (m.t === 's') {
+            const inSight = new Set<number>();
             for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next, kit, kills, deaths, stamina, winded] of m.p as number[][]) {
               const u = w.units.get(id);
               if (!u) continue;
+              inSight.add(id);
               if (!u.seen || Math.hypot(x - u.tx, y - u.ty) > 120) {
                 u.x = x; // first sighting or a respawn: appear in place instead of gliding across the map
                 u.y = y;
@@ -192,6 +195,8 @@ export function useGame() {
               u.stamina = stamina;
               u.winded = winded === 1;
             }
+            for (const u of w.units.values()) if (!inSight.has(u.id)) u.seen = false; // lost in the fog: stop drawing him
+            w.vision = m.v ?? 420;
             // Gunfire: flash the shooter's muzzle and play a quiet shot, fainter the farther it is from you.
             const me = w.units.get(w.me);
             for (const [sx, sy, sid] of (m.f ?? []) as [number, number, number][]) {
