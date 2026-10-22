@@ -150,7 +150,7 @@ export function playShot(dist: number, kind = 0) {
   if (recent.length >= 8) return; // a crowd firing at once must not turn into a wall of noise
   recent.push(now);
 
-  const v = (volume * [1, 0.7, 0.75][kind]) / (1 + dist / 260);
+  const v = (volume * [1, 0.7, 0.75, 1.3][kind]) / (1 + dist / 260);
   if (v < 0.01) return;
   const t = ctx.currentTime;
   const near = 1 / (1 + dist / 400);
@@ -158,7 +158,7 @@ export function playShot(dist: number, kind = 0) {
   // The crack: a short burst of noise, shaped by distance.
   const src = ctx.createBufferSource();
   src.buffer = noise;
-  src.playbackRate.value = 0.9 + Math.random() * 0.25 + [0, 0.35, 0.55][kind];
+  src.playbackRate.value = 0.9 + Math.random() * 0.25 + [0, 0.35, 0.55, -0.1][kind];
   const band = ctx.createBiquadFilter();
   band.type = 'bandpass';
   band.frequency.value = 700 + 1800 * near;
@@ -166,7 +166,7 @@ export function playShot(dist: number, kind = 0) {
   const g = ctx.createGain();
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(v, t + 0.003);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + [0.16, 0.08, 0.11][kind] + (1 - near) * 0.12);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + [0.16, 0.08, 0.11, 0.26][kind] + (1 - near) * 0.12);
   src.connect(band).connect(g).connect(ctx.destination);
   src.start(t);
   src.stop(t + 0.35);

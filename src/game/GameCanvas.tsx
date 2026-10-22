@@ -210,6 +210,7 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.scale(1.25, 1.25); // drawn a little larger than the hitbox so the uniform reads clearly
   const dark = 'rgba(0,0,0,0.55)';
   const green = u.team === 'green';
+  const sniper = u.cls === 3;
   const cloth = UNIFORM[u.team];
   const trouser = green ? '#4a5a30' : '#6e3326';
   const limb = (x1: number, y1: number, x2: number, y2: number, w: number, col: string) => {
@@ -275,8 +276,20 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.lineWidth = 2.4;
   ctx.beginPath();
   ctx.moveTo(14, 2);
-  ctx.lineTo(32, 2);
+  ctx.lineTo(sniper ? 46 : 32, 2);
   ctx.stroke();
+  if (sniper) {
+    ctx.strokeStyle = '#111827'; // telescopic sight along the top of the rifle
+    ctx.lineWidth = 3.4;
+    ctx.beginPath();
+    ctx.moveTo(8, -0.6);
+    ctx.lineTo(22, -0.6);
+    ctx.stroke();
+    ctx.fillStyle = '#7dd3fc';
+    ctx.beginPath();
+    ctx.arc(22.5, -0.6, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // torso: tunic with shoulders, belt, collar and pockets
   ctx.fillStyle = cloth;
@@ -334,11 +347,13 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.beginPath();
   ctx.arc(1, 0, 6, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = HELMET[u.team];
+  ctx.fillStyle = sniper ? (green ? '#4d5f2a' : '#5b4a2a') : HELMET[u.team]; // a sniper wears a camouflaged hood
   ctx.strokeStyle = dark;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  if (u.team === 'green') {
+  if (sniper) {
+    ctx.arc(0.5, 0, 8.8, 0, Math.PI * 2);
+  } else if (u.team === 'green') {
     ctx.arc(0.5, 0, 8.4, 0, Math.PI * 2); // wide brim
   } else {
     ctx.ellipse(0, 0, 9, 8.4, 0, 0, Math.PI * 2);
@@ -346,6 +361,14 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   }
   ctx.fill();
   ctx.stroke();
+  if (sniper) {
+    ctx.fillStyle = 'rgba(20,28,10,0.7)'; // tufts of scrim on the hood
+    for (const [tx, ty] of [[-4, -5], [3, -6], [-6, 2], [4, 5], [-2, 6], [-7, -2]]) {
+      ctx.beginPath();
+      ctx.arc(tx, ty, 1.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
   ctx.strokeStyle = 'rgba(255,255,255,0.22)'; // crown highlight
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -367,13 +390,14 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
 
   // muzzle flash
   if (now < u.flash) {
-    const g = ctx.createRadialGradient(34, 2, 0, 34, 2, 13);
+    const fxm = sniper ? 48 : 34;
+    const g = ctx.createRadialGradient(fxm, 2, 0, fxm, 2, 13);
     g.addColorStop(0, 'rgba(255,248,200,0.95)');
     g.addColorStop(0.5, 'rgba(255,190,70,0.6)');
     g.addColorStop(1, 'rgba(255,140,40,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(34, 2, 13, 0, Math.PI * 2);
+    ctx.arc(fxm, 2, 13, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -501,19 +525,23 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       keys.clear();
       shift = right = false;
       input.current.sprint = false;
+      input.current.scope = false;
       input.current.dx = input.current.dy = 0;
       input.current.fire = false;
     };
     const onMouseUp = (e: globalThis.MouseEvent) => {
       if (e.button === 2) {
         right = false;
+        input.current.scope = false;
         input.current.sprint = shift;
       } else input.current.fire = false;
     };
     const onMouseDown = (e: globalThis.MouseEvent) => {
       if (e.button === 2 && (e.target as HTMLElement | null)?.tagName === 'CANVAS') {
         right = true;
-        input.current.sprint = true;
+        // A sniper uses the right button to scope; everyone else sprints with it.
+        if (world.current.units.get(world.current.me)?.cls === 3) input.current.scope = true;
+        else input.current.sprint = true;
       }
     };
     window.addEventListener('mousedown', onMouseDown);
@@ -622,6 +650,18 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       const now = Date.now();
       for (const u of seen) if (u.hp <= 0) drawFallen(ctx, u, u.x - camX, u.y - camY);
       for (const u of alive) drawSoldier(ctx, u, u.x - camX, u.y - camY, u.id === w.me, myTeam, now);
+      if (you && you.hp > 0 && you.scoped) {
+        // scoped: a faint sight line out to the edge of what he can see
+        ctx.save();
+        ctx.strokeStyle = 'rgba(125,211,252,0.35)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 8]);
+        ctx.beginPath();
+        ctx.moveTo(you.x - camX + Math.cos(input.current.aim) * 48, you.y - camY + Math.sin(input.current.aim) * 48);
+        ctx.lineTo(you.x - camX + Math.cos(input.current.aim) * w.scopeVision, you.y - camY + Math.sin(input.current.aim) * w.scopeVision);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       // Artillery: a warning ring while the shell is on its way, then a green gas cloud that fades as it thins out
       const gt = Date.now();
@@ -725,13 +765,14 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
             if (u.team !== myTeam || u.hp <= 0) continue;
             const ux = u.x - camX;
             const uy = u.y - camY;
-            if (ux < -vr || uy < -vr || ux > VIEW_W + vr || uy > VIEW_H + vr) continue;
-            const g = fc.createRadialGradient(ux, uy, vr * 0.72, ux, uy, vr);
+            if (ux < -w.scopeVision || uy < -w.scopeVision || ux > VIEW_W + w.scopeVision || uy > VIEW_H + w.scopeVision) continue;
+            const rr = u.scoped ? w.scopeVision : vr;
+            const g = fc.createRadialGradient(ux, uy, rr * 0.72, ux, uy, rr);
             g.addColorStop(0, 'rgba(0,0,0,1)');
             g.addColorStop(1, 'rgba(0,0,0,0)');
             fc.fillStyle = g;
             fc.beginPath();
-            fc.arc(ux, uy, vr, 0, Math.PI * 2);
+            fc.arc(ux, uy, rr, 0, Math.PI * 2);
             fc.fill();
           }
           ctx.drawImage(fogCv, 0, 0);

@@ -16,6 +16,7 @@ export const CFG = {
   CLASSES: {
     rifleman: { label: 'Rifleman', weapon: 'rifle', mag: 8, reloadS: 2, fireMs: 700, damage: 100, speed: 760, life: 1.5 }, // one hit kills, longest reach
     smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6 }, // five hits kill, short reach
+    sniper: { label: 'Sniper', weapon: 'sniper', mag: 4, reloadS: 3, fireMs: 1800, damage: 100, speed: 1000, life: 1.6, grenades: 1, arty: 0 }, // one hit kills; hold scope to see far, but slow, only 4 rounds, no gas strike, and each shot gives him away
     medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, // heals teammates next to him
   },
   HEAL_RADIUS: 60, // a medic heals teammates this close ...
@@ -28,6 +29,10 @@ export const CFG = {
   RESPAWN_S: 4,
   PROTECT_S: 1.5, // can't be hurt just after spawning
   VISION: 420, // fog of war: a side sees enemies, shots and blasts only within this many px of one of its living soldiers
+  SCOPE_VISION: 680, // a scoped sniper lights up a bigger circle of the fog than a normal soldier
+  SCOPE_SPEED: 0.35, // ... but walks at this fraction of normal speed and cannot sprint while scoped
+  SNIPER_REVEAL_S: 1.6, // after a sniper fires, the enemy sees him (through the fog) for this long
+  MAX_SNIPERS: 2, // per side
   BASE_PAD: 32, // each side's safe zone: its spawn trench plus this much ground in front of it
   BASE_NO_FIRE: true, // nobody inside his own safe zone can shoot, throw or call a strike out of it (no sniping from invulnerability)
   CAP_RATE: 0.012, // capture progress per second per player in the circle (up to CAP_MAX)
@@ -57,8 +62,14 @@ export const CFG = {
   NADE_OUTER_MIN: 20, // ... fading to this at the edge
 };
 
-export const CLASS_IDS = ['rifleman', 'smg', 'medic'];
+export const CLASS_IDS = ['rifleman', 'smg', 'medic', 'sniper']; // the client uses the index, so new classes go on the end
 const cls = (p) => CFG.CLASSES[p.cls];
+const maxGren = (p) => cls(p).grenades ?? CFG.GRENADES;
+const maxArty = (p) => cls(p).arty ?? CFG.ARTY;
+/** Snipers on a side (counting those waiting to become one), so a team cannot be all snipers. */
+const snipersOn = (w, team, exceptId = 0) =>
+  [...w.players.values()].filter((q) => !q.isBot && q.team === team && q.id !== exceptId && (q.cls === 'sniper' || q.nextCls === 'sniper')).length;
+const sniperAllowed = (w, p) => snipersOn(w, p.team, p.id) < CFG.MAX_SNIPERS;
 const TEAMS = ['green', 'red'];
 const otherTeam = (t) => (t === 'green' ? 'red' : 'green');
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -137,6 +148,7 @@ function respawn(w, p, now) {
   if (p.nextCls) {
     p.cls = p.nextCls; // a class change waits for the next life
     p.nextCls = null;
+    if (p.cls === 'sniper' && !sniperAllowed(w, p)) p.cls = 'rifleman';
   }
   const s = p.isBot ? p.post : spawnPoint(w, p.team);
   p.x = s.x;
@@ -144,8 +156,9 @@ function respawn(w, p, now) {
   p.hp = CFG.HP;
   p.protectUntil = now + CFG.PROTECT_S * 1000;
   p.respawnAt = 0;
-  p.grenades = CFG.GRENADES;
-  p.arty = CFG.ARTY;
+  p.grenades = maxGren(p);
+  p.arty = maxArty(p);
+  p.scoped = false;
   p.ammo = cls(p).mag;
   p.reloadLeft = 0;
   p.tentReadyAt = 0;
@@ -177,9 +190,12 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' 
     dy: 0,
     fire: false,
     lastFire: 0,
-    grenades: CFG.GRENADES,
-    arty: CFG.ARTY,
+    grenades: 0,
+    arty: 0,
     cls: CLASS_IDS.includes(wantCls) ? wantCls : 'rifleman',
+    scoped: false,
+    scope: false,
+    revealUntil: 0,
     healing: false,
     ammo: 0,
     reloadLeft: 0, // seconds until the magazine is back
@@ -201,6 +217,7 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' 
     nextCls: null,
     lastClassChange: 0,
   };
+  if (p.cls === 'sniper' && !sniperAllowed(w, p)) p.cls = 'rifleman'; // that side already has its snipers
   respawn(w, p, now);
   w.players.set(p.id, p);
   return p;
@@ -247,7 +264,7 @@ export function removeBotsOf(w, ownerId) {
 
 export const removePlayer = (w, id) => w.players.delete(id);
 
-export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint }) {
+export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope }) {
   const p = w.players.get(id);
   if (!p) return;
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -256,6 +273,7 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, 
   if (Number.isFinite(Number(aim))) p.aim = Number(aim) % (Math.PI * 2);
   p.fire = !!fire;
   p.sprint = !!sprint;
+  p.scope = !!scope;
   if (Number.isFinite(Number(range))) p.nadeRange = clamp(Number(range), CFG.NADE_MIN, CFG.NADE_MAX);
   // A throw is a counter going up (one press = +1), so a repeated message can never throw twice.
   if (nade !== undefined && nade !== p.nadeSeq) {
@@ -278,6 +296,7 @@ export function setClass(w, id, wantCls, now = Date.now()) {
   if (!p || !CLASS_IDS.includes(wantCls)) return;
   if (wantCls === p.cls && !p.nextCls) return;
   if (now - p.lastClassChange < 5000) return;
+  if (wantCls === 'sniper' && !sniperAllowed(w, p)) return; // the side's sniper slots are taken
   p.lastClassChange = now;
   const z = w.map.spawns[p.team];
   const home = p.x >= z.x0 && p.x <= z.x1;
@@ -288,6 +307,9 @@ export function setClass(w, id, wantCls, now = Date.now()) {
   } else if (home) {
     p.cls = wantCls;
     p.nextCls = null;
+    p.grenades = Math.min(p.grenades, maxGren(p));
+    p.arty = Math.min(p.arty, maxArty(p));
+    p.scoped = false;
     p.ammo = cls(p).mag;
     p.reloadLeft = 0;
     p.fire = false;
@@ -413,8 +435,9 @@ export function step(w, dt, now = Date.now()) {
       if (p.respawnAt && now >= p.respawnAt) respawn(w, p, now);
       continue;
     }
+    p.scoped = p.cls === 'sniper' && p.scope; // holding the scope: sees farther, moves slowly, no sprint
     const len = Math.hypot(p.dx, p.dy);
-    const sprinting = p.sprint && len > 0 && !p.winded && p.stamina > 0;
+    const sprinting = !p.scoped && p.sprint && len > 0 && !p.winded && p.stamina > 0;
     if (sprinting) {
       p.stamina = Math.max(0, p.stamina - CFG.STAMINA_DRAIN * dt);
       p.sprintRest = CFG.STAMINA_DELAY_S;
@@ -425,7 +448,7 @@ export function step(w, dt, now = Date.now()) {
       if (p.winded && p.stamina >= CFG.STAMINA_RESUME) p.winded = false;
     }
     if (len > 0) {
-      const k = (len > 1 ? 1 / len : 1) * CFG.SPEED * (sprinting ? CFG.SPRINT_MULT : 1) * dt;
+      const k = (len > 1 ? 1 / len : 1) * CFG.SPEED * (sprinting ? CFG.SPRINT_MULT : p.scoped ? CFG.SCOPE_SPEED : 1) * dt;
       const nx = p.x + p.dx * k;
       if (!blockedAt(w, nx, p.y) && !inEnemyBase(w, p.team, nx)) p.x = nx;
       const ny = p.y + p.dy * k;
@@ -454,6 +477,7 @@ export function step(w, dt, now = Date.now()) {
       const c = Math.cos(p.aim);
       const s = Math.sin(p.aim);
       w.shots.push([Math.round(p.x), Math.round(p.y), p.id]);
+      if (p.cls === 'sniper') p.revealUntil = now + CFG.SNIPER_REVEAL_S * 1000; // the flash gives him away
       const k = cls(p);
       w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: c * k.speed, vy: s * k.speed, speed: k.speed, damage: k.damage, weapon: k.weapon, life: k.life, owner: p.id, team: p.team });
     }
@@ -578,11 +602,11 @@ export function step(w, dt, now = Date.now()) {
     if (now < c.readyAt) continue;
     for (const p of w.players.values()) {
       if (p.team !== c.team || p.hp <= 0 || Math.hypot(p.x - c.x, p.y - c.y) > CFG.CRATE_R) continue;
-      if (p.ammo >= cls(p).mag && p.grenades >= CFG.GRENADES && p.arty >= CFG.ARTY) continue; // nothing to take
+      if (p.ammo >= cls(p).mag && p.grenades >= maxGren(p) && p.arty >= maxArty(p)) continue; // nothing to take
       p.ammo = cls(p).mag;
       p.reloadLeft = 0;
-      p.grenades = CFG.GRENADES;
-      p.arty = CFG.ARTY;
+      p.grenades = maxGren(p);
+      p.arty = maxArty(p);
       c.readyAt = now + CFG.CRATE_COOLDOWN_S * 1000;
       w.events.push({ t: 'crate', who: p.id });
       break;
@@ -614,12 +638,9 @@ export function step(w, dt, now = Date.now()) {
 export function eyesFor(w, team) {
   const mates = [...w.players.values()].filter((q) => q.team === team);
   const live = mates.filter((q) => q.hp > 0);
-  return (live.length ? live : mates).map((q) => [q.x, q.y]);
+  return (live.length ? live : mates).map((q) => [q.x, q.y, q.scoped ? CFG.SCOPE_VISION : CFG.VISION]);
 }
-export const canSee = (eyes, x, y, extra = 0) => {
-  const r = CFG.VISION + extra;
-  return eyes.some(([ex, ey]) => Math.hypot(ex - x, ey - y) <= r);
-};
+export const canSee = (eyes, x, y, extra = 0) => eyes.some(([ex, ey, er]) => Math.hypot(ex - x, ey - y) <= er + extra);
 
 /** What a side's clients need each tick (fog of war applied when a team is given). Kept small. */
 export function snapshot(w, now = Date.now(), team = null) {
@@ -627,17 +648,18 @@ export function snapshot(w, now = Date.now(), team = null) {
   const vis = (x, y) => !eyes || canSee(eyes, x, y);
   const p = [];
   for (const q of w.players.values()) {
-    if (team && q.team !== team && !vis(q.x, q.y)) continue; // hidden in the fog
-    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0]);
+    if (team && q.team !== team && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
+    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0]);
   }
   const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
   const owner = (id) => w.players.get(id);
   return {
     t: 's',
     v: CFG.VISION,
+    sv: CFG.SCOPE_VISION,
     p,
     b,
-    f: w.shots.filter(([x, y, id]) => vis(x, y) || owner(id)?.team === team),
+    f: w.shots.filter(([x, y, id]) => vis(x, y) || owner(id)?.team === team || (owner(id)?.cls === 'sniper' && now < owner(id).revealUntil)),
     g: w.nades.filter((n) => vis(n.x, n.y) || n.team === team).map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
     a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), a.delay > 0 ? 0 : 1, a.delay > 0 ? Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100 : Math.round((a.gas / CFG.ARTY_GAS_S) * 100) / 100]),
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],

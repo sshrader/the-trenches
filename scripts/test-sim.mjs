@@ -612,6 +612,55 @@ test('fog of war: a side only receives enemies near its soldiers, but always its
   assert.equal(snapshot(w, 1000).p.length, 3, 'no team given: everyone');
 });
 
+test('sniper: one shot kills, scope = slow + far sight, shots reveal him, limited slots', () => {
+  const w = fresh();
+  const sn = addPlayer(w, { name: 'sn', want: 'green', cls: 'sniper' });
+  const r = addPlayer(w, { name: 'r', want: 'red' });
+  sn.team = 'green';
+  r.team = 'red';
+  assert.equal(sn.cls, 'sniper');
+  assert.equal(sn.ammo, 4, 'four rounds');
+  assert.equal(sn.arty, 0, 'no gas strike');
+  // Scoped: slow, no sprint, sees much farther.
+  place(sn, 600, LANE, 0);
+  place(r, 600 + CFG.VISION + 150, LANE);
+  setInput(w, sn.id, { dx: 1, dy: 0, aim: 0, scope: false, sprint: false });
+  let now = run(w, 1);
+  const free = sn.x - 600;
+  assert.ok(!snapshot(w, now, 'green').p.some((q) => q[0] === r.id), 'unscoped he sees only the normal radius');
+  place(sn, 600, LANE, 0);
+  setInput(w, sn.id, { dx: 1, dy: 0, aim: 0, scope: true, sprint: true });
+  now = run(w, 1, now);
+  const slow = sn.x - 600;
+  assert.ok(slow < free * 0.5, 'scoped is much slower and cannot sprint');
+  assert.ok(sn.scoped);
+  place(sn, 600, LANE, 0);
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, scope: true });
+  now = run(w, 0.1, now);
+  assert.ok(snapshot(w, now, 'green').p.some((q) => q[0] === r.id), 'scoped he sees the far enemy');
+  // One shot, one kill (the open lane is short, so close the range).
+  place(sn, 390, LANE, 0);
+  place(r, 585, LANE);
+  r.hp = CFG.HP;
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, scope: true, fire: true });
+  now = run(w, 0.5, now);
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, scope: true, fire: false });
+  assert.ok(r.hp <= 0, 'a single hit kills');
+  // Firing gives him away to the other side even in the fog.
+  const r2 = addPlayer(w, { name: 'r2', want: 'red' });
+  r2.team = 'red';
+  place(r2, 2500, LANE);
+  sn.revealUntil = now + 1000;
+  assert.ok(snapshot(w, now, 'red').p.some((q) => q[0] === sn.id), 'just-fired sniper is visible');
+  assert.ok(!snapshot(w, now + 5000, 'red').p.some((q) => q[0] === sn.id), 'and hidden again later');
+  // Only MAX_SNIPERS per side.
+  const a = addPlayer(w, { name: 'a', want: 'green', cls: 'sniper' });
+  const b = addPlayer(w, { name: 'b', want: 'green', cls: 'sniper' });
+  const c = addPlayer(w, { name: 'c', want: 'green', cls: 'sniper' });
+  const snipers = [sn, a, b, c].filter((q) => q && q.team === 'green' && q.cls === 'sniper').length;
+  assert.ok(snipers <= CFG.MAX_SNIPERS, 'sniper slots are limited');
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

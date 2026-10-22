@@ -44,7 +44,7 @@ export default function Play() {
   const [cls, setCls] = useState<ClassId>(() => {
     try {
       const c = localStorage.getItem('trenches-class');
-      return c === 'smg' || c === 'medic' ? c : 'rifleman';
+      return c === 'smg' || c === 'medic' || c === 'sniper' ? c : 'rifleman';
     } catch {
       return 'rifleman';
     }
@@ -132,7 +132,7 @@ export default function Play() {
           </div>
           <p className="muted small">If one side has more soldiers, you will be placed on the other to keep it fair.</p>
           {game.error && <p className="status" role="alert">{game.error}</p>}
-          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a medic tent behind the point · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
+          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a medic tent behind the point · Sniper: hold the right mouse button to scope · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
         </section>
       )}
 
