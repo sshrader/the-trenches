@@ -661,6 +661,60 @@ test('sniper: one shot kills, scope = slow + far sight, shots reveal him, limite
   assert.ok(snipers <= CFG.MAX_SNIPERS, 'sniper slots are limited');
 });
 
+test('bazooka: random crate, two rockets, swap with the main weapon, blast kills, gone when empty', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  const r = addPlayer(w, { name: 'r', want: 'red' });
+  a.team = 'green';
+  r.team = 'red';
+  // A crate drops by itself after a while.
+  let now = run(w, 1);
+  assert.equal(w.pickups.length, 0);
+  now = run(w, 20, now);
+  assert.ok(w.pickups.length >= 1, 'a bazooka crate appears');
+  // Take one: put a crate under the soldier.
+  place(a, 390, LANE, 0);
+  w.pickups = [{ id: 99, x: 390, y: LANE }];
+  now = run(w, 0.2, now);
+  assert.equal(a.rockets, CFG.ROCKETS);
+  assert.equal(a.weapon, 'rocket');
+  assert.equal(w.pickups.length, 0, 'the crate is gone');
+  // Swap to the rifle and back.
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, swap: 1 });
+  now = run(w, 0.1, now);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, swap: 2 });
+  now = run(w, 0.1, now);
+  assert.equal(a.weapon, 'main', 'swap goes back to the main weapon');
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, swap: 3 });
+  now = run(w, 0.1, now);
+  assert.equal(a.weapon, 'rocket');
+  // Fire at a soldier standing nearby: the blast kills him.
+  place(r, 560, LANE);
+  r.hp = CFG.HP;
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  now = run(w, 0.15, now);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
+  now = run(w, 1, now);
+  assert.ok(r.hp <= 0, 'the rocket kills');
+  assert.equal(a.rockets, CFG.ROCKETS - 1);
+  // Second rocket, then it is empty and he is back on his rifle.
+  const ammo = a.ammo;
+  place(r, 560, LANE);
+  r.hp = CFG.HP;
+  r.respawnAt = 0;
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  now = run(w, 1.3, now);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
+  assert.equal(a.rockets, 0);
+  assert.equal(a.weapon, 'main', 'back to the main weapon');
+  assert.equal(a.ammo, ammo, 'firing rockets did not use rifle ammo');
+  // No second pickup while holding one.
+  w.pickups = [{ id: 100, x: a.x, y: a.y }];
+  a.rockets = 1;
+  now = run(w, 0.2, now);
+  assert.equal(w.pickups.length, 1, 'cannot take a crate while holding rockets');
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

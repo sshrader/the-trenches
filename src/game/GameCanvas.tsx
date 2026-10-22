@@ -264,31 +264,58 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.lineTo(-8, 7);
   ctx.stroke();
 
-  // rifle: wooden stock, steel barrel
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#7a4e2a';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(1, 2);
-  ctx.lineTo(14, 2);
-  ctx.stroke();
-  ctx.strokeStyle = '#2b2f33';
-  ctx.lineWidth = 2.4;
-  ctx.beginPath();
-  ctx.moveTo(14, 2);
-  ctx.lineTo(sniper ? 46 : 32, 2);
-  ctx.stroke();
-  if (sniper) {
-    ctx.strokeStyle = '#111827'; // telescopic sight along the top of the rifle
-    ctx.lineWidth = 3.4;
+  if (u.bazooka) {
+    // bazooka: a fat launch tube on the shoulder, flared at the back, with a sight on top
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = 9;
     ctx.beginPath();
-    ctx.moveTo(8, -0.6);
-    ctx.lineTo(22, -0.6);
+    ctx.moveTo(-10, 2);
+    ctx.lineTo(28, 2);
     ctx.stroke();
-    ctx.fillStyle = '#7dd3fc';
+    ctx.strokeStyle = '#59602e';
+    ctx.lineWidth = 7;
     ctx.beginPath();
-    ctx.arc(22.5, -0.6, 1.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(-9, 2);
+    ctx.lineTo(27, 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#2d3216';
+    ctx.lineWidth = 7.5;
+    ctx.beginPath();
+    ctx.moveTo(24, 2);
+    ctx.lineTo(28, 2);
+    ctx.moveTo(-10, 2);
+    ctx.lineTo(-8, 2);
+    ctx.stroke();
+    ctx.fillStyle = '#c9b88a';
+    ctx.fillRect(4, -3.5, 3, 2.5); // sight
+  } else {
+  // rifle: wooden stock, steel barrel
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#7a4e2a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(1, 2);
+    ctx.lineTo(14, 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#2b2f33';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(14, 2);
+    ctx.lineTo(sniper ? 46 : 32, 2);
+    ctx.stroke();
+    if (sniper) {
+      ctx.strokeStyle = '#111827'; // telescopic sight along the top of the rifle
+      ctx.lineWidth = 3.4;
+      ctx.beginPath();
+      ctx.moveTo(8, -0.6);
+      ctx.lineTo(22, -0.6);
+      ctx.stroke();
+      ctx.fillStyle = '#7dd3fc';
+      ctx.beginPath();
+      ctx.arc(22.5, -0.6, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // torso: tunic with shoulders, belt, collar and pockets
@@ -505,6 +532,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (k === ' ') input.current.fire = true;
       if (k === 'r' && !e.repeat) input.current.reload += 1;
       if (k === 't' && !e.repeat) input.current.arty += 1;
+      if (k === 'q' && !e.repeat) input.current.swap += 1; // swap between the bazooka and your main weapon
       if (k === 'g' && !e.repeat) input.current.nade += 1; // the server counts presses, so a lost packet cannot eat a throw
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) return;
       e.preventDefault();
@@ -544,12 +572,23 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         else input.current.sprint = true;
       }
     };
+    let lastWheel = 0;
+    const onWheel = (e: WheelEvent) => {
+      if ((e.target as HTMLElement | null)?.tagName !== 'CANVAS') return;
+      e.preventDefault(); // do not scroll the page while playing
+      const t = performance.now();
+      if (t - lastWheel < 180) return; // one notch = one swap, even on a free-spinning wheel
+      lastWheel = t;
+      input.current.swap += 1;
+    };
+    window.addEventListener('wheel', onWheel, { passive: false });
     window.addEventListener('mousedown', onMouseDown);
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     window.addEventListener('blur', onBlur);
     window.addEventListener('mouseup', onMouseUp);
     return () => {
+      window.removeEventListener('wheel', onWheel);
       window.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
@@ -622,6 +661,34 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         else if (pr.kind === 'tree') drawTree(ctx, pr, px, py);
         else if (pr.kind === 'tent') drawTent(ctx, pr, px, py);
       }
+      // Bazooka crates: an olive box with a rocket on the lid and a pulsing ring so they are easy to spot
+      for (const [kx, ky] of w.pickups) {
+        const px = kx - camX;
+        const py = ky - camY;
+        if (px < -60 || py < -60 || px > VIEW_W + 60 || py > VIEW_H + 60) continue;
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 260);
+        ctx.strokeStyle = `rgba(251,191,36,${0.35 + 0.4 * pulse})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(px, py, 22 + pulse * 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(px - 15, py - 9, 32, 22);
+        ctx.fillStyle = '#556b2f';
+        ctx.fillRect(px - 16, py - 12, 32, 22);
+        ctx.strokeStyle = '#2d3216';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px - 16, py - 12, 32, 22);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(px - 11, py - 3, 22, 4); // rocket body
+        ctx.beginPath();
+        ctx.moveTo(px + 11, py - 4);
+        ctx.lineTo(px + 17, py - 1);
+        ctx.lineTo(px + 11, py + 2);
+        ctx.fill();
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(px - 11, py - 5, 3, 8); // fins
+      }
       CRATES.forEach((cr, i) => {
         const px = cr.x - camX;
         const py = cr.y - camY;
@@ -642,6 +709,32 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         ctx.beginPath();
         ctx.arc(bx - camX, by - camY, 3, 0, Math.PI * 2);
         ctx.fill();
+      }
+      // Rockets in flight, with a flame trail
+      for (const [rx, ry, ra] of w.rockets) {
+        const sx = rx - camX;
+        const sy = ry - camY;
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(ra);
+        const fl = ctx.createLinearGradient(-26, 0, -4, 0);
+        fl.addColorStop(0, 'rgba(255,120,30,0)');
+        fl.addColorStop(1, 'rgba(255,220,120,0.95)');
+        ctx.fillStyle = fl;
+        ctx.beginPath();
+        ctx.moveTo(-4, -3);
+        ctx.lineTo(-26, 0);
+        ctx.lineTo(-4, 3);
+        ctx.fill();
+        ctx.fillStyle = '#d1d5db';
+        ctx.fillRect(-5, -2.5, 12, 5);
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.moveTo(7, -2.5);
+        ctx.lineTo(12, 0);
+        ctx.lineTo(7, 2.5);
+        ctx.fill();
+        ctx.restore();
       }
       // Soldiers (alive only), lowest first so the ones nearer the bottom draw on top
       const myTeam = you?.team ?? '';
@@ -798,6 +891,10 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       ctx.beginPath();
       ctx.arc(mx + CAP.x * k, my + CAP.y * k, CAP.r * k, 0, Math.PI * 2);
       ctx.stroke();
+      for (const [kx, ky] of w.pickups) {
+        ctx.fillStyle = '#fbbf24'; // bazooka crates show on the map for everyone
+        ctx.fillRect(mx + kx * k - 2.5, my + ky * k - 2.5, 5, 5);
+      }
       for (const u of alive) {
         if (u.team !== myTeam) continue;
         if (u.bot) {

@@ -4,7 +4,7 @@ import { WALLET_LOGIN } from '../config';
 import { playBoom, playCannon, playPickup, playReload, playShot, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
-export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean };
+export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean };
 export type ClassId = 'rifleman' | 'smg' | 'medic' | 'sniper';
 export const CLASSES: { id: ClassId; label: string; mag: number; blurb: string }[] = [
   { id: 'rifleman', label: 'Rifleman', mag: 8, blurb: 'Bolt rifle. One hit kills and it reaches farthest, but it fires slowly.' },
@@ -29,14 +29,16 @@ export type World = {
   cam: { x: number; y: number };
   vision: number; // fog of war: how far your side sees from each living soldier
   scopeVision: number; // ... and from a scoped sniper
+  rockets: [number, number, number][]; // x, y, heading
+  pickups: [number, number][]; // bazooka crates lying on the field
 };
-export type Input = { sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean };
+export type Input = { sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number };
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type ChatLine = { name: string; team: Team; text: string; at: number };
-export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
+export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
-const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 680 });
+const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 680, rockets: [], pickups: [] });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -47,7 +49,7 @@ export function useGame() {
   const [error, setError] = useState('');
   const [hud, setHud] = useState<Hud | null>(null);
   const world = useRef<World>(emptyWorld());
-  const input = useRef<Input>({ sprint: false, dx: 0, dy: 0, aim: 0, fire: false, nade: 0, range: 200, reload: 0, arty: 0, scope: false });
+  const input = useRef<Input>({ sprint: false, dx: 0, dy: 0, aim: 0, fire: false, nade: 0, range: 200, reload: 0, arty: 0, scope: false, swap: 0 });
   const ws = useRef<WebSocket | null>(null);
   const training = useRef(false);
   const chat = useRef<ChatLine[]>([]);
@@ -108,6 +110,8 @@ export function useGame() {
         myClass: CLASSES[me?.cls ?? 0].label,
         myReload: me?.reload ?? 0,
         myArty: me?.arty ?? 0,
+        myRockets: me?.rockets ?? 0,
+        myBazooka: me?.bazooka ?? false,
         myTeam: me?.team ?? null,
         feed: [...feed.current],
         board: board.current,
@@ -165,7 +169,7 @@ export function useGame() {
             w.units.delete(m.id);
           } else if (m.t === 's') {
             const inSight = new Set<number>();
-            for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next, kit, kills, deaths, stamina, winded, scoped] of m.p as number[][]) {
+            for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next, kit, kills, deaths, stamina, winded, scoped, rockets, bazooka] of m.p as number[][]) {
               const u = w.units.get(id);
               if (!u) continue;
               inSight.add(id);
@@ -197,10 +201,14 @@ export function useGame() {
               u.stamina = stamina;
               u.winded = winded === 1;
               u.scoped = scoped === 1;
+              u.rockets = rockets;
+              u.bazooka = bazooka === 1;
             }
             for (const u of w.units.values()) if (!inSight.has(u.id)) u.seen = false; // lost in the fog: stop drawing him
             w.vision = m.v ?? 420;
             w.scopeVision = m.sv ?? 680;
+            w.rockets = m.rk ?? [];
+            w.pickups = m.u ?? [];
             // Gunfire: flash the shooter's muzzle and play a quiet shot, fainter the farther it is from you.
             const me = w.units.get(w.me);
             for (const [sx, sy, sid] of (m.f ?? []) as [number, number, number][]) {
@@ -228,6 +236,11 @@ export function useGame() {
             playCannon(near(m.fx, m.fy));
             const wait = Math.max(0, m.delay - 1.6);
             window.setTimeout(() => playWhistle(near(m.x, m.y), Math.min(1.6, m.delay)), wait * 1000);
+          } else if (m.t === 'got') {
+            if (m.id === w.me) playPickup();
+          } else if (m.t === 'rocket') {
+            const me = w.units.get(w.me);
+            playBoom(me ? Math.hypot(m.x - me.tx, m.y - me.ty) + 250 : 800, false); // the launch: a dull thump
           } else if (m.t === 'crate') {
             if (m.who === w.me) playPickup();
           } else if (m.t === 'sb') {

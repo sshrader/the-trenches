@@ -194,7 +194,7 @@ export function attachGame(server) {
         continue;
       }
       if (e.t === 'round') stats.recordRound(world.players.values(), e.winner, now);
-      if (e.t === 'boom' || e.t === 'arty') {
+      if (e.t === 'boom' || e.t === 'arty' || e.t === 'rocket') {
         // fog of war: you hear a blast somewhat farther than you can see, and always your own side's strikes
         const eyesBy = {};
         broadcastByTeam((team) => {

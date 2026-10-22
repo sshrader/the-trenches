@@ -33,6 +33,18 @@ export const CFG = {
   SCOPE_SPEED: 0.35, // ... but walks at this fraction of normal speed and cannot sprint while scoped
   SNIPER_REVEAL_S: 1.6, // after a sniper fires, the enemy sees him (through the fog) for this long
   MAX_SNIPERS: 2, // per side
+  PICKUP_EVERY_S: 40, // a new bazooka crate drops at a random spot this often ...
+  PICKUP_MAX: 2, // ... while fewer than this many are lying around
+  PICKUP_R: 26, // walk this close to take it
+  PICKUP_EDGE: 14, // ... never closer than this many tiles to either side's trench
+  ROCKETS: 2, // a bazooka holds two rockets: no reload, no resupply
+  ROCKET_SPEED: 430,
+  ROCKET_LIFE: 1.5, // seconds in flight (about 640 px)
+  ROCKET_COOLDOWN_MS: 1000,
+  ROCKET_RADIUS: 125, // blast reach
+  ROCKET_LETHAL: 62, // inside this, it kills
+  ROCKET_OUTER_MAX: 80,
+  ROCKET_OUTER_MIN: 25,
   BASE_PAD: 32, // each side's safe zone: its spawn trench plus this much ground in front of it
   BASE_NO_FIRE: true, // nobody inside his own safe zone can shoot, throw or call a strike out of it (no sniping from invulnerability)
   CAP_RATE: 0.012, // capture progress per second per player in the circle (up to CAP_MAX)
@@ -85,6 +97,10 @@ export function createWorld(map, rng = Math.random) {
     players: new Map(),
     bullets: [],
     nades: [],
+    rockets: [], // bazooka rockets in flight
+    pickups: [], // bazooka crates waiting on the field
+    nextPickupAt: 0,
+    nextPickupId: 1,
     tents: map.tents || [],
     crates: (map.crates || []).map((c) => ({ x: c.x, y: c.y, team: c.team, readyAt: 0 })),
     arty: [], // incoming strikes and lingering gas clouds
@@ -159,6 +175,8 @@ function respawn(w, p, now) {
   p.grenades = maxGren(p);
   p.arty = maxArty(p);
   p.scoped = false;
+  p.rockets = 0;
+  p.weapon = 'main';
   p.ammo = cls(p).mag;
   p.reloadLeft = 0;
   p.tentReadyAt = 0;
@@ -196,6 +214,12 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' 
     scoped: false,
     scope: false,
     revealUntil: 0,
+    rockets: 0,
+    weapon: 'main', // 'main' or 'rocket' (the bazooka, once picked up)
+    swapSeq: null,
+    wantSwap: false,
+    lastRocket: 0,
+    fireHold: false,
     healing: false,
     ammo: 0,
     reloadLeft: 0, // seconds until the magazine is back
@@ -264,7 +288,7 @@ export function removeBotsOf(w, ownerId) {
 
 export const removePlayer = (w, id) => w.players.delete(id);
 
-export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope }) {
+export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope, swap }) {
   const p = w.players.get(id);
   if (!p) return;
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -283,6 +307,10 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, 
   if (reload !== undefined && reload !== p.reloadSeq) {
     if (p.reloadSeq !== null) p.wantReload = true;
     p.reloadSeq = reload;
+  }
+  if (swap !== undefined && swap !== p.swapSeq) {
+    if (p.swapSeq !== null) p.wantSwap = true;
+    p.swapSeq = swap;
   }
   if (arty !== undefined && arty !== p.artySeq) {
     if (p.artySeq !== null) p.wantArty = true;
@@ -356,6 +384,9 @@ function newRound(w, now) {
   w.progress = 0;
   w.bullets = [];
   w.nades = [];
+  w.rockets = [];
+  w.pickups = [];
+  w.nextPickupAt = 0;
   w.arty = [];
   for (const c of w.crates) c.readyAt = 0;
   rebalance(w, now, true);
@@ -380,17 +411,46 @@ function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon, self: k === t, tk: own && k !== t, kid: k ? k.id : 0, vid: t.id });
 }
 
-function explode(w, n, now) {
-  w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y) });
+const NADE_SPEC = () => ({ r: CFG.NADE_RADIUS, lethal: CFG.NADE_LETHAL, hi: CFG.NADE_OUTER_MAX, lo: CFG.NADE_OUTER_MIN });
+const ROCKET_SPEC = () => ({ r: CFG.ROCKET_RADIUS, lethal: CFG.ROCKET_LETHAL, hi: CFG.ROCKET_OUTER_MAX, lo: CFG.ROCKET_OUTER_MIN });
+
+function explode(w, n, now, spec = NADE_SPEC(), weapon = 'grenade') {
+  w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y), big: weapon === 'rocket' });
   for (const t of w.players.values()) {
     if ((!CFG.FRIENDLY_BLASTS && t.team === n.team) || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
     const d = Math.hypot(t.x - n.x, t.y - n.y);
-    if (d > CFG.NADE_RADIUS || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
-    const dmg =
-      d <= CFG.NADE_LETHAL
-        ? CFG.HP
-        : CFG.NADE_OUTER_MAX - ((CFG.NADE_OUTER_MAX - CFG.NADE_OUTER_MIN) * (d - CFG.NADE_LETHAL)) / (CFG.NADE_RADIUS - CFG.NADE_LETHAL);
-    hurt(w, t, dmg, n.owner, n.team, now, 'grenade');
+    if (d > spec.r || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
+    const dmg = d <= spec.lethal ? CFG.HP : spec.hi - ((spec.hi - spec.lo) * (d - spec.lethal)) / (spec.r - spec.lethal);
+    hurt(w, t, dmg, n.owner, n.team, now, weapon);
+  }
+}
+
+/** Fire the bazooka: one rocket, no reload. When the last one is gone he is back on his main weapon. */
+function fireRocket(w, p, now) {
+  if (p.rockets <= 0 || now - p.lastRocket < CFG.ROCKET_COOLDOWN_MS) return;
+  p.rockets--;
+  p.lastRocket = now;
+  const c = Math.cos(p.aim);
+  const s = Math.sin(p.aim);
+  w.rockets.push({ x: p.x + c * 16, y: p.y + s * 16, vx: c * CFG.ROCKET_SPEED, vy: s * CFG.ROCKET_SPEED, aim: p.aim, life: CFG.ROCKET_LIFE, owner: p.id, team: p.team });
+  w.events.push({ t: 'rocket', x: Math.round(p.x), y: Math.round(p.y) });
+  if (p.rockets <= 0) {
+    p.weapon = 'main';
+    p.fireHold = true; // the trigger must be let go before the rifle fires, so the last rocket does not turn into a burst
+  }
+}
+
+/** Random bazooka crates: one drops every PICKUP_EVERY_S on open ground in the middle of the field. */
+function spawnPickup(w) {
+  const edge = CFG.PICKUP_EDGE * w.tile;
+  for (let i = 0; i < 60; i++) {
+    const x = edge + w.rng() * (w.W * w.tile - edge * 2);
+    const y = w.tile * 2 + w.rng() * (w.H * w.tile - w.tile * 4);
+    if (blockedAt(w, x, y, CFG.RADIUS + 6)) continue;
+    if (w.pickups.some((q) => Math.hypot(q.x - x, q.y - y) < 300)) continue;
+    w.pickups.push({ id: w.nextPickupId++, x: Math.round(x), y: Math.round(y) });
+    w.events.push({ t: 'drop', x: Math.round(x), y: Math.round(y) });
+    return;
   }
 }
 
@@ -470,7 +530,15 @@ export function step(w, dt, now = Date.now()) {
       p.wantReload = false;
       if (p.reloadLeft <= 0 && p.ammo < cls(p).mag) p.reloadLeft = cls(p).reloadS;
     }
-    if (p.fire && !(CFG.BASE_NO_FIRE && isSafe(w, p)) && p.reloadLeft <= 0 && p.ammo > 0 && now - p.lastFire >= cls(p).fireMs) {
+    if (!p.fire) p.fireHold = false;
+    if (p.wantSwap) {
+      p.wantSwap = false;
+      if (p.rockets > 0) p.weapon = p.weapon === 'rocket' ? 'main' : 'rocket';
+    }
+    if (p.weapon === 'rocket' && p.rockets <= 0) p.weapon = 'main';
+    if (p.weapon === 'rocket') {
+      if (p.fire && !(CFG.BASE_NO_FIRE && isSafe(w, p))) fireRocket(w, p, now);
+    } else if (p.fire && !p.fireHold && !(CFG.BASE_NO_FIRE && isSafe(w, p)) && p.reloadLeft <= 0 && p.ammo > 0 && now - p.lastFire >= cls(p).fireMs) {
       p.lastFire = now;
       p.ammo--;
       if (p.ammo <= 0) p.reloadLeft = cls(p).reloadS; // empty: reload on its own
@@ -520,6 +588,49 @@ export function step(w, dt, now = Date.now()) {
     if (!dead && b.life > 0) alive.push(b);
   }
   w.bullets = alive;
+
+  // Rockets: slower than bullets, they burst on the first wall, cover or soldier they touch (or at the end of their flight).
+  const flying = [];
+  for (const r of w.rockets) {
+    const steps = Math.max(1, Math.ceil((CFG.ROCKET_SPEED * dt) / 6));
+    let boom = false;
+    for (let i = 0; i < steps && !boom; i++) {
+      r.x += (r.vx * dt) / steps;
+      r.y += (r.vy * dt) / steps;
+      if (solidAt(w, r.x, r.y)) boom = true;
+      else for (const t of w.players.values()) {
+        if (t.team === r.team || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
+        if (Math.hypot(t.x - r.x, t.y - r.y) <= CFG.RADIUS + 5) {
+          boom = true;
+          break;
+        }
+      }
+    }
+    r.life -= dt;
+    if (boom || r.life <= 0) explode(w, r, now, ROCKET_SPEC(), 'rocket');
+    else flying.push(r);
+  }
+  w.rockets = flying;
+
+  // Pickups: a new crate every so often; walk over one to take the bazooka (two rockets).
+  if (!w.nextPickupAt) w.nextPickupAt = now + 15000; // the first one comes quickly
+  if (now >= w.nextPickupAt) {
+    w.nextPickupAt = now + CFG.PICKUP_EVERY_S * 1000;
+    if (w.pickups.length < CFG.PICKUP_MAX) spawnPickup(w);
+  }
+  for (const pk of w.pickups) {
+    for (const p of w.players.values()) {
+      if (p.hp <= 0 || p.isBot || p.rockets > 0) continue;
+      if (Math.hypot(p.x - pk.x, p.y - pk.y) > CFG.PICKUP_R) continue;
+      p.rockets = CFG.ROCKETS;
+      p.weapon = 'rocket';
+      p.scoped = false;
+      pk.taken = true;
+      w.events.push({ t: 'got', id: p.id });
+      break;
+    }
+  }
+  w.pickups = w.pickups.filter((pk) => !pk.taken);
 
   // Grenades fly in an arc (over cover), land, then go off when the fuse runs out.
   const live = [];
@@ -649,7 +760,7 @@ export function snapshot(w, now = Date.now(), team = null) {
   const p = [];
   for (const q of w.players.values()) {
     if (team && q.team !== team && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
-    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0]);
+    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : 0]);
   }
   const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
   const owner = (id) => w.players.get(id);
@@ -662,6 +773,8 @@ export function snapshot(w, now = Date.now(), team = null) {
     f: w.shots.filter(([x, y, id]) => vis(x, y) || owner(id)?.team === team || (owner(id)?.cls === 'sniper' && now < owner(id).revealUntil)),
     g: w.nades.filter((n) => vis(n.x, n.y) || n.team === team).map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
     a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), a.delay > 0 ? 0 : 1, a.delay > 0 ? Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100 : Math.round((a.gas / CFG.ARTY_GAS_S) * 100) / 100]),
+    rk: w.rockets.filter((r) => r.team === team || vis(r.x, r.y)).map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.aim * 100) / 100]),
+    u: w.pickups.map((q) => [q.x, q.y]),
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,

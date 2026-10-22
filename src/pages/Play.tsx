@@ -132,7 +132,7 @@ export default function Play() {
           </div>
           <p className="muted small">If one side has more soldiers, you will be placed on the other to keep it fair.</p>
           {game.error && <p className="status" role="alert">{game.error}</p>}
-          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a medic tent behind the point · Sniper: hold the right mouse button to scope · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
+          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a medic tent behind the point · Sniper: hold the right mouse button to scope · Bazooka crates drop at random: walk over one for 2 rockets (mouse wheel or Q swaps weapons) · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
         </section>
       )}
 
@@ -156,6 +156,11 @@ export default function Play() {
               Sprint <i><u style={{ width: `${Math.max(0, Math.min(100, h.myStamina))}%` }} /></i>
             </span>
             <span className="pill" title="Press G to throw">Grenades: {h.myGren} [G]</span>
+            {h.myRockets > 0 && (
+              <span className="pill" title="Mouse wheel or Q swaps between the bazooka and your main weapon. No reloads, and you lose it when you fall.">
+                Bazooka: {h.myRockets} rocket{h.myRockets === 1 ? '' : 's'} {h.myBazooka ? '(equipped)' : '[wheel/Q to equip]'}
+              </span>
+            )}
             <span className="pill" title="Press T to call in a gas strike">Gas strike: {h.myArty} [T]</span>
             <span className="pill score" title={`Kills this round. Rounds won: Green ${h.score[2]}, Red ${h.score[3]}`}>
               <b className="green">{h.score[0]}</b> – <b className="red">{h.score[1]}</b>
