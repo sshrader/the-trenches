@@ -5,6 +5,7 @@ import GameCanvas from '../game/GameCanvas';
 import { CLASSES, useGame } from '../game/useGame';
 import type { ClassId, Team } from '../game/useGame';
 import { WALLET_LOGIN } from '../config';
+import Leaderboard from './Leaderboard';
 import { isMuted, setMuted, unlockAudio } from '../game/audio';
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -134,6 +135,8 @@ export default function Play() {
           <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a medic tent behind the point · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
         </section>
       )}
+
+      {game.status !== 'playing' && <Leaderboard />}
 
       {game.status === 'playing' && h && (
         <section className="stage">

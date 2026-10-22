@@ -19,7 +19,7 @@
     "dbc-config": "tsx scripts/dbc-create-config.ts",
     "launch-token": "tsx scripts/launch-token.ts",
     "dbc-fees": "tsx scripts/dbc-claim-fees.ts",
-    "test": "node scripts/test-sim.mjs",
+    "test": "node scripts/test-sim.mjs && node scripts/test-stats.mjs",
     "make-map": "node scripts/make-map.mjs"
   },
   "dependencies": {

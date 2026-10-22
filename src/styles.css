@@ -119,3 +119,20 @@ b.red { color: var(--red); }
   .splash-brief { flex-direction: column; }
   .chev { transform: rotate(90deg); margin: -6px 0; }
 }
+
+/* ---------- Leaderboard ---------- */
+.leaderboard { max-width: 1040px; margin: 8px auto 40px; padding: 0 16px; }
+.lb-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.lb-head h2 { margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 0.06em; }
+.lb-tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.lb-tabs button { font: inherit; font-size: 13px; font-weight: 700; background: var(--panel); color: var(--muted); border: 0; padding: 7px 14px; cursor: pointer; }
+.lb-tabs button + button { border-left: 1px solid var(--line); }
+.lb-tabs button.on { background: var(--accent); color: #111; }
+.leaderboard table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; }
+.leaderboard th { text-align: right; color: var(--muted); font-weight: 600; padding: 8px 12px; background: #1d2018; }
+.leaderboard td { text-align: right; padding: 7px 12px; border-top: 1px solid var(--line); }
+.leaderboard th:nth-child(-n+2), .leaderboard td:nth-child(-n+2) { text-align: left; }
+.leaderboard td:first-child { color: var(--accent); font-weight: 800; width: 40px; }
+.leaderboard tbody tr:nth-child(1) td:first-child { color: #fbbf24; }
+.leaderboard .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+@media (max-width: 600px) { .leaderboard th:nth-child(n+6), .leaderboard td:nth-child(n+6) { display: none; } }

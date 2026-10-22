@@ -7,5 +7,6 @@ export const CLUSTER: Cluster = c === 'mainnet-beta' || c === 'mainnet' ? 'mainn
 export const IS_MAINNET = CLUSTER === 'mainnet-beta';
 export const RPC_URL: string = import.meta.env.VITE_RPC_URL || clusterApiUrl(CLUSTER);
 
-/** Wallet sign-in is OFF until you set VITE_WALLET_LOGIN=1. With it off, nobody sees a wallet button and everyone plays as a guest. */
-export const WALLET_LOGIN = import.meta.env.VITE_WALLET_LOGIN === '1';
+/** Wallet sign-in is optional and ON by default (guests can still play). Signed-in players get saved stats and a place on the leaderboard.
+ *  Set VITE_WALLET_LOGIN=0 to hide it. */
+export const WALLET_LOGIN = import.meta.env.VITE_WALLET_LOGIN !== '0';

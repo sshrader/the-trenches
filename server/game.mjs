@@ -14,6 +14,7 @@ import { WebSocketServer } from 'ws';
 import { verifyLogin } from './auth.mjs';
 import { blockedCountry } from './guard.mjs';
 import * as sim from './sim.mjs';
+import * as stats from './stats.mjs';
 
 const MAP = JSON.parse(fs.readFileSync(new URL('../shared/map.json', import.meta.url), 'utf8'));
 const world = sim.createWorld(MAP);
@@ -109,6 +110,8 @@ export function attachGame(server) {
         const p = sim.addPlayer(world, { name, want: m.team, cls: m.cls });
         if (!p) return send(ws, { t: 'err', msg: 'Both sides are full. Try again in a moment.' });
         me = p;
+        p.joinedAt = Date.now();
+        if (wallet) p.wallet = wallet;
         sockets.set(p.id, ws);
         send(ws, { t: 'welcome', training: TRAINING, id: p.id, team: p.team, players: sim.roster(world), sb: sim.scoreboard(world) });
         broadcast({ t: 'join', id: p.id, name: p.name, team: p.team });
@@ -169,7 +172,16 @@ export function attachGame(server) {
     last = now;
     if (!world.players.size) return;
     sim.step(world, dt, now);
-    for (const e of sim.drainEvents(world)) broadcast(e);
+    for (const e of sim.drainEvents(world)) {
+      if (e.t === 'kill') {
+        stats.recordKill(world.players.get(e.kid), world.players.get(e.vid), now);
+        const { kid, vid, ...pub } = e; // clients do not need the ids
+        broadcast(pub);
+        continue;
+      }
+      if (e.t === 'round') stats.recordRound(world.players.values(), e.winner, now);
+      broadcast(e);
+    }
     broadcast(sim.snapshot(world, now));
     if (++ticks % 40 === 0) broadcast({ t: 'sb', rows: sim.scoreboard(world) });
   }, TICK_MS).unref();

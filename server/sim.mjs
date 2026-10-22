@@ -343,7 +343,7 @@ function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
     k.kills++;
     w.teamKills[k.team]++;
   }
-  w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon, self: k === t, tk: own && k !== t });
+  w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon, self: k === t, tk: own && k !== t, kid: k ? k.id : 0, vid: t.id });
 }
 
 function explode(w, n, now) {
