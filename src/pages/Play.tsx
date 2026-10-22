@@ -94,8 +94,8 @@ export default function Play() {
       {game.status !== 'playing' && (
         <section className="hero">
           <p className="eyebrow">Multiplayer · Green vs Red</p>
-          <h1>The Trenches</h1>
-          <p className="lede">Two armies dig in on either side of no-man's land. Use the cover, hold the point in the middle, and keep your head down.</p>
+          <h1>The Ruins</h1>
+          <p className="lede">Two crews hold opposite ends of a ruined city. Use the buildings and wrecks for cover, hold the plaza in the middle, and stay out of the open.</p>
 
           <div className="field">
             <label htmlFor="callsign">Callsign (optional)</label>
@@ -132,7 +132,7 @@ export default function Play() {
           </div>
           <p className="muted small">If one side has more soldiers, you will be placed on the other to keep it fair.</p>
           {game.error && <p className="status" role="alert">{game.error}</p>}
-          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a medic tent behind the point · Sniper: hold the right mouse button to scope · Bazooka crates drop at random: walk over one for 2 rockets (mouse wheel or Q swaps weapons) · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
+          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a clinic tent behind the plaza · Sniper: hold the right mouse button to scope · Bazooka crates drop at random: walk over one for 2 rockets (mouse wheel or Q swaps weapons) · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
         </section>
       )}
 
@@ -205,7 +205,7 @@ export default function Play() {
                       <span>{c.blurb}</span>
                     </button>
                   ))}
-                  <p className="muted small">Switching works at once in your trench, otherwise on your next life.</p>
+                  <p className="muted small">Switching works at once in your base, otherwise on your next life.</p>
                 </div>
               )}
             </span>
@@ -245,7 +245,7 @@ export default function Play() {
                 </p>
               ))}
             </div>
-            {h.myHp <= 0 && h.round.s === 'live' && <div className="overlay">Eliminated. Back in the trench shortly…</div>}
+            {h.myHp <= 0 && h.round.s === 'live' && <div className="overlay">Eliminated. Back at your base shortly…</div>}
             {h.round.s === 'ended' && (
               <div className="overlay big">
                 {h.round.w === 'draw' ? 'Draw' : `${h.round.w === 'green' ? 'Green' : 'Red'} holds the point`}

@@ -12,16 +12,18 @@ const KEYS: [string, string][] = [
   ['R', 'Reload'],
   ['G', 'Grenade (2 per life)'],
   ['T', 'Gas strike (1 per life)'],
+  ['Q / Mouse wheel', 'Swap to the bazooka (when you have one)'],
+  ['Right-click (Sniper)', 'Scope'],
   ['N', 'Team quick chat'],
   ['Tab (hold)', 'Scoreboard'],
 ];
 
 const OBJECTIVES = [
-  'Hold the capture point in the middle of no-man\'s land. Stand in the circle with no enemy inside it and the bar fills for your side.',
+  'Hold the plaza in the middle of the ruined city. Stand in the circle with no enemy inside it and the bar fills for your side.',
   'Fill the bar all the way to win the round. If the 6 minute clock runs out first, whoever is ahead on the bar wins.',
-  'Use cover: walls, wrecks and trees all stop bullets. Grenades fly over cover, and blasts hurt your own side too.',
-  'Heal at your medic tent or from a Medic, and restock at your crates. You respawn 4 seconds after you fall.',
-  'Your start trench is a safe zone (the shaded strip): nobody can hurt you there and the enemy cannot enter, but you cannot fire from inside it either.',
+  'Use cover: walls, wrecked cars, barriers and rubble all stop bullets. Grenades fly over cover, and blasts hurt your own side too. Watch for bazooka crates dropping around the map.',
+  'Heal at your clinic tent or from a Medic, and restock at your crates. You respawn 4 seconds after you fall.',
+  'Your base is a safe zone (the shaded strip): nobody can hurt you there and the enemy cannot enter, but you cannot fire from inside it either.',
 ];
 
 // The first screen: artwork, a short briefing in three steps, and one big button to enter.
@@ -45,8 +47,8 @@ export default function Splash({ onEnter }: { onEnter: () => void }) {
       <div className="splash-art" style={{ backgroundImage: `url(${art})` }}>
         <div className="splash-title">
           <p className="eyebrow">Browser multiplayer shooter</p>
-          <h1>The Trenches</h1>
-          <p className="splash-tag">Green versus Red. One hill in the middle. Dig in.</p>
+          <h1>The Ruins</h1>
+          <p className="splash-tag">Survivors versus Raiders. One plaza in the middle. Hold the block.</p>
         </div>
       </div>
 

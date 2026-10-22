@@ -3,320 +3,340 @@
  "rows": [
   "########################################################################################################################",
   "#TTTTTTc........................................................................................................cTTTTTT#",
-  "#TTTTTTc.....................o...c........o.c........ccc........ccc........c.o........c...o.....................cTTTTTT#",
-  "#TTTTTTc.....................c..............c....cc..ccc........ccc..cc....c..............c.....................cTTTTTT#",
-  "#TTTTTTc.......ccc.Y...........c.cc.o.......c.o..........................o.c.......o.cc.c...........Y.ccc.......cTTTTTT#",
-  "#TTTTTT.....cc.ccc...............cc......c....................................c......cc...............ccc.cc.....TTTTTT#",
-  "#TTTTTTc....cc.........o.........cc...................c..........c...................cc.........o.........cc....cTTTTTT#",
-  "#TTTTTTc..c.cc....ccc..............................................................................ccc....cc.c..cTTTTTT#",
-  "#TTTTTTc.....o..................o.......c......c.......cc......cc.......c......c.......o..................o.....cTTTTTT#",
-  "#TTTTTTc......c..c.cc..............ccc.......Y...Y.....cc......cc.....Y...Y.......ccc..............cc.c..c......cTTTTTT#",
-  "#TTTTTT..........c.cc.....................cc................................cc.....................cc.c..........TTTTTT#",
-  "#TTTTTTc...........cc.BBBffBBBo...Y..................................................Y...oBBBffBBB.cc...........cTTTTTT#",
-  "#TTTTTTc..............BffffffB...............o............................o...............BffffffB..............cTTTTTT#",
-  "#TTTTTTc..........c...BffffffB..........cc...KKK..c..................c..KKK...cc..........BffffffB...c..........cTTTTTT#",
-  "#TTTTTTc...Y..c.......ffffffff...............KKK........................KKK...............ffffffff.......c..Y...cTTTTTT#",
-  "#TTTTTT.......c....c..BffffffB............................................................BffffffB..c....c.......TTTTTT#",
-  "#TTTTTTc...........c..BBBBBBBB..................ccc...o..........o...ccc..................BBBBBBBB..c...........cTTTTTT#",
-  "#TTTTTTc....Y..c.......................................cc......cc.......................................c..Y....cTTTTTT#",
-  "#TTTTTTc.............c...................cc..o.........cc......cc.........o..cc...................c.............cTTTTTT#",
-  "#TTTTTTc.................cc......cc......cc..................................cc......cc......cc.................cTTTTTT#",
-  "#TTTTTT..........c.......cc.co...cc..ccc...............c........c...............ccc..cc...oc.cc.......c..........TTTTTT#",
-  "#TTTTTTc.......c.c..................................Y..c........c..Y..................................c.c.......cTTTTTT#",
-  "#TTTTTTc........................c.....c..c.......Y....................Y.......c..c.....c........................cTTTTTT#",
-  "#TTTTTTc..............KKK.......c.c......c....................................c......c.c.......KKK..............cTTTTTT#",
-  "#TTTTTTc......cc......KKK...........................cc............cc...........................KKK......cc......cTTTTTT#",
-  "#TTTTTT.......cc.............c........Y.............cc............cc.............Y........c.............cc.......TTTTTT#",
-  "#TTTTTTc......cc....cc.......c...Y....................................................Y...c.......cc....cc......cTTTTTT#",
-  "#TTTTTTc.....................c.............c.KKK........................KKK.c.............c.....................cTTTTTT#",
-  "#TTTTTTc.......Y...........c...............c.KKK...c.cc..........cc.c...KKK.c...............c...........Y.......cTTTTTT#",
-  "#TTTTTTc...................c........c...c..c.........cc..........cc.........c..c...c........c...................cTTTTTT#",
-  "#TTTTTT.....c...Y..............c..................Y...c..........c...Y..................c..............Y...c.....TTTTTT#",
-  "#TTTTTTc...........cc.BffBBBB..c..o............cc......................cc............o..c..BBBBffB.cc...........cTTTTTT#",
-  "#TTTTTTc......o.Y.....BfffffB.................o..........................o.................BfffffB.....Y.o......cTTTTTT#",
-  "#TTTTTTc..............BfffffB............Y....................................Y............BfffffB..............cTTTTTT#",
-  "#TTTTTTc..cc..........fffffff.............o......c..c..............c..c......o.............fffffff..........cc..cTTTTTT#",
-  "#TTTTTT...............BfffffB..............................................................BfffffB...............TTTTTT#",
-  "#TTTTTTc..cc....c.....BBBBBBB..................c........................c..................BBBBBBB.....c....cc..cTTTTTT#",
-  "#TTTTTTc..cc....c.c............o.c..c....c............c..........c............c....c..c.o............c.c....cc..cTTTTTT#",
-  "#TTTTTTc........c.c.......c.........c...............ccc..........ccc...............c.........c.......c.c........cTTTTTT#",
-  "#TTTTTTc..................c...........o.............ccc..........ccc.............o...........c..................cTTTTTT#",
-  "#TTTTTT.........cc..............BBffBB..c.........Y..................Y.........c..BBffBB..............cc.........TTTTTT#",
-  "#TTTTTTc........................BffffB..........Y...c..............c...Y..........BffffB........................cTTTTTT#",
-  "#TTTTTTc...............BBBffBB..BffffB...cc.........c..ccc....ccc..c.........cc...BffffB..BBffBBB...............cTTTTTT#",
-  "#TTTTTTc............c..BfffffB..ffffff...cc......o....................o......cc...ffffff..BfffffB..c............cTTTTTT#",
-  "#TTTTTTc...............fffffff..BffffB...cc.......cc...c........c...cc.......cc...BffffB..fffffff...............cTTTTTT#",
-  "#TTTTTT......cc........BfffffB..BBBBBBo........c........................c........oBBBBBB..BfffffB........cc......TTTTTT#",
-  "#TTTTTTc.....cc........BBBBBBB...o.....Y........................................Y.....o...BBBBBBB........cc.....cTTTTTT#",
-  "#TTTTTTc.....cc..ccc.........................cc....cc..............cc....cc.........................ccc..cc.....cTTTTTT#",
-  "#TTTTTTc..cc..........KKK.c..........cc..c.c.......cc..............cc.......c.c..cc..........c.KKK..........cc..cTTTTTT#",
-  "#TTTTTTc..cc..........KKK.c...c..........c.c................................c.c..........c...c.KKK..........cc..cTTTTTT#",
-  "#TTTTTT.......................c...Y.c..................c........c..................c.Y...c.......................TTTTTT#",
-  "#TTTTTTc..c.c...Y..o...cc.cc..c.....c..........cc...Y..............Y...cc..........c.....c..cc.cc...o..Y...c.c..cTTTTTT#",
-  "#TTTTTTc.o.............ccocc..........c.c......cc.c....cc......cc....c.cc......c.c..........ccocc.............o.cTTTTTT#",
-  "#TTTTTTc........Y.........cc..........c.c..............cc......cc..............c.c..........cc.........Y........cTTTTTT#",
-  "#TTTTTTc..c...................c....c.oc......c........o..........o........c......co.c....c...................c..cTTTTTT#",
-  "#TTTTTT...c...................c..........cc..c.cc......................cc.c..cc..........c...................c...TTTTTT#",
-  "#TTTTTTc.........................o.............cc..ccc............ccc..cc.............o.........................cTTTTTT#",
-  "#TTTTTTc...o.......cc..c.Y.c.........ccc.........o....................o.........ccc.........c.Y.c..cc.......o...cTTTTTT#",
-  "#TTTTTTc...............c...c................................................................c...c...............cTTTTTT#",
-  "#TTTTTTc..cc......Y....c......BBffBB..........BBffBBB..cc......cc..BBBffBB..........BBffBB......c....Y......cc..cTTTTTT#",
-  "#TTTTTT...cc.ccc..............BffffB..cc.KKK..BfffffB..cc.o..o.cc..BfffffB..KKK.cc..BffffB..............ccc.cc...TTTTTT#",
-  "#TTTTTTc.............c..c.....ffffff..cc.KKK..fffffff..............fffffff..KKK.cc..ffffff.....c..c.............cTTTTTT#",
-  "#TTTTTTc..Y......ccc.c........BffffB..........BfffffB..............BfffffB..........BffffB........c.ccc......Y..cTTTTTT#",
-  "#TTTTTTc.................o.c..BBBBBB......cc..BBBBBBB..............BBBBBBB..cc......BBBBBB..c.o.................cTTTTTT#",
-  "#TTTTTTc..cc.........c...Y............c..............o............o..............c............Y...c.........cc..cTTTTTT#",
-  "#TTTTTT..............c.........................o........................o.........................c..............TTTTTT#",
-  "#TTTTTTc.............c............................................................................c.............cTTTTTT#",
+  "#TTTTTTc........................................................................................................cTTTTTT#",
+  "#TTTTTTc.....BBBBBBffBB......BBffB..BffB......BBBBBBffB...cccc...BffBBBBBB......BffB..BffBB......BBffBBBBBB.....cTTTTTT#",
+  "#TTTTTTccc...fffffBffff......ffffB..BffB......BffffBffB..........BffBffffB......BffB..Bffff......ffffBfffff...cccTTTTTT#",
+  "#TTTTTT......ffffccffff......ffcfB..BffB......fffffccff..........ffccfffff......BffB..Bfcff......ffffccffff......TTTTTT#",
+  "#TTTTTTc.....BffffffffB......BfffB..BBfB......ffffffffB....YY....Bffffffff......BfBB..BfffB......BffffffffB.....cTTTTTT#",
+  "#TTTTTTc.....BBfBfBBBBB......BfffB..Bfff......BBfBBBfBB..........BBfBBBfBB......fffB..BfffB......BBBBBfBfBB.....cTTTTTT#",
+  "#TTTTTTccc...................BBffB..BffB........................................BffB..BffBB...................cccTTTTTT#",
+  "#TTTTTTc.....................Bffff..fffB........................................Bfff..ffffB.....................cTTTTTT#",
+  "#TTTTTT......BffBBBBBBB......BfffB..ffcf......BBBBffBBB..........BBBffBBBB......fcff..BfffB......BBBBBBBffB......TTTTTT#",
+  "#TTTTTTc.....ffffffBfff......BfcfB..BfcB..o...fffffBfff...c..c...fffBfffff...o..BcfB..BfcfB......fffBffffff.....cTTTTTT#",
+  "#TTTTTTccc...fffffccffB......BfffB..BffB......fffcffcfB...c..c...Bfcffcfff......BffB..BfffB......Bffccfffff...cccTTTTTT#",
+  "#TTTTTTc.....BfBfffBBBB......BffBB..Bfff......BBBBBfffB..........BfffBBBBB......fffB..BBffB......BBBBfffBfB.....cTTTTTT#",
+  "#TTTTTTc........................................................................................................cTTTTTT#",
+  "#TTTTTT..c................................................c..c................................................c..TTTTTT#",
+  "#TTTTTTc.c......................o.........................cooc.........................o......................c.cTTTTTT#",
+  "#TTTTTTc.....cc..cc..cc..Y..............o......................................o..............Y..cc..cc..cc.....cTTTTTT#",
+  "#TTTTTTc........................................................................................................cTTTTTT#",
+  "#TTTTTTc.KK.....................................cc..Y....cc..cc....Y..cc.....................................KK.cTTTTTT#",
+  "#TTTTTT..KK...Y...cc.........BBBffBBBBBB......BBffBBB..............BBBffBB......BBBBBBffBBB.........cc...Y...KK..TTTTTT#",
+  "#TTTTTTc.KK...........c......ffffBfffffB......Bffffff..............ffffffB......BfffffBffff......c...........KK.cTTTTTT#",
+  "#TTTTTTc........Y...ccc......ffffBfffffB......Bfffcff..............ffcfffB......BfffffBffff......ccc...Y........cTTTTTT#",
+  "#TTTTTTc...............Y.....BfffBfcfffB......fffcffBc.....cc.....cBffcfff......BfffcfBfffB.....Y...............cTTTTTT#",
+  "#TTTTTTc.....................BfffBffffff......ffffffBc.c...cc...c.cBffffff......ffffffBfffB.....................cTTTTTT#",
+  "#TTTTTT..KK.......cc..o......BfffBcffffB......BfBfffBY.c........c.YBfffBfB......BffffcBfffB......o..cc.......KK..TTTTTT#",
+  "#TTTTTTc.KK....o.c.Y..cY.....BfffBffcffB........Y......................Y........BffcffBfffB.....Yc..Y.c.o....KK.cTTTTTT#",
+  "#TTTTTTc.KK....c.c....c......BfffBcffffB.........cc.....c......c.....cc.........BffffcBfffB......c....c.c....KK.cTTTTTT#",
+  "#TTTTTTc.......c....c........Bfffcffffff............Y...o.cccc.o...Y............ffffffcfffB........c....c.......cTTTTTT#",
+  "#TTTTTTc............Y....c...BfffffffffB...cc....o..Y..............Y..o....cc...BfffffffffB...c....Y............cTTTTTT#",
+  "#TTTTTT.co.......Y.......c...BfBfffBBfBB........YY.Y..c..........c..Y.YY........BBfBBfffBfB...c.......Y.......oc.TTTTTT#",
+  "#TTTTTTcc.........c..Y............................c.cc............cc.c............................Y..c.........ccTTTTTT#",
+  "#TTTTTTc...c......c..........................c....c..................c....c..........................c......c...cTTTTTT#",
+  "#TTTTTTc..oc..cc........cc...................c.........Y........Y.........c...................cc........cc..co..cTTTTTT#",
+  "#TTTTTTc....................cc....Y.................c......oo......c.................Y....cc....................cTTTTTT#",
+  "#TTTTTT................o........................................................................o................TTTTTT#",
+  "#TTTTTTcc............................Y..cc.............Y........Y.............cc..Y............................ccTTTTTT#",
+  "#TTTTTTcco...BBBffBBBBB.......................BBBffBB.cc........cc.BBffBBB.......................BBBBBffBBB...occTTTTTT#",
+  "#TTTTTTc.....BffffffffB...c..................cBffffff..............ffffffBc..................c...BffffffffB.....cTTTTTT#",
+  "#TTTTTTc.....BffffffffB...c...c...c..o.......cBfcfffB..............BfffcfBc.......o..c...c...c...BffffffffB.....cTTTTTT#",
+  "#TTTTTT..c...Bfcffffcff.......cY..c..Y.Y......fffcffB..cc..cc..cc..Bffcfff......Y.Y..c..Yc.......ffcffffcfB...c..TTTTTT#",
+  "#TTTTTTc.c...BfffffcffB...........c.......Y...ffffffB......cc......Bffffff...Y.......c...........BffcfffffB...c.cTTTTTT#",
+  "#TTTTTTc.....ffffffcffB.....c..Y.....Y........BBfBfBB..............BBfBfBB........Y.....Y..c.....Bffcffffff.....cTTTTTT#",
+  "#TTTTTTc.....fffffcfcff.....c..cc...................c..............c...................cc..c.....ffcfcfffff.....cTTTTTT#",
+  "#TTTTTTc.....BBBBffBBBB............................o................o............................BBBBffBBBB.....cTTTTTT#",
+  "#TTTTTT.cc...BffffffffB.....cc....c....Y................o.KKKK.o................Y....c....cc.....BffffffffB...cc.TTTTTT#",
+  "#TTTTTTc.....BffffffffB........Y..c............Y....YY....KKKK....YY....Y............c..Y........BffffffffB.....cTTTTTT#",
+  "#TTTTTTc.....BBBfBfffBB..........o........c...............KKKK...............c........o..........BBfffBfBBB.....cTTTTTT#",
+  "#TTTTTTc.........................ccY......c.........cc............cc.........c......Ycc.........................cTTTTTT#",
+  "#TTTTTTc.Y................c..c..................co....................oc..................c..c................Y.cTTTTTT#",
+  "#TTTTTT...................c..co..............Y..c.......Y..cc..Y.......c..Y..............oc..c...................TTTTTT#",
+  "#TTTTTTc........................cc..Y..KKK.................cc.................KKK..Y..cc........................cTTTTTT#",
+  "#TTTTTTccc.....................o.......KKK.........o.......oo.......o.........KKK.......o.....................cccTTTTTT#",
+  "#TTTTTTc........................................................................................................cTTTTTT#",
+  "#TTTTTTc.....BBffBBBBBB...........Y...........BffBBBBBB..........BBBBBBffB...........Y...........BBBBBBffBB.....cTTTTTT#",
+  "#TTTTTT.cc...fffffffffB.o...Y...c........cc...BfffBfffB...c..c...BfffBfffB...cc........c...Y...o.Bfffffffff...cc.TTTTTT#",
+  "#TTTTTTc.....ffcfffcfff.........c.............BfffBfffB...c..c...BfffBfffB.............c.........fffcfffcff.....cTTTTTT#",
+  "#TTTTTTc.....BffffffffB.......................ffffBfcfB..........BfcfBffff.......................BffffffffB.....cTTTTTT#",
+  "#TTTTTTc.....BffffBfBBB.......YY........Y.....ffcfBffff..........ffffBfcff.....Y........YY.......BBBfBffffB.....cTTTTTT#",
+  "#TTTTTTc......................cc.......cc.....BfffBffff....YY....ffffBfffB.....cc.......cc......................cTTTTTT#",
+  "#TTTTTT..c..................Y...........Y.....BffcBfcfB..........BfcfBcffB.....Y...........Y..................c..TTTTTT#",
+  "#TTTTTTc.c...BBBBffBBBB......Y........c.......BfffBfcfB..........BfcfBfffB.......c........Y......BBBBffBBBB...c.cTTTTTT#",
+  "#TTTTTTc.....fffBffffff............cc.c.......BfffffffB...cccc...BfffffffB.......c.cc............ffffffBfff.....cTTTTTT#",
+  "#TTTTTTc.....ffcffffffB...c...............co..BfffffffB..........BfffffffB..oc...............c...Bffffffcff.....cTTTTTT#",
+  "#TTTTTTc.c...BBfBBBfffB...c...............c...BBBfffffB..........BfffffBBB...c...............c...BfffBBBfBB...c.cTTTTTT#",
+  "#TTTTTT..c.................................................YY.................................................c..TTTTTT#",
+  "#TTTTTTc........................................................................................................cTTTTTT#",
   "########################################################################################################################"
  ],
  "props": [
   {
-   "kind": "tent",
-   "x": 35,
-   "y": 32,
-   "w": 4,
-   "h": 3
-  },
-  {
-   "kind": "building",
-   "x": 22,
-   "y": 11,
-   "w": 8,
-   "h": 6
-  },
-  {
-   "kind": "building",
-   "x": 32,
-   "y": 40,
-   "w": 6,
-   "h": 6
-  },
-  {
-   "kind": "building",
-   "x": 23,
-   "y": 42,
-   "w": 7,
-   "h": 5
-  },
-  {
-   "kind": "building",
-   "x": 22,
-   "y": 31,
-   "w": 7,
-   "h": 6
-  },
-  {
-   "kind": "building",
-   "x": 46,
-   "y": 59,
-   "w": 7,
-   "h": 5
-  },
-  {
-   "kind": "building",
-   "x": 30,
-   "y": 59,
-   "w": 6,
-   "h": 5
-  },
-  {
-   "kind": "tank",
-   "x": 22,
-   "y": 23,
-   "w": 3,
-   "h": 2
-  },
-  {
-   "kind": "tank",
-   "x": 45,
-   "y": 13,
-   "w": 3,
-   "h": 2
-  },
-  {
-   "kind": "tank",
-   "x": 41,
-   "y": 60,
-   "w": 3,
-   "h": 2
-  },
-  {
-   "kind": "tank",
-   "x": 45,
-   "y": 27,
-   "w": 3,
-   "h": 2
-  },
-  {
-   "kind": "tank",
-   "x": 22,
-   "y": 48,
-   "w": 3,
-   "h": 2
-  },
-  {
-   "kind": "tree",
-   "x": 52,
-   "y": 21,
-   "w": 1,
-   "h": 1,
-   "v": 2
-  },
-  {
-   "kind": "tree",
-   "x": 11,
-   "y": 14,
-   "w": 1,
-   "h": 1,
-   "v": 2
-  },
-  {
-   "kind": "tree",
-   "x": 34,
-   "y": 11,
-   "w": 1,
-   "h": 1,
-   "v": 1
-  },
-  {
-   "kind": "tree",
-   "x": 25,
-   "y": 57,
-   "w": 1,
-   "h": 1,
-   "v": 1
-  },
-  {
-   "kind": "tree",
-   "x": 25,
-   "y": 64,
-   "w": 1,
-   "h": 1,
-   "v": 2
-  },
-  {
-   "kind": "tree",
-   "x": 33,
-   "y": 26,
-   "w": 1,
-   "h": 1,
-   "v": 2
-  },
-  {
-   "kind": "tree",
-   "x": 52,
-   "y": 51,
-   "w": 1,
-   "h": 1,
-   "v": 2
-  },
-  {
-   "kind": "tree",
-   "x": 41,
-   "y": 33,
-   "w": 1,
-   "h": 1,
-   "v": 2
-  },
-  {
-   "kind": "tree",
-   "x": 45,
-   "y": 9,
-   "w": 1,
-   "h": 1,
-   "v": 1
-  },
-  {
-   "kind": "tree",
-   "x": 10,
-   "y": 62,
-   "w": 1,
-   "h": 1,
-   "v": 1
-  },
-  {
-   "kind": "tree",
-   "x": 16,
-   "y": 51,
+   "kind": "debris",
+   "x": 14,
+   "y": 20,
    "w": 1,
    "h": 1,
    "v": 0
   },
   {
-   "kind": "tree",
-   "x": 16,
-   "y": 53,
-   "w": 1,
-   "h": 1,
-   "v": 1
-  },
-  {
-   "kind": "tree",
-   "x": 50,
+   "kind": "debris",
+   "x": 17,
    "y": 30,
    "w": 1,
    "h": 1,
-   "v": 0
+   "v": 2
   },
   {
-   "kind": "tree",
-   "x": 19,
-   "y": 4,
+   "kind": "debris",
+   "x": 23,
+   "y": 23,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 20,
+   "y": 29,
    "w": 1,
    "h": 1,
    "v": 1
   },
   {
-   "kind": "tree",
-   "x": 38,
+   "kind": "debris",
+   "x": 23,
+   "y": 26,
+   "w": 1,
+   "h": 1,
+   "v": 0
+  },
+  {
+   "kind": "debris",
+   "x": 19,
+   "y": 26,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 16,
+   "y": 22,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 21,
+   "y": 31,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 39,
+   "y": 40,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 37,
+   "y": 40,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 35,
+   "y": 48,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 37,
+   "y": 42,
+   "w": 1,
+   "h": 1,
+   "v": 0
+  },
+  {
+   "kind": "debris",
+   "x": 39,
+   "y": 45,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 37,
+   "y": 36,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 31,
+   "y": 42,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 31,
+   "y": 40,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 31,
+   "y": 46,
+   "w": 1,
+   "h": 1,
+   "v": 0
+  },
+  {
+   "kind": "debris",
+   "x": 28,
+   "y": 55,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 28,
+   "y": 60,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 30,
+   "y": 58,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 34,
+   "y": 54,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 31,
+   "y": 58,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 29,
+   "y": 61,
+   "w": 1,
+   "h": 1,
+   "v": 0
+  },
+  {
+   "kind": "debris",
+   "x": 40,
+   "y": 60,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 40,
+   "y": 58,
+   "w": 1,
+   "h": 1,
+   "v": 0
+  },
+  {
+   "kind": "debris",
+   "x": 52,
+   "y": 19,
+   "w": 1,
+   "h": 1,
+   "v": 0
+  },
+  {
+   "kind": "debris",
+   "x": 48,
+   "y": 30,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 51,
+   "y": 30,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 52,
+   "y": 29,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 48,
+   "y": 26,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 52,
+   "y": 28,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 49,
+   "y": 30,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 53,
    "y": 25,
    "w": 1,
    "h": 1,
    "v": 1
   },
   {
-   "kind": "tree",
-   "x": 39,
-   "y": 46,
-   "w": 1,
-   "h": 1,
-   "v": 1
-  },
-  {
-   "kind": "tree",
-   "x": 16,
-   "y": 32,
-   "w": 1,
-   "h": 1,
-   "v": 0
-  },
-  {
-   "kind": "tree",
-   "x": 16,
-   "y": 30,
-   "w": 1,
-   "h": 1,
-   "v": 2
-  },
-  {
-   "kind": "tree",
-   "x": 49,
-   "y": 9,
-   "w": 1,
-   "h": 1,
-   "v": 0
-  },
-  {
-   "kind": "tree",
-   "x": 18,
-   "y": 59,
-   "w": 1,
-   "h": 1,
-   "v": 1
-  },
-  {
-   "kind": "tree",
+   "kind": "debris",
    "x": 48,
    "y": 41,
    "w": 1,
@@ -324,270 +344,475 @@
    "v": 1
   },
   {
-   "kind": "tree",
-   "x": 15,
-   "y": 28,
-   "w": 1,
-   "h": 1,
-   "v": 1
-  },
-  {
-   "kind": "tree",
-   "x": 49,
-   "y": 22,
+   "kind": "debris",
+   "x": 47,
+   "y": 46,
    "w": 1,
    "h": 1,
    "v": 0
   },
   {
-   "kind": "tree",
-   "x": 12,
-   "y": 17,
+   "kind": "debris",
+   "x": 52,
+   "y": 46,
+   "w": 1,
+   "h": 1,
+   "v": 0
+  },
+  {
+   "kind": "debris",
+   "x": 47,
+   "y": 38,
    "w": 1,
    "h": 1,
    "v": 2
   },
   {
-   "kind": "tree",
-   "x": 50,
-   "y": 40,
+   "kind": "debris",
+   "x": 46,
+   "y": 38,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 55,
+   "y": 36,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 53,
+   "y": 46,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "car",
+   "x": 58,
+   "y": 45,
+   "w": 2,
+   "h": 3,
+   "rot": true,
+   "v": 1
+  },
+  {
+   "kind": "car",
+   "x": 9,
+   "y": 25,
+   "w": 2,
+   "h": 3,
+   "rot": true,
+   "v": 1
+  },
+  {
+   "kind": "car",
+   "x": 9,
+   "y": 19,
+   "w": 2,
+   "h": 3,
+   "rot": true,
+   "v": 2
+  },
+  {
+   "kind": "car",
+   "x": 39,
+   "y": 51,
+   "w": 3,
+   "h": 2,
+   "rot": false,
+   "v": 0
+  },
+  {
+   "kind": "debris",
+   "x": 59,
+   "y": 6,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 42,
+   "y": 41,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 59,
+   "y": 59,
    "w": 1,
    "h": 1,
    "v": 0
   },
   {
-   "kind": "tree",
+   "kind": "debris",
+   "x": 55,
+   "y": 33,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
    "x": 34,
+   "y": 34,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 36,
+   "y": 51,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 56,
    "y": 50,
    "w": 1,
    "h": 1,
    "v": 2
   },
   {
+   "kind": "debris",
+   "x": 9,
+   "y": 49,
+   "w": 1,
+   "h": 1,
+   "v": 0
+  },
+  {
+   "kind": "debris",
+   "x": 59,
+   "y": 65,
+   "w": 1,
+   "h": 1,
+   "v": 1
+  },
+  {
+   "kind": "debris",
+   "x": 25,
+   "y": 17,
+   "w": 1,
+   "h": 1,
+   "v": 2
+  },
+  {
+   "kind": "debris",
+   "x": 45,
+   "y": 50,
+   "w": 1,
+   "h": 1,
+   "v": 0
+  },
+  {
    "kind": "tent",
-   "x": 81,
-   "y": 32,
-   "w": 4,
-   "h": 3,
-   "flip": true
-  },
-  {
-   "kind": "building",
-   "x": 90,
-   "y": 11,
-   "w": 8,
-   "h": 6,
-   "flip": true
-  },
-  {
-   "kind": "building",
-   "x": 82,
-   "y": 40,
-   "w": 6,
-   "h": 6,
-   "flip": true
-  },
-  {
-   "kind": "building",
-   "x": 90,
-   "y": 42,
-   "w": 7,
-   "h": 5,
-   "flip": true
-  },
-  {
-   "kind": "building",
-   "x": 91,
-   "y": 31,
-   "w": 7,
-   "h": 6,
-   "flip": true
-  },
-  {
-   "kind": "building",
-   "x": 67,
-   "y": 59,
-   "w": 7,
-   "h": 5,
-   "flip": true
-  },
-  {
-   "kind": "building",
-   "x": 84,
-   "y": 59,
-   "w": 6,
-   "h": 5,
-   "flip": true
-  },
-  {
-   "kind": "tank",
-   "x": 95,
-   "y": 23,
-   "w": 3,
-   "h": 2,
-   "flip": true
-  },
-  {
-   "kind": "tank",
-   "x": 72,
-   "y": 13,
-   "w": 3,
-   "h": 2,
-   "flip": true
-  },
-  {
-   "kind": "tank",
-   "x": 76,
-   "y": 60,
-   "w": 3,
-   "h": 2,
-   "flip": true
-  },
-  {
-   "kind": "tank",
-   "x": 72,
-   "y": 27,
-   "w": 3,
-   "h": 2,
-   "flip": true
-  },
-  {
-   "kind": "tank",
-   "x": 95,
-   "y": 48,
-   "w": 3,
-   "h": 2,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 67,
-   "y": 21,
-   "w": 1,
-   "h": 1,
-   "v": 2,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 108,
-   "y": 14,
-   "w": 1,
-   "h": 1,
-   "v": 2,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 85,
-   "y": 11,
-   "w": 1,
-   "h": 1,
-   "v": 1,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 94,
-   "y": 57,
-   "w": 1,
-   "h": 1,
-   "v": 1,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 94,
-   "y": 64,
-   "w": 1,
-   "h": 1,
-   "v": 2,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 86,
-   "y": 26,
-   "w": 1,
-   "h": 1,
-   "v": 2,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 67,
-   "y": 51,
-   "w": 1,
-   "h": 1,
-   "v": 2,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 78,
+   "x": 47,
    "y": 33,
-   "w": 1,
-   "h": 1,
-   "v": 2,
-   "flip": true
+   "w": 4,
+   "h": 2
   },
   {
-   "kind": "tree",
-   "x": 74,
-   "y": 9,
-   "w": 1,
-   "h": 1,
-   "v": 1,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 109,
-   "y": 62,
-   "w": 1,
-   "h": 1,
-   "v": 1,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 103,
-   "y": 51,
+   "kind": "debris",
+   "x": 105,
+   "y": 20,
    "w": 1,
    "h": 1,
    "v": 0,
    "flip": true
   },
   {
-   "kind": "tree",
-   "x": 103,
-   "y": 53,
-   "w": 1,
-   "h": 1,
-   "v": 1,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 69,
+   "kind": "debris",
+   "x": 102,
    "y": 30,
    "w": 1,
    "h": 1,
-   "v": 0,
+   "v": 2,
    "flip": true
   },
   {
-   "kind": "tree",
-   "x": 100,
-   "y": 4,
+   "kind": "debris",
+   "x": 96,
+   "y": 23,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 99,
+   "y": 29,
    "w": 1,
    "h": 1,
    "v": 1,
    "flip": true
   },
   {
-   "kind": "tree",
-   "x": 81,
+   "kind": "debris",
+   "x": 96,
+   "y": 26,
+   "w": 1,
+   "h": 1,
+   "v": 0,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 100,
+   "y": 26,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 103,
+   "y": 22,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 98,
+   "y": 31,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 80,
+   "y": 40,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 82,
+   "y": 40,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 84,
+   "y": 48,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 82,
+   "y": 42,
+   "w": 1,
+   "h": 1,
+   "v": 0,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 80,
+   "y": 45,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 82,
+   "y": 36,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 88,
+   "y": 42,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 88,
+   "y": 40,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 88,
+   "y": 46,
+   "w": 1,
+   "h": 1,
+   "v": 0,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 91,
+   "y": 55,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 91,
+   "y": 60,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 89,
+   "y": 58,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 85,
+   "y": 54,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 88,
+   "y": 58,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 90,
+   "y": 61,
+   "w": 1,
+   "h": 1,
+   "v": 0,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 79,
+   "y": 60,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 79,
+   "y": 58,
+   "w": 1,
+   "h": 1,
+   "v": 0,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 67,
+   "y": 19,
+   "w": 1,
+   "h": 1,
+   "v": 0,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 71,
+   "y": 30,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 68,
+   "y": 30,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 67,
+   "y": 29,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 71,
+   "y": 26,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 67,
+   "y": 28,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 70,
+   "y": 30,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 66,
    "y": 25,
    "w": 1,
    "h": 1,
@@ -595,52 +820,7 @@
    "flip": true
   },
   {
-   "kind": "tree",
-   "x": 80,
-   "y": 46,
-   "w": 1,
-   "h": 1,
-   "v": 1,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 103,
-   "y": 32,
-   "w": 1,
-   "h": 1,
-   "v": 0,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 103,
-   "y": 30,
-   "w": 1,
-   "h": 1,
-   "v": 2,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 70,
-   "y": 9,
-   "w": 1,
-   "h": 1,
-   "v": 0,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 101,
-   "y": 59,
-   "w": 1,
-   "h": 1,
-   "v": 1,
-   "flip": true
-  },
-  {
-   "kind": "tree",
+   "kind": "debris",
    "x": 71,
    "y": 41,
    "w": 1,
@@ -649,26 +829,183 @@
    "flip": true
   },
   {
-   "kind": "tree",
-   "x": 104,
-   "y": 28,
-   "w": 1,
-   "h": 1,
-   "v": 1,
-   "flip": true
-  },
-  {
-   "kind": "tree",
-   "x": 70,
-   "y": 22,
+   "kind": "debris",
+   "x": 72,
+   "y": 46,
    "w": 1,
    "h": 1,
    "v": 0,
    "flip": true
   },
   {
-   "kind": "tree",
-   "x": 107,
+   "kind": "debris",
+   "x": 67,
+   "y": 46,
+   "w": 1,
+   "h": 1,
+   "v": 0,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 72,
+   "y": 38,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 73,
+   "y": 38,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 64,
+   "y": 36,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 66,
+   "y": 46,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "car",
+   "x": 60,
+   "y": 45,
+   "w": 2,
+   "h": 3,
+   "rot": true,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "car",
+   "x": 109,
+   "y": 25,
+   "w": 2,
+   "h": 3,
+   "rot": true,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "car",
+   "x": 109,
+   "y": 19,
+   "w": 2,
+   "h": 3,
+   "rot": true,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "car",
+   "x": 78,
+   "y": 51,
+   "w": 3,
+   "h": 2,
+   "rot": false,
+   "v": 0,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 60,
+   "y": 6,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 77,
+   "y": 41,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 60,
+   "y": 59,
+   "w": 1,
+   "h": 1,
+   "v": 0,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 64,
+   "y": 33,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 85,
+   "y": 34,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 83,
+   "y": 51,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 63,
+   "y": 50,
+   "w": 1,
+   "h": 1,
+   "v": 2,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 110,
+   "y": 49,
+   "w": 1,
+   "h": 1,
+   "v": 0,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 60,
+   "y": 65,
+   "w": 1,
+   "h": 1,
+   "v": 1,
+   "flip": true
+  },
+  {
+   "kind": "debris",
+   "x": 94,
    "y": 17,
    "w": 1,
    "h": 1,
@@ -676,65 +1013,114 @@
    "flip": true
   },
   {
-   "kind": "tree",
-   "x": 69,
-   "y": 40,
+   "kind": "debris",
+   "x": 74,
+   "y": 50,
    "w": 1,
    "h": 1,
    "v": 0,
    "flip": true
   },
   {
-   "kind": "tree",
-   "x": 85,
-   "y": 50,
-   "w": 1,
-   "h": 1,
-   "v": 2,
+   "kind": "tent",
+   "x": 69,
+   "y": 33,
+   "w": 4,
+   "h": 2,
    "flip": true
   }
  ],
+ "roads": {
+  "v": [
+   [
+    8,
+    11
+   ],
+   [
+    108,
+    111
+   ],
+   [
+    24,
+    27
+   ],
+   [
+    92,
+    95
+   ],
+   [
+    41,
+    44
+   ],
+   [
+    75,
+    78
+   ],
+   [
+    56,
+    59
+   ],
+   [
+    60,
+    63
+   ]
+  ],
+  "h": [
+   [
+    15,
+    18
+   ],
+   [
+    32,
+    35
+   ],
+   [
+    49,
+    52
+   ]
+  ]
+ },
  "crates": [
   {
-   "x": 688,
-   "y": 144,
-   "team": "green"
-  },
-  {
-   "x": 624,
-   "y": 656,
+   "x": 464,
+   "y": 1008,
    "team": "green"
   },
   {
    "x": 432,
-   "y": 1168,
+   "y": 912,
    "team": "green"
   },
   {
-   "x": 3152,
-   "y": 144,
-   "team": "red"
+   "x": 400,
+   "y": 1648,
+   "team": "green"
   },
   {
-   "x": 3216,
-   "y": 656,
+   "x": 3376,
+   "y": 1008,
    "team": "red"
   },
   {
    "x": 3408,
-   "y": 1168,
+   "y": 912,
+   "team": "red"
+  },
+  {
+   "x": 3440,
+   "y": 1648,
    "team": "red"
   }
  ],
  "tents": [
   {
-   "x": 1184,
-   "y": 1072,
+   "x": 1568,
+   "y": 1088,
    "team": "green"
   },
   {
-   "x": 2656,
-   "y": 1072,
+   "x": 2272,
+   "y": 1088,
    "team": "red"
   }
  ],

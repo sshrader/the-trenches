@@ -18,127 +18,223 @@ const GREEN = '#4ade80';
 const RED = '#f87171';
 const teamColor = (t: string) => (t === 'green' ? GREEN : RED);
 
+// Tiles that belong to a street (painted asphalt) rather than a sidewalk or lot.
+const ROADS = (map as unknown as { roads?: { v: number[][]; h: number[][] } }).roads ?? { v: [], h: [] };
+const onRoad = (tx: number, ty: number) => ROADS.v.some(([a, b]) => tx >= a && tx <= b) || ROADS.h.some(([a, b]) => ty >= a && ty <= b);
+
 function drawTile(ctx: CanvasRenderingContext2D, c: string, tx: number, ty: number, sx: number, sy: number) {
-  const noise = (tx * 7 + ty * 13) % 5;
+  const hash = (tx * 7 + ty * 13 + tx * ty) % 9;
   if (c === 'f') {
-    ctx.fillStyle = (tx + ty) % 2 ? '#3a3226' : '#352e23'; // broken floorboards inside a ruin
+    // the floor inside a ruined building: cold tiles, grime and plaster dust
+    ctx.fillStyle = (tx + ty) % 2 ? '#30343a' : '#2b2f35';
     ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(sx, sy + 10, TILE, 1);
-    ctx.fillRect(sx, sy + 22, TILE, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(sx + 1, sy + 1, TILE - 2, 1);
+    ctx.fillRect(sx + 1, sy + 1, 1, TILE - 2);
+    if (hash === 2) {
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(sx + 14, sy + 17, 9, 5, 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (hash === 5) {
+      ctx.fillStyle = 'rgba(200,200,190,0.18)'; // fallen plaster
+      ctx.fillRect(sx + 6, sy + 8, 7, 4);
+      ctx.fillRect(sx + 16, sy + 18, 6, 5);
+    }
     return;
   }
   if (c === 'T') {
-    ctx.fillStyle = (tx + ty) % 2 ? '#2c2820' : '#292519';
+    // the safe zone: concrete bunker floor with a yellow safety line along its edge
+    ctx.fillStyle = (tx + ty) % 2 ? '#2f353c' : '#2b3138';
     ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(sx, sy + TILE - 2, TILE, 2); // plank seam
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(sx, sy, TILE, 1);
+    ctx.fillRect(sx, sy, 1, TILE);
+    if (tx === 6 || tx === COLS - 7) {
+      ctx.fillStyle = 'rgba(250,204,21,0.7)';
+      ctx.fillRect(tx === 6 ? sx + TILE - 5 : sx + 1, sy, 4, TILE);
+    }
     return;
   }
-  ctx.fillStyle = ['#4a4632', '#48442f', '#4c4834', '#474330', '#4b4733'][noise];
+  // street, sidewalk or lot
+  const road = onRoad(tx, ty);
+  ctx.fillStyle = road ? ['#3a3d41', '#383b3f', '#3c3f43', '#37393d', '#3b3e42'][hash % 5] : ['#4a4c4e', '#484a4c', '#4c4e50', '#474949', '#4b4d4f'][hash % 5];
   ctx.fillRect(sx, sy, TILE, TILE);
-  if (c === '#') {
-    ctx.fillStyle = '#16181a';
-    ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#23272a';
-    ctx.fillRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
-  } else if (c === 'c') {
-    ctx.fillStyle = '#6b5d3a'; // sandbags
-    ctx.fillRect(sx + 1, sy + 3, TILE - 2, TILE - 6);
-    ctx.fillStyle = '#8a7a52';
-    ctx.fillRect(sx + 3, sy + 5, TILE - 6, TILE / 2 - 5);
-    ctx.fillRect(sx + 3, sy + TILE / 2 + 1, TILE - 6, TILE / 2 - 6);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(sx + 1, sy + TILE / 2 - 1, TILE - 2, 2);
-  } else if (c === 'B') {
-    ctx.fillStyle = '#2a211c'; // ruined brick wall
-    ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#7a4a3a';
-    for (let r = 0; r < 4; r++) {
-      const off = r % 2 ? 8 : 0;
-      for (let b = -1; b < 3; b++) ctx.fillRect(sx + off + b * 16 + 1, sy + r * 8 + 1, 14, 6);
+  if (road) {
+    // faded lane markings down the middle of a street
+    const horiz = ROADS.h.find(([a, b]) => ty >= a && ty <= b);
+    const vert = ROADS.v.find(([a, b]) => tx >= a && tx <= b);
+    ctx.fillStyle = 'rgba(234,179,8,0.45)';
+    if (horiz && ty === horiz[0] + 2 && tx % 2 === 0) ctx.fillRect(sx + 4, sy, TILE - 8, 3);
+    if (vert && !horiz && tx === vert[0] + 2 && ty % 2 === 0) ctx.fillRect(sx, sy + 4, 3, TILE - 8);
+    if (hash === 0) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)'; // cracks
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sx + 4, sy + 6);
+      ctx.lineTo(sx + 14, sy + 14);
+      ctx.lineTo(sx + 12, sy + 26);
+      ctx.stroke();
     }
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    if ((tx * 3 + ty) % 3 === 0) ctx.fillRect(sx + 4, sy + 2, 10, 8); // missing bricks
+  } else {
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; // paving slabs
+    ctx.fillRect(sx, sy + TILE - 1, TILE, 1);
+    ctx.fillRect(sx + TILE - 1, sy, 1, TILE);
+  }
+  if (c === '#') {
+    ctx.fillStyle = '#121416';
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#262a2e';
+    ctx.fillRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(sx + 2, sy + 2, TILE - 4, 3);
+  } else if (c === 'c') {
+    const kind = hash % 3;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(sx + 2, sy + 4, TILE - 2, TILE - 4);
+    if (kind === 0) {
+      // concrete barrier with hazard chevrons
+      ctx.fillStyle = '#9a9a94';
+      ctx.fillRect(sx + 1, sy + 3, TILE - 2, TILE - 6);
+      ctx.fillStyle = '#b5b5ae';
+      ctx.fillRect(sx + 3, sy + 5, TILE - 6, 6);
+      ctx.fillStyle = '#d97706';
+      for (let k = 0; k < 3; k++) ctx.fillRect(sx + 4 + k * 9, sy + TILE - 12, 5, 6);
+    } else if (kind === 1) {
+      // dumpster
+      ctx.fillStyle = '#2f5d3c';
+      ctx.fillRect(sx + 1, sy + 3, TILE - 2, TILE - 6);
+      ctx.fillStyle = '#3b7249';
+      ctx.fillRect(sx + 3, sy + 5, TILE - 6, TILE / 2 - 5);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(sx + 1, sy + TILE / 2, TILE - 2, 2);
+      ctx.fillStyle = '#5b3a1e'; // rust streak
+      ctx.fillRect(sx + 20, sy + 6, 3, 14);
+    } else {
+      // scrap pile: sheet metal and pallets
+      ctx.fillStyle = '#6b5a45';
+      ctx.fillRect(sx + 1, sy + 3, TILE - 2, TILE - 6);
+      ctx.fillStyle = '#8b7a62';
+      ctx.fillRect(sx + 3, sy + 5, 13, TILE / 2 - 4);
+      ctx.fillStyle = '#6a7378';
+      ctx.fillRect(sx + 14, sy + 12, 15, 9);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 1, sy + TILE / 2 - 1, TILE - 2, 2);
+    }
+  } else if (c === 'B') {
+    // building wall seen from above: concrete shell with a lighter edge and dark window slots
+    ctx.fillStyle = '#1b1d20';
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#464b52';
+    ctx.fillRect(sx + 1, sy + 1, TILE - 2, TILE - 2);
+    ctx.fillStyle = '#5d636b';
+    ctx.fillRect(sx + 1, sy + 1, TILE - 2, 4);
+    ctx.fillStyle = '#16181b';
+    if (hash % 2 === 0) {
+      ctx.fillRect(sx + 6, sy + 10, 8, 12);
+      ctx.fillRect(sx + 18, sy + 10, 8, 12);
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    if (hash === 3) ctx.fillRect(sx + 3, sy + 3, 12, 10); // crumbled section
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    if (hash === 6) {
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sx + 5, sy + 2);
+      ctx.lineTo(sx + 14, sy + 16);
+      ctx.lineTo(sx + 10, sy + 29);
+      ctx.stroke();
+    }
   } else if (c === 'o') {
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
-    ctx.beginPath();
-    ctx.ellipse(sx + TILE / 2, sy + TILE / 2, TILE * 0.42, TILE * 0.34, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (hash % 2) {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; // pothole
+      ctx.beginPath();
+      ctx.ellipse(sx + TILE / 2, sy + TILE / 2, TILE * 0.36, TILE * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = 'rgba(20,20,20,0.7)'; // manhole cover
+      ctx.fillStyle = 'rgba(70,72,76,0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx + TILE / 2, sy + TILE / 2, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(sx + TILE / 2 - 7, sy + TILE / 2);
+      ctx.lineTo(sx + TILE / 2 + 7, sy + TILE / 2);
+      ctx.stroke();
+    }
   }
 }
 
-/** Wrecked tank, seen from above, barrel toward the enemy (`flip` points it left). */
-function drawTank(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number) {
+const CAR_COLORS = ['#7b2d2d', '#2f4a6b', '#8a7a2e'];
+
+/** A burnt-out car or van, seen from above (`rot` turns it to lie along a vertical street, `flip` mirrors it). */
+function drawCar(ctx: CanvasRenderingContext2D, p: Prop & { rot?: boolean }, sx: number, sy: number) {
   const w = p.w * TILE;
   const h = p.h * TILE;
   ctx.save();
   ctx.translate(sx + w / 2, sy + h / 2);
-  if (p.flip) ctx.scale(-1, 1);
-  ctx.fillStyle = '#1d1d1b';
-  ctx.fillRect(-w / 2 + 2, -h / 2 + 2, w - 4, 12); // tracks
-  ctx.fillRect(-w / 2 + 2, h / 2 - 14, w - 4, 12);
-  ctx.fillStyle = '#4a4a3c';
-  for (let x = -w / 2 + 6; x < w / 2 - 6; x += 8) {
-    ctx.fillRect(x, -h / 2 + 4, 4, 8);
-    ctx.fillRect(x, h / 2 - 12, 4, 8);
-  }
-  ctx.fillStyle = '#585a45'; // hull, rust-streaked
-  ctx.fillRect(-w / 2 + 6, -h / 2 + 12, w - 12, h - 24);
-  ctx.fillStyle = '#6b4a30';
-  ctx.fillRect(-w / 2 + 14, -h / 2 + 14, 10, 4);
-  ctx.fillRect(w / 2 - 28, h / 2 - 20, 6, 6);
-  ctx.fillStyle = '#4d4f3a'; // turret, knocked askew
-  ctx.beginPath();
-  ctx.arc(-4, 2, 14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#2b2b25';
-  ctx.fillRect(8, -1, 30, 6); // bent barrel
-  ctx.fillRect(34, -1, 8, 4);
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.beginPath();
-  ctx.arc(-4, 2, 6, 0, Math.PI * 2); // open hatch
-  ctx.fill();
-  ctx.fillStyle = 'rgba(30,30,30,0.5)'; // scorch
-  ctx.beginPath();
-  ctx.ellipse(w / 2 - 18, -4, 14, 10, 0.4, 0, Math.PI * 2);
-  ctx.fill();
+  const L = p.rot ? h : w; // length along the car
+  const Wd = p.rot ? w : h;
+  if (p.rot) ctx.rotate(Math.PI / 2);
+  if (p.flip && !p.rot) ctx.scale(-1, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillRect(-L / 2 + 3, -Wd / 2 + 4, L - 4, Wd - 4);
+  ctx.fillStyle = '#111';
+  for (const [wx, wy] of [[-L / 2 + 10, -Wd / 2 + 1], [L / 2 - 18, -Wd / 2 + 1], [-L / 2 + 10, Wd / 2 - 6], [L / 2 - 18, Wd / 2 - 6]]) ctx.fillRect(wx, wy, 9, 5);
+  ctx.fillStyle = CAR_COLORS[(p.v ?? 0) % 3]; // faded paint
+  ctx.fillRect(-L / 2 + 3, -Wd / 2 + 4, L - 6, Wd - 8);
+  ctx.fillStyle = 'rgba(20,20,20,0.55)'; // burnt patches
+  ctx.fillRect(-L / 2 + 6, -Wd / 2 + 6, L * 0.35, Wd - 12);
+  ctx.fillStyle = '#20262c'; // windscreen and rear window, cracked
+  ctx.fillRect(L / 2 - 26, -Wd / 2 + 7, 10, Wd - 14);
+  ctx.fillRect(-L / 2 + 8, -Wd / 2 + 7, 8, Wd - 14);
+  ctx.fillStyle = '#58606a'; // roof
+  ctx.fillRect(-L / 2 + 17, -Wd / 2 + 6, L - 44, Wd - 12);
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-L / 2 + 3, -Wd / 2 + 4, L - 6, Wd - 8);
+  ctx.fillStyle = '#5a3a20'; // rust
+  ctx.fillRect(L / 2 - 14, 2, 8, 5);
   ctx.restore();
 }
 
-/** A burnt, broken tree: a thick trunk, bare branches, a snapped top. */
-function drawTree(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number) {
+/** A pile of rubble: broken concrete, a bent rebar. */
+function drawDebris(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number) {
   const cx = sx + TILE / 2;
   const cy = sy + TILE / 2;
   const v = p.v ?? 0;
-  ctx.strokeStyle = '#2b2118';
-  ctx.lineCap = 'round';
-  ctx.lineWidth = 3;
-  const arms = v === 0 ? [[-0.6, 15], [2.4, 13], [1.2, 10]] : v === 1 ? [[0.3, 14], [-2.5, 15], [3.4, 9]] : [[-1.3, 13], [1.9, 16]];
-  for (const [a, len] of arms) {
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 2, cy + 3, 14, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const chunks = v === 0 ? [[-6, -3, 9], [5, 2, 7], [-1, 7, 6], [3, -7, 5]] : v === 1 ? [[0, 0, 10], [-8, 5, 6], [8, -4, 6]] : [[-5, 4, 8], [6, 5, 6], [2, -5, 8], [-8, -5, 5]];
+  chunks.forEach(([dx, dy, r], i) => {
+    ctx.fillStyle = ['#6d7076', '#5a5d62', '#7b7e84'][i % 3];
     ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    const ex = cx + Math.cos(a) * len;
-    const ey = cy + Math.sin(a) * len;
-    ctx.lineTo(ex, ey);
-    ctx.lineTo(ex + Math.cos(a + 0.7) * 6, ey + Math.sin(a + 0.7) * 6);
+    ctx.moveTo(cx + dx - r, cy + dy);
+    ctx.lineTo(cx + dx - r / 3, cy + dy - r);
+    ctx.lineTo(cx + dx + r, cy + dy - r / 2);
+    ctx.lineTo(cx + dx + r / 2, cy + dy + r);
+    ctx.lineTo(cx + dx - r / 2, cy + dy + r * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = 1;
     ctx.stroke();
-  }
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  });
+  ctx.strokeStyle = '#7a4a2a'; // rusty rebar
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.arc(cx + 2, cy + 2, 10, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#3b2c1f';
-  ctx.beginPath();
-  ctx.arc(cx, cy, 9, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#5a4430'; // the splintered cut at the top
-  ctx.beginPath();
-  ctx.arc(cx - 1, cy - 1, 5, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(cx - 10, cy + 9);
+  ctx.lineTo(cx + 4, cy - 6);
+  ctx.lineTo(cx + 9, cy - 13);
+  ctx.stroke();
 }
 
-/** Field hospital tent: canvas roof seen from above with a red cross, and a faint healing circle around it. */
+/** Survivor clinic tent: canvas roof seen from above with a red cross, and a faint healing circle around it. */
 function drawTent(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number) {
   const w = p.w * TILE;
   const h = p.h * TILE;
@@ -191,12 +287,12 @@ function drawCrate(ctx: CanvasRenderingContext2D, team: string, ready: boolean, 
 
 let fogCv: HTMLCanvasElement | null = null;
 
-const UNIFORM: Record<string, string> = { green: '#5a7a3b', red: '#93402f' };
-const GEAR: Record<string, string> = { green: '#3f5528', red: '#6a2c20' };
-const HELMET: Record<string, string> = { green: '#6b7d4a', red: '#5b6166' };
+const UNIFORM: Record<string, string> = { green: '#506b4a', red: '#8a3d34' };
+const GEAR: Record<string, string> = { green: '#2e3f2a', red: '#4a221c' };
+const HELMET: Record<string, string> = { green: '#3f4a3d', red: '#2c2f33' };
 
-/** A WWI rifleman seen from above, drawn facing right and then rotated to face where he aims.
- *  Green wears a round "dish" helmet, Red a deeper helmet with a neck guard. */
+/** A survivor seen from above, drawn facing right and then rotated to face where he aims.
+ *  Green (survivors) wear a tactical helmet with goggles, Red (raiders) a dark hood with a red scarf. */
 function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: number, mine: boolean, myTeam: string, now: number) {
   const step = Math.sin(u.walk / 6);
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
@@ -292,18 +388,20 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   } else {
   // rifle: wooden stock, steel barrel
     ctx.lineCap = 'round';
-    ctx.strokeStyle = '#7a4e2a';
+    ctx.strokeStyle = '#34373b';
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(1, 2);
     ctx.lineTo(14, 2);
     ctx.stroke();
-    ctx.strokeStyle = '#2b2f33';
+    ctx.strokeStyle = '#1b1d20';
     ctx.lineWidth = 2.4;
     ctx.beginPath();
     ctx.moveTo(14, 2);
     ctx.lineTo(sniper ? 46 : 32, 2);
     ctx.stroke();
+    ctx.fillStyle = '#23262a'; // magazine
+    ctx.fillRect(10, 3, 3, 7);
     if (sniper) {
       ctx.strokeStyle = '#111827'; // telescopic sight along the top of the rifle
       ctx.lineWidth = 3.4;
@@ -338,15 +436,18 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.lineWidth = 1.2;
   ctx.strokeRect(2, -9, 4, 4);
   ctx.strokeRect(2, 5, 4, 4);
-  // webbing straps
-  ctx.strokeStyle = 'rgba(214,196,150,0.75)';
-  ctx.lineWidth = 2;
+  // plate carrier vest with ammo pouches
+  ctx.fillStyle = '#2b3036';
   ctx.beginPath();
-  ctx.moveTo(-5, -9);
-  ctx.lineTo(5, 6);
-  ctx.moveTo(-5, 9);
-  ctx.lineTo(5, -6);
+  ctx.roundRect(-5, -10, 11, 20, 3);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1;
   ctx.stroke();
+  ctx.fillStyle = '#3a4047';
+  ctx.fillRect(2, -8, 3.5, 4);
+  ctx.fillRect(2, -2, 3.5, 4);
+  ctx.fillRect(2, 4, 3.5, 4);
   // shoulder epaulettes in the team colour
   ctx.fillStyle = teamColor(u.team);
   ctx.fillRect(-1, -13, 5, 3);
@@ -381,10 +482,10 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   if (sniper) {
     ctx.arc(0.5, 0, 8.8, 0, Math.PI * 2);
   } else if (u.team === 'green') {
-    ctx.arc(0.5, 0, 8.4, 0, Math.PI * 2); // wide brim
+    ctx.ellipse(0.5, 0, 8.6, 7.6, 0, 0, Math.PI * 2); // smooth tactical helmet
   } else {
-    ctx.ellipse(0, 0, 9, 8.4, 0, 0, Math.PI * 2);
-    ctx.ellipse(-8, 0, 3.2, 7, 0, 0, Math.PI * 2); // neck guard
+    ctx.ellipse(0, 0, 8.8, 8, 0, 0, Math.PI * 2); // raider hood
+    ctx.ellipse(-8.5, 0, 3.4, 6, 0, 0, Math.PI * 2); // scarf tail
   }
   ctx.fill();
   ctx.stroke();
@@ -406,6 +507,19 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.beginPath();
   ctx.arc(0.5, 0, 6.6, -0.7, 0.7);
   ctx.stroke();
+  if (!sniper) {
+    if (green) {
+      ctx.fillStyle = '#0b1a22'; // goggles pushed up on the helmet
+      ctx.fillRect(3.6, -4.8, 3.6, 9.6);
+      ctx.fillStyle = 'rgba(103,232,249,0.8)';
+      ctx.fillRect(5.2, -3.6, 1.4, 7.2);
+    } else {
+      ctx.fillStyle = '#b91c1c'; // red scarf pulled over the face
+      ctx.fillRect(3.4, -4.2, 3.8, 8.4);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(2.4, -1.2, 1.6, 2.4);
+    }
+  }
 
   if (mine) {
     ctx.strokeStyle = 'rgba(255,255,255,0.9)';
@@ -632,8 +746,8 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       for (let ty = y0; ty <= y0 + VIEW_H / TILE + 1 && ty < ROWS.length; ty++) {
         for (let tx = x0; tx <= x0 + VIEW_W / TILE + 1 && tx < COLS; tx++) drawTile(ctx, ROWS[ty][tx], tx, ty, tx * TILE - camX, ty * TILE - camY);
       }
-      // Safe zones: your side's trench and the strip in front of it (no enemies in, no damage, no firing out)
-      const ZW = 8 * TILE; // matches the server: spawn trench + BASE_PAD
+      // Safe zones: your side's base and the strip in front of it (no enemies in, no damage, no firing out)
+      const ZW = 8 * TILE; // matches the server: spawn zone + BASE_PAD
       ctx.fillStyle = 'rgba(74,222,128,0.09)';
       ctx.fillRect(-camX, -camY, ZW, MAP_H);
       ctx.fillStyle = 'rgba(248,113,113,0.09)';
@@ -657,8 +771,8 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         const px = pr.x * TILE - camX;
         const py = pr.y * TILE - camY;
         if (px < -200 || py < -200 || px > VIEW_W + 100 || py > VIEW_H + 100) continue;
-        if (pr.kind === 'tank') drawTank(ctx, pr, px, py);
-        else if (pr.kind === 'tree') drawTree(ctx, pr, px, py);
+        if (pr.kind === 'car') drawCar(ctx, pr, px, py);
+        else if (pr.kind === 'debris') drawDebris(ctx, pr, px, py);
         else if (pr.kind === 'tent') drawTent(ctx, pr, px, py);
       }
       // Bazooka crates: an olive box with a rocket on the lid and a pulsing ring so they are easy to spot

@@ -10,13 +10,13 @@ export default function App() {
   return (
     <>
       <header className="top">
-        <a className="brand" href="/">The Trenches</a>
+        <a className="brand" href="/">The Ruins</a>
         {WALLET_LOGIN && <WalletMultiButton />}
       </header>
       <main>
         <Play />
       </main>
-      <footer className="foot muted small">A browser game. Be kind in the trenches.</footer>
+      <footer className="foot muted small">A browser game. Be kind out there.</footer>
     </>
   );
 }

@@ -6,7 +6,13 @@ import { CFG, addBot, addPlayer, setClass, createWorld, drainEvents, removePlaye
 const map = JSON.parse(fs.readFileSync(new URL('../shared/map.json', import.meta.url), 'utf8'));
 let seed = 7;
 const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-const fresh = () => createWorld(map, rng);
+// The tests need a stretch of open street, so this world has rows 15-17 cleared between x=8 and x=21 (a copy: the map file is untouched).
+const fresh = () => {
+  const w = createWorld(map, rng);
+  w.rows = w.rows.slice();
+  for (const y of [15, 16, 17]) w.rows[y] = w.rows[y].slice(0, 8) + '.'.repeat(14) + w.rows[y].slice(22);
+  return w;
+};
 const run = (w, secs, t0 = 1000) => {
   let now = t0;
   for (let i = 0; i < secs * 20; i++) {
@@ -22,17 +28,20 @@ const place = (p, x, y, aim = 0) => {
   p.protectUntil = 0;
 };
 // A row with open ground from x=380 to x=600 (the generated map has scenery almost everywhere).
-const LANE = (map.rows.findIndex((r, i) => i > 3 && [0, 1, 2].every((d) => map.rows[i + d].slice(11, 20) === '.'.repeat(9))) + 1) * 32 + 16;
-// A cover tile with 3 clear tiles of open ground on each side of it (and the row above/below it open), for line-of-fire tests.
-const coverSpot = () => {
+const LANE = 16 * 32 + 16; // middle of the cleared rows
+// Open ground for line-of-fire tests: finds a street stretch and drops one cover tile into it (in this world only).
+const coverSpot = (w) => {
   for (let ty = 3; ty < map.rows.length - 3; ty++) {
     for (let tx = 12; tx < 50; tx++) {
-      if (map.rows[ty][tx] !== 'c') continue;
-      const clear = (row, a, b) => map.rows[row].slice(a, b) === '.'.repeat(b - a);
-      if (clear(ty, tx - 4, tx) && clear(ty, tx + 1, tx + 5) && '.o'.includes(map.rows[ty - 1][tx]) && '.o'.includes(map.rows[ty + 1][tx])) return { tx, ty };
+      const clear = (row) => /^[.o]+$/.test(map.rows[row].slice(tx - 4, tx + 5));
+      if (clear(ty - 1) && clear(ty) && clear(ty + 1)) {
+        w.rows = w.rows.slice();
+        w.rows[ty] = w.rows[ty].slice(0, tx) + 'c' + w.rows[ty].slice(tx + 1);
+        return { tx, ty };
+      }
     }
   }
-  throw new Error('no cover spot in the map');
+  throw new Error('no open stretch in the map');
 };
 let n = 0;
 const test = (name, fn) => {
@@ -86,7 +95,7 @@ test('cover blocks bullets', () => {
   const a = addPlayer(w, { name: 'a', want: 'green' });
   const e = addPlayer(w, { name: 'e', want: 'red' });
   // Find a cover tile in the open field and put the shooter and target on either side.
-  const { tx, ty } = coverSpot();
+  const { tx, ty } = coverSpot(w);
   place(a, (tx - 3) * 32 + 16, ty * 32 + 16, 0);
   place(e, (tx + 3) * 32 + 16, ty * 32 + 16);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
@@ -190,7 +199,7 @@ test('a grenade flies over cover and kills inside the lethal ring', () => {
   const a = addPlayer(w, { name: 'a', want: 'green' });
   const e = addPlayer(w, { name: 'e', want: 'red' });
   // Shooter behind a cover tile, target 200 px away on the other side of it.
-  const { tx, ty } = coverSpot();
+  const { tx, ty } = coverSpot(w);
   place(a, (tx - 2) * 32 + 16, ty * 32 + 16, 0);
   place(e, (tx - 2) * 32 + 16 + 200, ty * 32 + 16);
   press(w, a, 200, 0);
@@ -624,10 +633,10 @@ test('sniper: one shot kills, scope = slow + far sight, shots reveal him, limite
   // Scoped: slow, no sprint, sees much farther.
   place(sn, 600, LANE, 0);
   place(r, 600 + CFG.VISION + 150, LANE);
+  assert.ok(!snapshot(w, 1000, 'green').p.some((q) => q[0] === r.id), 'unscoped he sees only the normal radius');
   setInput(w, sn.id, { dx: 1, dy: 0, aim: 0, scope: false, sprint: false });
   let now = run(w, 1);
   const free = sn.x - 600;
-  assert.ok(!snapshot(w, now, 'green').p.some((q) => q[0] === r.id), 'unscoped he sees only the normal radius');
   place(sn, 600, LANE, 0);
   setInput(w, sn.id, { dx: 1, dy: 0, aim: 0, scope: true, sprint: true });
   now = run(w, 1, now);
