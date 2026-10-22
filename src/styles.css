@@ -87,3 +87,35 @@ b.red { color: var(--red); }
 .pill.stamina i { display: inline-block; width: 60px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; }
 .pill.stamina u { display: block; height: 100%; background: #38bdf8; text-decoration: none; }
 .pill.stamina.winded u { background: #f87171; }
+
+/* ---------- Splash screen ---------- */
+.splash { min-height: 100vh; display: flex; flex-direction: column; background: #07080a; }
+.splash-art { position: relative; min-height: clamp(260px, 42vh, 420px); background-size: cover; background-position: center bottom; display: flex; align-items: flex-start; justify-content: center; border-bottom: 3px solid var(--accent); }
+.splash-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7,8,10,.55), rgba(7,8,10,0) 55%); pointer-events: none; }
+.splash-title { position: relative; z-index: 1; text-align: center; padding: 28px 16px 0; }
+.splash-title .eyebrow { margin: 0; }
+.splash-title h1 { margin: 4px 0 6px; font-size: clamp(44px, 9vw, 96px); line-height: 1; text-transform: uppercase; letter-spacing: -0.02em; text-shadow: 0 4px 24px #000, 0 0 40px rgba(217,180,74,.35); }
+.splash-tag { margin: 0; color: #f1e6c4; font-weight: 600; text-shadow: 0 2px 8px #000; }
+.splash-brief { display: flex; align-items: stretch; justify-content: center; gap: 10px; padding: 24px 16px 8px; max-width: 1180px; width: 100%; margin: 0 auto; }
+.brief-card { position: relative; flex: 1 1 0; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 12px; padding: 16px 16px 14px; }
+.brief-card h2 { margin: 0 0 10px; font-size: 18px; text-transform: uppercase; letter-spacing: 0.06em; }
+.brief-card .step { position: absolute; right: 12px; top: 10px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #111; font-weight: 800; font-size: 14px; }
+.brief-card dl { margin: 0; display: grid; gap: 6px; }
+.brief-card dl > div { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; border-bottom: 1px dashed var(--line); padding-bottom: 5px; }
+.brief-card dt { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--accent); font-weight: 700; }
+.brief-card dd { margin: 0; text-align: right; color: var(--text); }
+.brief-card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.brief-card li { display: flex; flex-direction: column; font-size: 14px; }
+.brief-card li b { color: var(--accent); }
+.brief-card li span { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.brief-card ul.obj { list-style: disc; padding-left: 18px; }
+.brief-card ul.obj li { display: list-item; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.chev { align-self: center; font-size: 38px; color: var(--accent); line-height: 1; }
+.splash-go { display: grid; justify-items: center; gap: 4px; padding: 20px 16px 36px; }
+.enter { font: inherit; font-weight: 800; font-size: 22px; letter-spacing: 0.1em; text-transform: uppercase; color: #111; background: linear-gradient(#f3d57a, #d9b44a); border: 0; border-radius: 12px; padding: 16px 56px; cursor: pointer; box-shadow: 0 6px 0 #8d6d1c, 0 12px 28px rgba(0,0,0,.5); transition: transform .1s, box-shadow .1s; }
+.enter:hover { transform: translateY(2px); box-shadow: 0 4px 0 #8d6d1c, 0 8px 22px rgba(0,0,0,.5); }
+.enter:active { transform: translateY(6px); box-shadow: 0 0 0 #8d6d1c; }
+@media (max-width: 860px) {
+  .splash-brief { flex-direction: column; }
+  .chev { transform: rotate(90deg); margin: -6px 0; }
+}
