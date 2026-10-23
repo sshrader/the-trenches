@@ -22,6 +22,7 @@ const CAP = map.capture as { x: number; y: number; r: number };
 type Prop = { kind: string; x: number; y: number; w: number; h: number; flip?: boolean; v?: number };
 const PROPS = ((map as unknown as { props?: Prop[] }).props ?? []) as Prop[];
 const CRATES = ((map as unknown as { crates?: { x: number; y: number; team: string }[] }).crates ?? []);
+const TENTS = ((map as unknown as { tents?: { x: number; y: number; team: string }[] }).tents ?? []);
 const GREEN = '#4ade80';
 const RED = '#f87171';
 const teamColor = (t: string) => (t === 'green' ? GREEN : RED);
@@ -1096,6 +1097,16 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       ctx.beginPath();
       ctx.arc(mx + CAP.x * k, my + CAP.y * k, CAP.r * k, 0, Math.PI * 2);
       ctx.stroke();
+      for (const t of TENTS) {
+        // medic tents: a team-coloured square with a white cross
+        const tx = mx + t.x * k;
+        const ty = my + t.y * k;
+        ctx.fillStyle = teamColor(t.team);
+        ctx.fillRect(tx - 4.5, ty - 4.5, 9, 9);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(tx - 1, ty - 3.5, 2, 7);
+        ctx.fillRect(tx - 3.5, ty - 1, 7, 2);
+      }
       for (const [kx, ky, locked] of w.pickups) {
         // bazooka crates: a pulsing gold marker with a rocket on it, so they are easy to find (dim while your side's bazooka is in play)
         const bx = mx + kx * k;
@@ -1133,8 +1144,17 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
           ctx.stroke();
           continue;
         }
-        ctx.fillStyle = u.id === w.me ? '#ffffff' : teamColor(u.team);
-        ctx.fillRect(mx + u.x * k - 1.5, my + u.y * k - 1.5, 3, 3);
+        // teammates: round dots with a dark rim; you are a bigger white dot with a team-coloured ring
+        const dx = mx + u.x * k;
+        const dy = my + u.y * k;
+        const me = u.id === w.me;
+        ctx.beginPath();
+        ctx.arc(dx, dy, me ? 4 : 3, 0, Math.PI * 2);
+        ctx.fillStyle = me ? '#ffffff' : teamColor(u.team);
+        ctx.fill();
+        ctx.lineWidth = me ? 2 : 1;
+        ctx.strokeStyle = me ? teamColor(u.team) : 'rgba(0,0,0,0.8)';
+        ctx.stroke();
       }
       raf = requestAnimationFrame(frame);
     };
