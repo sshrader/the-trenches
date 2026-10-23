@@ -26,7 +26,15 @@ const PROPS = ((map as unknown as { props?: Prop[] }).props ?? []) as Prop[];
 const CRATES = ((map as unknown as { crates?: { x: number; y: number; team: string }[] }).crates ?? []);
 const TENTS = ((map as unknown as { tents?: { x: number; y: number; team: string }[] }).tents ?? []);
 const NESTS = ((map as unknown as { nests?: { x: number; y: number; team: string }[] }).nests ?? []);
-const SCOPE_ZOOM = 0.58; // how far a scoped sniper's view pulls back (1 = normal)
+const SCOPE_ZOOM = 0.82; // a scoped sniper's view pulls back a little (1 = normal) ...
+const SCOPE_PAN = 330; // ... and slides this far toward where the scope points
+/** Is `e` inside the narrow beam a scoped sniper `q` is aiming? */
+const inBeam = (q: { x: number; y: number }, e: { x: number; y: number }, range: number, half: number, aim: number) => {
+  const d = Math.hypot(e.x - q.x, e.y - q.y);
+  if (d > range) return false;
+  const da = Math.atan2(Math.sin(Math.atan2(e.y - q.y, e.x - q.x) - aim), Math.cos(Math.atan2(e.y - q.y, e.x - q.x) - aim));
+  return Math.abs(da) <= half;
+};
 const GREEN = '#4ade80';
 const RED = '#f87171';
 const teamColor = (t: string) => (t === 'green' ? GREEN : RED);
@@ -845,8 +853,11 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (Math.abs(wantZoom - zoom) < 0.002) zoom = wantZoom;
       const VW = VIEW_W / zoom;
       const VH = VIEW_H / zoom;
-      const camX = Math.max(0, Math.min(MAP_W - VW, (you?.x ?? CAP.x) - VW / 2));
-      const camY = Math.max(0, Math.min(MAP_H - VH, (you?.y ?? CAP.y) - VH / 2));
+      const blend = (1 - zoom) / (1 - SCOPE_ZOOM); // 0 = normal view, 1 = fully scoped
+      const panX = Math.cos(input.current.aim) * SCOPE_PAN * blend;
+      const panY = Math.sin(input.current.aim) * SCOPE_PAN * blend;
+      const camX = Math.max(0, Math.min(MAP_W - VW, (you?.x ?? CAP.x) + panX - VW / 2));
+      const camY = Math.max(0, Math.min(MAP_H - VH, (you?.y ?? CAP.y) + panY - VH / 2));
       w.cam.x = camX;
       w.cam.y = camY;
       if (you) {
@@ -1107,7 +1118,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
             const ux = u.x - camX;
             const uy = u.y - camY;
             if (ux < -w.scopeVision || uy < -w.scopeVision || ux > VW + w.scopeVision || uy > VH + w.scopeVision) continue;
-            const rr = u.scoped ? w.scopeVision : vr;
+            const rr = vr;
             const g = fc.createRadialGradient(ux, uy, rr * 0.72, ux, uy, rr);
             g.addColorStop(0, 'rgba(0,0,0,1)');
             g.addColorStop(1, 'rgba(0,0,0,0)');
@@ -1115,6 +1126,22 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
             fc.beginPath();
             fc.arc(ux, uy, rr, 0, Math.PI * 2);
             fc.fill();
+            if (u.scoped) {
+              // a scoped sniper also lights a long narrow beam along his aim (a few overlapping wedges give it soft edges)
+              const aimA = u.id === w.me ? input.current.aim : u.aim;
+              const R = w.scopeVision;
+              for (const [f, al] of [[1, 0.3], [0.86, 0.35], [0.72, 0.45], [0.55, 1]] as const) {
+                const bg = fc.createRadialGradient(ux, uy, R * 0.6, ux, uy, R);
+                bg.addColorStop(0, `rgba(0,0,0,${al})`);
+                bg.addColorStop(1, 'rgba(0,0,0,0)');
+                fc.fillStyle = bg;
+                fc.beginPath();
+                fc.moveTo(ux, uy);
+                fc.arc(ux, uy, R, aimA - w.scopeHalf * f, aimA + w.scopeHalf * f);
+                fc.closePath();
+                fc.fill();
+              }
+            }
           }
           ctx.drawImage(fogCv, 0, 0);
         }
@@ -1179,7 +1206,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (scopers.length) {
         const pulse2 = 0.5 + 0.5 * Math.sin(Date.now() / 200);
         for (const e of alive) {
-          if (e.team === myTeam || !scopers.some((q) => Math.hypot(q.x - e.x, q.y - e.y) <= w.scopeVision)) continue;
+          if (e.team === myTeam || !scopers.some((q) => inBeam(q, e, w.scopeVision, w.scopeHalf, q.id === w.me ? input.current.aim : q.aim))) continue;
           const ex = mx + e.x * k;
           const ey = my + e.y * k;
           ctx.fillStyle = '#f87171';

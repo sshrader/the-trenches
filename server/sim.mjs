@@ -36,7 +36,8 @@ export const CFG = {
   EXIT_PROTECT_S: 1, // ... and for this long after stepping out of your own base, so the doorway cannot be camped
   EXIT_PROTECT_COOLDOWN_S: 6, // stepping back in and out does not chain it
   VISION: 420, // fog of war: a side sees enemies, shots and blasts only within this many px of one of its living soldiers
-  SCOPE_VISION: 680, // a scoped sniper lights up a bigger circle of the fog than a normal soldier
+  SCOPE_VISION: 1000, // a scoped sniper sees this far, but only along a narrow beam in the direction he is aiming ...
+  SCOPE_HALF: 0.3, // ... half the beam's width in radians (about 17 degrees each side). His normal sight circle stays.
   SCOPE_SPEED: 0.35, // ... but walks at this fraction of normal speed and cannot sprint while scoped
   SNIPER_REVEAL_S: 1.6, // after a sniper fires, the enemy sees him (through the fog) for this long
   MAX_SNIPERS: 2, // per side
@@ -852,9 +853,18 @@ export function step(w, dt, now = Date.now()) {
 export function eyesFor(w, team) {
   const mates = [...w.players.values()].filter((q) => q.team === team);
   const live = mates.filter((q) => q.hp > 0);
-  return (live.length ? live : mates).map((q) => [q.x, q.y, q.scoped ? CFG.SCOPE_VISION : CFG.VISION]);
+  // Everyone sees a circle around them; a scoped sniper also sees a long, narrow beam along his aim: [x, y, radius, aim, halfWidth, range].
+  return (live.length ? live : mates).flatMap((q) => (q.scoped ? [[q.x, q.y, CFG.VISION], [q.x, q.y, 0, q.aim, CFG.SCOPE_HALF, CFG.SCOPE_VISION]] : [[q.x, q.y, CFG.VISION]]));
 }
-export const canSee = (eyes, x, y, extra = 0) => eyes.some(([ex, ey, er]) => Math.hypot(ex - x, ey - y) <= er + extra);
+export const canSee = (eyes, x, y, extra = 0) =>
+  eyes.some(([ex, ey, er, aim, half, range]) => {
+    const d = Math.hypot(ex - x, ey - y);
+    if (d <= er + extra) return true;
+    if (range === undefined || d > range + extra) return false;
+    let da = Math.atan2(y - ey, x - ex) - aim;
+    da = Math.atan2(Math.sin(da), Math.cos(da)); // wrap to -PI..PI
+    return Math.abs(da) <= half;
+  });
 
 /** What a side's clients need each tick (fog of war applied when a team is given). Kept small. */
 export function snapshot(w, now = Date.now(), team = null) {
@@ -871,6 +881,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     t: 's',
     v: CFG.VISION,
     sv: CFG.SCOPE_VISION,
+    sh: CFG.SCOPE_HALF,
     p,
     b,
     f: w.shots.filter(([x, y, id]) => vis(x, y) || owner(id)?.team === team || (owner(id)?.cls === 'sniper' && now < owner(id).revealUntil)),

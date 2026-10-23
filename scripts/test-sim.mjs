@@ -959,6 +959,28 @@ test('one second of protection after stepping out of your own base, not chainabl
   assert.ok(a.protectUntil <= now, 'not chained within the cooldown');
 });
 
+test('scoped sniper sees a long narrow beam along his aim, not a big circle', () => {
+  const w = fresh();
+  const sn = addPlayer(w, { name: 'sn', want: 'green', cls: 'sniper' });
+  const ahead = addPlayer(w, { name: 'ahead', want: 'red' });
+  const side = addPlayer(w, { name: 'side', want: 'red' });
+  sn.team = 'green';
+  ahead.team = 'red';
+  side.team = 'red';
+  place(sn, 400, LANE, 0);
+  place(ahead, 400 + 900, LANE);
+  place(side, 400, LANE + CFG.VISION + 150);
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, scope: true });
+  const now = run(w, 0.1);
+  const seen = (id) => snapshot(w, now, 'green').p.some((q) => q[0] === id);
+  assert.ok(seen(ahead.id), 'far enemy along the scope is seen');
+  assert.ok(!seen(side.id), 'an enemy to the side beyond normal sight is not');
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: Math.PI / 2, scope: true });
+  const n2 = run(w, 0.1, now);
+  assert.ok(snapshot(w, n2, 'green').p.some((q) => q[0] === side.id), 'turning the scope toward him reveals him');
+  assert.ok(!snapshot(w, n2, 'green').p.some((q) => q[0] === ahead.id), 'and the one behind is lost again');
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

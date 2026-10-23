@@ -10,7 +10,7 @@ export const CLASSES: { id: ClassId; label: string; mag: number; hp: number; sid
   { id: 'rifleman', label: 'Rifleman', mag: 8, hp: 100, blurb: 'Scavenged bolt rifle. Two hits kill, it reaches farthest, but it fires slowly.' },
   { id: 'smg', label: 'SMG', mag: 20, hp: 100, blurb: 'Fast fire, 20 rounds. About five hits to kill, shorter reach.' },
   { id: 'medic', label: 'Medic', mag: 10, hp: 100, blurb: 'Pistol, 10 rounds. Heals teammates standing next to you.' },
-  { id: 'sniper', label: 'Sniper', mag: 5, hp: 100, blurb: 'One hit kills. Hold the right mouse button to scope: the view pulls back and you spot enemies for your team from far away, but you crawl, and each shot gives you away. Rounds punch through barricades and rubble. 5 rounds, no artillery strike, 2 per side.' },
+  { id: 'sniper', label: 'Sniper', mag: 5, hp: 100, blurb: 'One hit kills. Hold the right mouse button to scope: your view slides toward where you aim and you spot enemies for your team far down that line (a narrow beam), but you crawl, and each shot gives you away. Rounds punch through barricades and rubble. 5 rounds, no artillery strike, 2 per side.' },
   { id: 'shotgunner', label: 'Shotgunner', mag: 5, hp: 140, sideMag: 12, blurb: 'Tough: 140 HP. Shotgun with 5 shells, fires faster than the rifle but slower than the SMG, one blast kills up close, but damage drops off quickly with distance. Sprints 1.5x as long. Mouse wheel or Q swaps to your 12-round pistol.' },
 ];
 export type RoundInfo = { n: number; s: 'live' | 'ended'; l: number; w: string | null };
@@ -29,7 +29,8 @@ export type World = {
   score: [number, number, number, number]; // green kills, red kills this round, green wins, red wins
   cam: { x: number; y: number };
   vision: number; // fog of war: how far your side sees from each living soldier
-  scopeVision: number; // ... and from a scoped sniper
+  scopeVision: number; // ... and how far a scoped sniper sees along his beam
+  scopeHalf: number; // half the width of that beam, in radians
   nests: number[][]; // deployed sniper nests: [team (0 green, 1 red), owner id, tx, ty, tx, ty ...]
   nestTiles: Set<string>; // the same tiles as 'tx,ty', for walking and drawing
   rockets: [number, number, number][]; // x, y, heading
@@ -41,7 +42,7 @@ export type ChatLine = { name: string; team: Team; text: string; at: number; mod
 export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myNestUp: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 680, rockets: [], pickups: [], nests: [], nestTiles: new Set() });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], nests: [], nestTiles: new Set() });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -212,7 +213,8 @@ export function useGame() {
             }
             for (const u of w.units.values()) if (!inSight.has(u.id)) u.seen = false; // lost in the fog: stop drawing him
             w.vision = m.v ?? 420;
-            w.scopeVision = m.sv ?? 680;
+            w.scopeVision = m.sv ?? 1000;
+            w.scopeHalf = m.sh ?? 0.3;
             w.rockets = m.rk ?? [];
             w.pickups = m.u ?? [];
             w.nests = m.nt ?? [];

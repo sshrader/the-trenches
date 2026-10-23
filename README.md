@@ -78,4 +78,4 @@ Each side has one bazooka crate in its own half, between 10 and 28 tiles from it
 
 **Exit protection:** stepping out of your own base grants 1 s of invincibility (the same shield shown after a respawn), at most once every 6 s, so the doorway cannot be camped (`CFG.EXIT_PROTECT_*`).
 
-**Scope zoom:** while a sniper holds the scope, the camera pulls back (`SCOPE_ZOOM` in `GameCanvas.tsx`, 0.58) so the whole reach of the scope is on screen, past the normal window. Aiming stays on the cursor.
+**Scope view:** while a sniper holds the scope, the camera slides toward where he aims (`SCOPE_PAN`) and pulls back slightly (`SCOPE_ZOOM`), and the fog opens in a long narrow beam along his aim (`CFG.SCOPE_VISION` 1000 px reach, `CFG.SCOPE_HALF` 0.3 rad each side) on top of his normal sight circle. Enemies outside the beam and outside normal sight stay hidden, for him and his team.
