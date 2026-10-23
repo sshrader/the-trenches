@@ -35,6 +35,8 @@ a { color: var(--accent); }
 .capbar .fill.green { background: var(--green); }
 .capbar .fill.red { background: var(--red); }
 .canvas-wrap { position: relative; }
+.canvas-wrap:fullscreen, .canvas-wrap:-webkit-full-screen { background: #000; display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; }
+.canvas-wrap:fullscreen .game-canvas, .canvas-wrap:-webkit-full-screen .game-canvas { width: min(100vw, calc(100vh * 1152 / 720)); height: auto; border: 0; border-radius: 0; }
 .game-canvas { display: block; width: 100%; height: auto; aspect-ratio: 1152 / 720; background: #16181a; border: 1px solid var(--line); border-radius: 12px; cursor: crosshair; touch-action: none; }
 .feed { position: absolute; left: 10px; top: 10px; font-size: 13px; pointer-events: none; text-shadow: 0 1px 2px #000; }
 .feed p { margin: 2px 0; }

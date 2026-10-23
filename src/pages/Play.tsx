@@ -53,6 +53,31 @@ export default function Play() {
   const [chatOpen, setChatOpen] = useState(false);
   const [showKeys, setShowKeys] = useState(true);
   const playing = game.status === 'playing';
+  // Full screen: the battlefield, its overlays (feed, chat, score) and nothing else. F toggles it, Esc leaves it.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [full, setFull] = useState(false);
+  const toggleFull = () => {
+    const el = wrapRef.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null;
+    const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => void };
+    try {
+      if (document.fullscreenElement || doc.webkitFullscreenElement) {
+        if (document.exitFullscreen) void document.exitFullscreen();
+        else doc.webkitExitFullscreen?.();
+      } else if (el?.requestFullscreen) void el.requestFullscreen();
+      else el?.webkitRequestFullscreen?.();
+    } catch {
+      /* the browser refused (some phones cannot do full screen) */
+    }
+  };
+  useEffect(() => {
+    const onChange = () => setFull(!!document.fullscreenElement || !!(document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange);
+    };
+  }, []);
   const sayRef = useRef(game.say);
   sayRef.current = game.say;
   // N opens the quick team chat; 1-5 sends a line; N or Esc closes it. Only while playing and not typing in a field.
@@ -62,7 +87,9 @@ export default function Play() {
       const t = e.target as HTMLElement | null;
       if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
       const k = e.key.toLowerCase();
-      if (k === 'n') {
+      if (k === 'f' && !e.repeat) {
+        toggleFull();
+      } else if (k === 'n') {
         setChatOpen((o) => !o);
       } else if (k === 'escape') {
         setChatOpen(false);
@@ -209,11 +236,12 @@ export default function Play() {
                 </div>
               )}
             </span>
+            <button className="btn" onClick={toggleFull} title="Full screen (F). Esc to leave full screen.">{full ? 'Exit full screen' : 'Full screen'}</button>
             <button className="btn" onClick={game.leave}>Leave</button>
           </div>
 
           <div className="play-row">
-          <div className="canvas-wrap">
+          <div className="canvas-wrap" ref={wrapRef}>
             <GameCanvas world={game.world} input={game.input} />
             {chatOpen && (
               <div className="quickchat" role="menu" aria-label="Team chat">
@@ -284,6 +312,7 @@ export default function Play() {
                   <dt>R</dt><dd>Reload</dd>
                   <dt>G</dt><dd>Grenade</dd>
                   <dt>T</dt><dd>Artillery strike</dd>
+                  <dt>F</dt><dd>Full screen</dd>
                   <dt>N</dt><dd>Team chat</dd>
                   <dt>Tab (hold)</dt><dd>Scoreboard</dd>
                 </dl>

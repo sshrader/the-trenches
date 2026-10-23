@@ -15,6 +15,7 @@ const KEYS: [string, string][] = [
   ['Q / Mouse wheel', 'Swap to the bazooka (when you have one)'],
   ['Right-click (Sniper)', 'Scope'],
   ['N', 'Team quick chat'],
+  ['F', 'Full screen'],
   ['Tab (hold)', 'Scoreboard'],
 ];
 
