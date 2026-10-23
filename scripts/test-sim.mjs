@@ -702,6 +702,8 @@ test('bazooka: random crate, two rockets, swap with the main weapon, blast kills
   // Fire at a soldier standing nearby: the blast kills him.
   place(r, 560, LANE);
   r.hp = CFG.HP;
+  r.wasSafe = false;
+  r.exitProtectReadyAt = 1e12; // the test teleported him out of his base; do not count that as walking out
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
   now = run(w, 0.15, now);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
@@ -930,6 +932,31 @@ test('switching class at home sets health to the new class maximum', () => {
   assert.equal(a.hp, 140, 'full shotgunner health');
   setClass(w, a.id, 'rifleman', 200000);
   assert.equal(a.hp, CFG.HP, 'back to 100 for a rifleman');
+});
+
+test('one second of protection after stepping out of your own base, not chainable', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  a.team = 'green';
+  const z = w.map.spawns.green;
+  const edge = 8 * 32; // the safe zone ends here (spawn zone + pad)
+  place(a, edge - 6, LANE, 0);
+  a.protectUntil = 0;
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0 });
+  let now = run(w, 0.2);
+  setInput(w, a.id, { dx: 1, dy: 0, aim: 0 });
+  now = run(w, 0.5, now);
+  assert.ok(a.x > edge, 'he left the zone');
+  assert.ok(a.protectUntil > now, 'protected just after leaving');
+  now = run(w, 1.2, now);
+  assert.ok(a.protectUntil <= now, 'protection ended');
+  place(a, edge - 6, LANE, 0);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0 });
+  now = run(w, 0.2, now);
+  setInput(w, a.id, { dx: 1, dy: 0, aim: 0 });
+  a.protectUntil = 0;
+  now = run(w, 0.5, now);
+  assert.ok(a.protectUntil <= now, 'not chained within the cooldown');
 });
 
 test('leaving removes the player', () => {

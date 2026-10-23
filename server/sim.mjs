@@ -33,6 +33,8 @@ export const CFG = {
   TENT_COOLDOWN_S: 30, // after using the tent, each soldier waits this long before it heals him again
   RESPAWN_S: 4,
   PROTECT_S: 1.5, // can't be hurt just after spawning
+  EXIT_PROTECT_S: 1, // ... and for this long after stepping out of your own base, so the doorway cannot be camped
+  EXIT_PROTECT_COOLDOWN_S: 6, // stepping back in and out does not chain it
   VISION: 420, // fog of war: a side sees enemies, shots and blasts only within this many px of one of its living soldiers
   SCOPE_VISION: 680, // a scoped sniper lights up a bigger circle of the fog than a normal soldier
   SCOPE_SPEED: 0.35, // ... but walks at this fraction of normal speed and cannot sprint while scoped
@@ -584,6 +586,12 @@ export function step(w, dt, now = Date.now()) {
       p.x = h.x;
       p.y = h.y;
     }
+    const safeNow = isSafe(w, p);
+    if (p.wasSafe && !safeNow && now >= (p.exitProtectReadyAt || 0)) {
+      p.protectUntil = Math.max(p.protectUntil, now + CFG.EXIT_PROTECT_S * 1000);
+      p.exitProtectReadyAt = now + CFG.EXIT_PROTECT_COOLDOWN_S * 1000;
+    }
+    p.wasSafe = safeNow;
     if (p.reloadLeft > 0) {
       p.reloadLeft -= dt;
       if (p.reloadLeft <= 0) {

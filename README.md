@@ -75,3 +75,5 @@ Each side has one bazooka crate in its own half, between 10 and 28 tiles from it
 **Deployable nest (sniper):** press E to build a 3-tile sandbag wall about 54 px in front of you (not in the bases, never on top of a soldier; 4 s between builds, one nest at a time). It blocks everyone's movement and enemy bullets, but your own rounds pierce it. It is removed when you die, change class, the round ends, or you stay more than 150 px away from it for 10 s (`CFG.NEST_*`). Enemies see it once they see the tiles through the fog.
 
 **Gear bar:** the bottom of the game window shows health, sprint and one slot per item (weapon and rounds, grenades, artillery, plus the sniper nest, medic medkit, bazooka and clinic timer when they apply). Icons are drawn in `src/game/HudBar.tsx`; put your own artwork in `src/assets/hud/` (see the README there) and it replaces the drawing automatically.
+
+**Exit protection:** stepping out of your own base grants 1 s of invincibility (the same shield shown after a respawn), at most once every 6 s, so the doorway cannot be camped (`CFG.EXIT_PROTECT_*`).
