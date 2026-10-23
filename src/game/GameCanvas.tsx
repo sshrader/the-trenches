@@ -690,6 +690,9 @@ function drawFallen(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: numb
 export default function GameCanvas({ world, input, typing }: { world: MutableRefObject<World>; input: MutableRefObject<Input>; typing?: () => boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const mouse = useRef({ x: VIEW_W / 2 + 40, y: VIEW_H / 2 });
+  // Keep the latest typing check in a ref so the input effect below is not torn down (and held keys reset) on every re-render.
+  const typingRef = useRef(typing);
+  typingRef.current = typing;
 
   // Controls: WASD / arrows to move, mouse to aim, hold the left button to fire. Only intentions leave the browser, never positions.
   useEffect(() => {
@@ -701,7 +704,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     let shift = false; // sprint: hold left Shift or the right mouse button
     let right = false;
     const onDown = (e: KeyboardEvent) => {
-      if (typing?.()) return;
+      if (typingRef.current?.()) return;
       const k = e.key.toLowerCase();
       if (k === 'shift') {
         shift = true;
@@ -774,7 +777,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       window.removeEventListener('mouseup', onMouseUp);
       onBlur();
     };
-  }, [input, typing]);
+  }, [input]);
 
   // Drawing loop.
   useEffect(() => {
