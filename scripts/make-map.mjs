@@ -199,22 +199,6 @@ for (let i = 0; i < 40; i++) {
   if (get(x, y) === null && !taken.has(`${x},${y}`)) put(x, y, 'o');
 }
 
-// Sniper towers: one raised firing platform per side, a short way from the plaza. A sniper climbs it (E); his rounds then fly over low cover.
-// Left half only; mirrored for the other side. Looks for a free 3x3 spot on the street near the plaza and clears it.
-let tower = null;
-for (const [ox, oy] of [[-11, -7], [-11, 7], [-13, -6], [-13, 6], [-9, -9], [-9, 9], [-15, -8], [-15, 8]]) {
-  const x = capX + ox;
-  const y = capY + oy;
-  let ok = true;
-  for (let dy = 0; dy < 3 && ok; dy++) for (let dx = 0; dx < 3; dx++) if (get(x + dx, y + dy) === 'B' || get(x + dx, y + dy) === 'f' || get(x + dx, y + dy) === 'K') ok = false;
-  if (!ok) continue;
-  for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 3; dx++) left[y + dy][x + dx] = null;
-  props.push({ kind: 'tower', x, y, w: 3, h: 3 });
-  claim(x, y, 3, 3);
-  tower = { x: (x + 1.5) * TILE, y: (y + 1.5) * TILE };
-  break;
-}
-if (!tower) throw new Error('no room for a sniper tower');
 // Sniper nests: a sandbag pocket on the edge of the two long avenues, with the lane in front of it cleared. Sniper rounds pierce sandbags,
 // so a sniper in a nest is covered from the front yet can shoot down the whole avenue. Two per side, mirrored for the other team.
 const nests = [];
@@ -288,7 +272,6 @@ const map = {
   roads: { v: VST.flatMap(([a, b]) => [[a, b], [W - 1 - b, W - 1 - a]]), h: HST },
   crates: crateList,
   tents,
-  towers: [{ ...tower, team: 'green' }, { x: W * TILE - tower.x, y: tower.y, team: 'red' }],
   nests: [...nests.map((q) => ({ ...q, team: 'green' })), ...nests.map((q) => ({ x: W * TILE - q.x, y: q.y, team: 'red' }))],
   capture: { x: (W * TILE) / 2, y: (H * TILE) / 2, r: 3.5 * TILE },
   spawns: {

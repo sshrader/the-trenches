@@ -72,7 +72,6 @@ Each side has one bazooka crate in its own half, between 10 and 28 tiles from it
 
 **Sniper nests:** each side has two sandbag pockets (marked with a scope reticle on the ground) on the long north and south avenues, with the lane in front cleared of cover and wrecks. Sniper rounds pierce sandbags, so a sniper in a nest is covered from the front and can shoot down the whole avenue. Defined in `scripts/make-map.mjs` (`nests`).
 
-**Deployable nest (sniper):** press E to build a 3-tile sandbag wall about 54 px in front of you (not in the bases, never on top of a soldier; 4 s between builds, one nest at a time). It blocks everyone's movement and enemy bullets, but your own rounds pierce it. It is removed when you die, change class, the round ends, or you stay more than 150 px away from it for 10 s (`CFG.NEST_*`). Enemies see it once they see the tiles through the fog.
 
 **Gear bar:** the bottom of the game window shows health, sprint and one slot per item (weapon and rounds, grenades, artillery, plus the sniper nest, medic medkit, bazooka and clinic timer when they apply). Icons are drawn in `src/game/HudBar.tsx`; put your own artwork in `src/assets/hud/` (see the README there) and it replaces the drawing automatically.
 
@@ -90,4 +89,5 @@ Needs a secure page: https (Railway) or localhost. On a plain `http://192.168...
 
 **Sniper rounds** now fly at 2600 px/s (was 1000), with the lifetime shortened so the reach stays the same, so they are hard to dodge.
 
-**Sniper towers:** each side has one raised platform a short way from the plaza (flag in the side's colour, `towers` in the map file, placed by `scripts/make-map.mjs`). A sniper next to his own side's tower presses **E** to climb it: he is then fixed in place, one sniper per tower, and his rounds fly over low cover (barricades, rubble, wrecks) but still stop at buildings and the map edge. He can still be shot by anyone who has a clear line to him. E again climbs down; dying also frees the tower (`CFG.TOWER_REACH`).
+
+**Sniper tower (the sniper's special, E):** away from a tower, E builds a raised platform where the sniper stands and puts him on it; E again climbs down, and E beside a free tower of his side climbs it (so a teammate sniper can use it too). On a tower he is fixed in place and his rounds fly over low cover (barricades, rubble, wrecks) but still stop at buildings and the map edge. He can still be shot by anyone with a clear line. A tower is taken down when its builder dies, changes class, the round ends, or he stays more than 150 px away from it for 10 s (`CFG.TOWER_*`); one tower per sniper, 4 s between builds, none inside the bases, and none within 150 px of another. The two sandbag pockets on the map (marked with a reticle) are still there as fixed sniper spots.

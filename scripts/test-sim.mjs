@@ -883,45 +883,6 @@ test('shotgun damage falls off with distance', () => {
   assert.ok(mid > 0 && mid < near * 0.7, `mid range hurts less (${mid} vs ${near})`);
 });
 
-test('sniper nest: built in front, blocks others\' bullets, pierced by his own, drops on death or after 10 s away', () => {
-  const w = fresh();
-  const sn = addPlayer(w, { name: 'sn', want: 'green', cls: 'sniper' });
-  const r = addPlayer(w, { name: 'r', want: 'red' });
-  sn.team = 'green';
-  r.team = 'red';
-  place(sn, 400, LANE, 0);
-  place(r, 600, LANE);
-  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 0 });
-  let now = run(w, 0.1);
-  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 1 });
-  now = run(w, 0.1, now);
-  assert.equal(w.nests.length, 1, 'a nest is built');
-  assert.ok(w.nests[0].tiles.length >= 2);
-  assert.ok(solidAt(w, 400 + 54, LANE), 'the wall is solid');
-  // the enemy's bullets stop at it
-  r.aim = Math.PI;
-  place(r, 600, LANE, Math.PI);
-  r.lastFire = -1e6;
-  setInput(w, r.id, { dx: 0, dy: 0, aim: Math.PI, fire: true });
-  now = run(w, 0.8, now);
-  setInput(w, r.id, { dx: 0, dy: 0, aim: Math.PI, fire: false });
-  assert.equal(sn.hp, CFG.HP, 'enemy rifle cannot shoot through the nest');
-  // he walks off for more than 10 s: it is abandoned
-  place(sn, 400 + 600, LANE, 0);
-  now = run(w, 11, now);
-  assert.equal(w.nests.length, 0, 'abandoned nest is removed');
-  assert.ok(!solidAt(w, 400 + 54, LANE), 'the tiles are open again');
-  // death removes it
-  place(sn, 400, LANE, 0);
-  sn.lastNest = -1e9;
-  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 2 });
-  now = run(w, 0.1, now);
-  assert.equal(w.nests.length, 1);
-  sn.hp = 0;
-  now = run(w, 0.1, now);
-  assert.equal(w.nests.length, 0, 'dying removes the nest');
-});
-
 test('switching class at home sets health to the new class maximum', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
@@ -982,50 +943,75 @@ test('scoped sniper sees a long narrow beam along his aim, not a big circle', ()
   assert.ok(!snapshot(w, n2, 'green').p.some((q) => q[0] === ahead.id), 'and the one behind is lost again');
 });
 
-test('sniper tower: climb with E, locked in place, rounds fly over low cover but not buildings, tower frees on death', () => {
+test('sniper tower: E builds one under him and climbs it; rounds fly over low cover; abandoned or dead = gone', () => {
   const w = fresh();
   const sn = addPlayer(w, { name: 'sn', want: 'green', cls: 'sniper' });
   const r = addPlayer(w, { name: 'r', want: 'red' });
   sn.team = 'green';
   r.team = 'red';
-  const tw = w.towers.find((t) => t.team === 'green');
-  // use the cleared test lane: pretend the tower stands in it
-  tw.x = 400;
-  tw.y = LANE;
   place(sn, 420, LANE, 0);
   setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 0 });
   let now = run(w, 0.1);
   setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 1 });
   now = run(w, 0.1, now);
-  assert.ok(sn.elevated, 'climbed up');
-  assert.equal(tw.by, sn.id);
-  assert.equal(w.nests.length, 0, 'E climbed instead of building a nest');
+  assert.equal(w.towers.length, 1, 'a tower is built');
+  assert.ok(sn.elevated, 'and he is on it');
+  assert.equal(w.towers[0].by, sn.id);
+  const tx = w.towers[0].x;
   setInput(w, sn.id, { dx: 1, dy: 0, aim: 0, nest: 1 });
   now = run(w, 0.5, now);
-  assert.equal(sn.x, 400, 'cannot walk off the platform');
-  // low cover in the line of fire is shot over; the same shot from the ground would be stopped (cover is not pierced after 2 tiles here)
+  assert.equal(sn.x, tx, 'cannot walk off the platform');
+  // a wall of wrecks three tiles thick is shot over
   const ty = Math.floor(LANE / 32);
   w.rows = w.rows.slice();
-  for (const x of [13, 14, 15]) w.rows[ty] = w.rows[ty].slice(0, x) + 'K' + w.rows[ty].slice(x + 1); // a wreck wall three tiles thick
-  place(r, 600, LANE);
+  for (const x of [14, 15, 16]) w.rows[ty] = w.rows[ty].slice(0, x) + 'K' + w.rows[ty].slice(x + 1);
+  place(r, 620, LANE);
   r.hp = CFG.HP;
-  r.wasSafe = false; // teleported test target: do not count it as walking out of his base
+  r.wasSafe = false;
   r.exitProtectReadyAt = 1e12;
   sn.lastFire = -1e6;
   setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, fire: true, nest: 1 });
   now = run(w, 0.6, now);
   setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, fire: false, nest: 1 });
   assert.ok(r.hp <= 0, 'shot over the wrecks');
-  // down again, then dying frees the tower
+  // climb down; walk away for 10 s: the tower is taken down
   setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 2 });
   now = run(w, 0.1, now);
-  assert.ok(!sn.elevated && tw.by === null, 'climbed down');
+  assert.ok(!sn.elevated && w.towers[0].by === null, 'climbed down');
+  place(sn, tx + 600, LANE, 0);
+  now = run(w, 11, now);
+  assert.equal(w.towers.length, 0, 'abandoned tower is removed');
+  // build another, then die: gone
+  place(sn, 420, LANE, 0);
+  sn.lastTower = -1e9;
   setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 3 });
   now = run(w, 0.1, now);
-  assert.ok(sn.elevated, 'up again');
+  assert.equal(w.towers.length, 1);
   sn.hp = 0;
   now = run(w, 0.1, now);
-  assert.ok(!sn.elevated && tw.by === null, 'dying frees the tower');
+  assert.equal(w.towers.length, 0, 'dying removes the tower');
+  assert.ok(!sn.elevated);
+});
+
+test('another sniper of the side can climb a free tower; enemies cannot', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green', cls: 'sniper' });
+  const b = addPlayer(w, { name: 'b', want: 'green', cls: 'sniper' });
+  a.team = 'green';
+  b.team = 'green';
+  place(a, 420, LANE, 0);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 0 });
+  setInput(w, b.id, { dx: 0, dy: 0, aim: 0, nest: 0 });
+  let now = run(w, 0.1);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 1 });
+  now = run(w, 0.1, now);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 2 }); // down
+  now = run(w, 0.1, now);
+  place(b, 430, LANE, 0);
+  setInput(w, b.id, { dx: 0, dy: 0, aim: 0, nest: 1 });
+  now = run(w, 0.1, now);
+  assert.ok(b.elevated, 'a teammate sniper uses the free tower');
+  assert.equal(w.towers.length, 1, 'no second tower built beside it');
 });
 
 test('leaving removes the player', () => {

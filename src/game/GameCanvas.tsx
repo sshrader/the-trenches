@@ -7,11 +7,9 @@ import type { Input, Unit, World } from './useGame';
 const TILE = map.tile as number;
 const ROWS = map.rows as string[];
 const COLS = ROWS[0].length;
-let dynTiles: Set<string> = new Set(); // sandbag walls sniper players have built (refreshed every frame)
 const solidTile = (px: number, py: number) => {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
   if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS.length) return true;
-  if (dynTiles.has(`${tx},${ty}`)) return true;
   const c = ROWS[ty][tx];
   return c === '#' || c === 'c' || c === 'B' || c === 'K' || c === 'Y';
 };
@@ -288,14 +286,11 @@ function drawTent(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number
   ctx.fillRect(cx - 16, cy - 5, 32, 10);
 }
 
-/** A raised sniper platform (3x3 tiles), seen from above: planks, corner posts, a ladder, a rail and a flag in the owning side's colour. */
-function drawTower(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number, units: Map<number, Unit>) {
-  const w = p.w * TILE;
-  const h = p.h * TILE;
-  const red = !!p.flip;
+/** A raised sniper platform (96 px square), seen from above: planks, corner posts, a ladder, a rail and a flag in the owning side's colour. */
+function drawTower(ctx: CanvasRenderingContext2D, red: boolean, taken: boolean, sx: number, sy: number) {
+  const w = 96;
+  const h = 96;
   const col = red ? '#f87171' : '#4ade80';
-  let taken = false;
-  for (const u of units.values()) if (u.elev && u.hp > 0 && Math.hypot(u.tx - (p.x * TILE + w / 2), u.ty - (p.y * TILE + h / 2)) < 6) taken = true;
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.fillRect(sx + 12, sy + 16, w - 12, h - 12);
   // ladder (south side)
@@ -787,7 +782,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (k === 'r' && !e.repeat) input.current.reload += 1;
       if (k === 't' && !e.repeat) input.current.arty += 1;
       if (k === 'q' && !e.repeat) input.current.swap += 1; // swap between the bazooka and your main weapon
-      if (k === 'e' && !e.repeat) input.current.nest += 1; // a sniper builds a sandbag nest
+      if (k === 'e' && !e.repeat) input.current.nest += 1; // a sniper builds, climbs or leaves his tower
       if (k === 'g' && !e.repeat) input.current.nade += 1; // the server counts presses, so a lost packet cannot eat a throw
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) return;
       e.preventDefault();
@@ -863,7 +858,6 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     let zoom = 1;
     const frame = () => {
       const w = world.current;
-      dynTiles = w.nestTiles;
       const nowT = performance.now();
       const dt = Math.min(0.05, (nowT - lastT) / 1000);
       lastT = nowT;
@@ -923,14 +917,6 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       for (let ty = y0; ty <= y0 + VH / TILE + 1 && ty < ROWS.length; ty++) {
         for (let tx = x0; tx <= x0 + VW / TILE + 1 && tx < COLS; tx++) drawTile(ctx, ROWS[ty][tx], tx, ty, tx * TILE - camX, ty * TILE - camY);
       }
-      // Sandbag nests that snipers have built this life
-      for (const n of w.nests) {
-        for (let i = 2; i + 1 < n.length; i += 2) {
-          drawTile(ctx, 'c', n[i], n[i + 1], n[i] * TILE - camX, n[i + 1] * TILE - camY);
-          ctx.fillStyle = n[0] === 0 ? 'rgba(74,222,128,0.28)' : 'rgba(248,113,113,0.28)';
-          ctx.fillRect(n[i] * TILE - camX, n[i + 1] * TILE - camY, TILE, TILE);
-        }
-      }
       // Safe zones: your side's base and the strip in front of it (no enemies in, no damage, no firing out)
       const ZW = 8 * TILE; // matches the server: spawn zone + BASE_PAD
       ctx.fillStyle = 'rgba(74,222,128,0.09)';
@@ -959,7 +945,13 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         if (pr.kind === 'car') drawCar(ctx, pr, px, py);
         else if (pr.kind === 'debris') drawDebris(ctx, pr, px, py);
         else if (pr.kind === 'tent') drawTent(ctx, pr, px, py);
-        else if (pr.kind === 'tower') drawTower(ctx, pr, px, py, w.units);
+      }
+      // Sniper towers the snipers have built
+      for (const t of w.towers) {
+        const tx0 = t[2] - 48 - camX;
+        const ty0 = t[3] - 48 - camY;
+        if (tx0 < -120 || ty0 < -120 || tx0 > VW + 40 || ty0 > VH + 40) continue;
+        drawTower(ctx, t[0] === 1, t[4] === 1, tx0, ty0);
       }
       // Sniper nests: a faint scope reticle on the ground inside each sandbag pocket, in the owning side's colour
       for (const n of NESTS) {
