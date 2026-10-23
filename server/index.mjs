@@ -7,7 +7,7 @@ import express from 'express';
 import { Connection, clusterApiUrl } from '@solana/web3.js';
 import { applyGuards, checkNetwork } from './guard.mjs';
 import { newNonce } from './auth.mjs';
-import { attachGame, onlineCount } from './game.mjs';
+import { attachGame, onlineCount, lobbyRoster } from './game.mjs';
 import { leaderboard } from './stats.mjs';
 
 const PORT = Number(process.env.PORT || 8787);
@@ -25,6 +25,7 @@ const app = express();
 applyGuards(app);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, rpc: RPC_HOST, online: onlineCount() }));
+app.get('/api/roster', (_req, res) => res.json(lobbyRoster()));
 app.get('/api/leaderboard', (req, res) => {
   const sort = req.query.sort === 'wins' ? 'wins' : 'kills';
   res.json({ sort, rows: leaderboard(sort, Number(req.query.limit) || 10) });

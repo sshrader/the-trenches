@@ -36,6 +36,15 @@ const byWallet = new Map(); // wallet -> ws
 const perIp = new Map();
 
 export const onlineCount = () => world.players.size;
+/** Who is in the match right now, by side (names and classes only), for the lobby. */
+export const lobbyRoster = () => {
+  const out = { green: [], red: [] };
+  for (const p of world.players.values()) {
+    if (p.isBot || !out[p.team]) continue;
+    out[p.team].push({ name: p.name, cls: p.cls, kills: p.kills || 0 });
+  }
+  return out;
+};
 
 const ipOf = (req) => {
   if (process.env.TRUST_PROXY) {

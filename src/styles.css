@@ -154,3 +154,11 @@ b.red { color: var(--red); }
 .classes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 700px) { .classes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 440px) { .classes { grid-template-columns: 1fr; } }
+
+.roster { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 760px; margin: 4px 0 12px; }
+.roster-col { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 64px; }
+.roster-col.green { border-top-color: #4ade80; }
+.roster-col.red { border-top-color: #f87171; }
+.roster-col h3 { margin: 0 0 6px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; }
+.roster-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 14px; max-height: 160px; overflow: auto; }
+.roster-col li { display: flex; justify-content: space-between; gap: 8px; }

@@ -10,6 +10,47 @@ import { isMuted, setMuted, unlockAudio } from '../game/audio';
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
+type RosterRow = { name: string; cls: string; kills: number };
+const CLS_LABEL: Record<string, string> = { rifleman: 'Rifleman', smg: 'SMG', medic: 'Medic', sniper: 'Sniper', shotgunner: 'Shotgunner' };
+
+/** Who is in the match right now, refreshed every few seconds while you pick a side. */
+function LobbyRoster() {
+  const [r, setR] = useState<{ green: RosterRow[]; red: RosterRow[] } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      fetch('/api/roster')
+        .then((x) => (x.ok ? x.json() : null))
+        .then((j) => alive && j && setR(j))
+        .catch(() => undefined);
+    load();
+    const t = setInterval(load, 3000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+  if (!r) return null;
+  const col = (team: 'green' | 'red', label: string) => (
+    <div className={`roster-col ${team}`}>
+      <h3>{label} <span>{r[team].length}</span></h3>
+      {r[team].length === 0 ? <p className="muted small">No one yet</p> : (
+        <ul>
+          {r[team].map((p, i) => (
+            <li key={i}><b>{p.name}</b> <span className="muted small">{CLS_LABEL[p.cls] ?? p.cls}</span></li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+  return (
+    <div className="roster" aria-label="Players online">
+      {col('green', 'Green')}
+      {col('red', 'Red')}
+    </div>
+  );
+}
+
 export default function Play() {
   const { connected } = useWallet();
   const game = useGame();
@@ -163,6 +204,8 @@ export default function Play() {
               ))}
             </div>
           </div>
+
+          <LobbyRoster />
 
           <div className="sides">
             <button className="side green" disabled={busy} onClick={() => start('green')}>Join Green</button>
