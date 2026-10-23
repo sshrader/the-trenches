@@ -217,3 +217,9 @@ b.red { color: var(--red); }
 .mute-btn { background: none; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 0 4px; opacity: .75; }
 .mute-btn:hover { opacity: 1; border-color: var(--line); }
 .mute-btn.on { opacity: 1; }
+
+.capbar.points { height: 20px; }
+.capbar.points .fill { opacity: .55; transition: width .3s; }
+.capbar .pts { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-shadow: 0 1px 2px #000; z-index: 2; }
+.capbar .pts b.green { color: #bbf7d0; }
+.capbar .pts b.red { color: #fecaca; }

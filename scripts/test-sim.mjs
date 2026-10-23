@@ -159,14 +159,15 @@ test('holding the point wins the round, then a new round starts', () => {
   for (const p of w.players.values()) if (p.team === 'green') place(p, map.capture.x + 10, map.capture.y);
   for (const p of w.players.values()) if (p.team === 'red') place(p, 100, 100);
   let now = run(w, 5);
-  assert.ok(w.progress > 0, 'progress grows for green');
-  now = run(w, 12, now);
+  assert.ok(w.points.green > 5 * CFG.POINT_RATE, 'points grow for green, faster with six soldiers');
+  assert.equal(w.points.red, 0);
+  now = run(w, 30, now);
   assert.equal(w.round.state, 'ended');
   assert.equal(w.round.winner, 'green');
   now = run(w, CFG.END_S + 1, now);
   assert.equal(w.round.state, 'live');
   assert.equal(w.round.n, 2);
-  assert.equal(w.progress, 0);
+  assert.equal(w.points.green, 0);
   void gs;
 });
 
@@ -177,7 +178,7 @@ test('a contested point does not move', () => {
   place(a, map.capture.x - 10, map.capture.y);
   place(e, map.capture.x + 10, map.capture.y);
   run(w, 5);
-  assert.equal(w.progress, 0);
+  assert.equal(w.points.green + w.points.red, 0, 'nobody scores');
 });
 
 test('time up decides by who is ahead', () => {
@@ -185,7 +186,7 @@ test('time up decides by who is ahead', () => {
   const e = addPlayer(w, { name: 'e', want: 'red' });
   place(e, map.capture.x, map.capture.y);
   let now = run(w, 20);
-  assert.ok(w.progress < 0);
+  assert.ok(w.points.red > 0);
   e.x = e.y = 100;
   w.round.left = 1;
   now = run(w, 2, now);
@@ -533,7 +534,7 @@ test('team score: kills this round, rounds won across rounds', () => {
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
   const now = run(w, 1.2);
   assert.deepEqual(snapshot(w, now).ts, [1, 0, 0, 0]);
-  w.progress = 0.999; // green captures: round won
+  w.points.green = CFG.POINTS_TO_WIN - 0.5; // green is about to reach 100: round won
   place(a, w.map.capture.x, w.map.capture.y);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
   const t2 = run(w, 1, now);

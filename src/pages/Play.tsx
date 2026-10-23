@@ -248,9 +248,10 @@ export default function Play() {
         <section className="stage">
           <div className="hud-top">
             <span className={`pill ${h.myTeam ?? ''}`}>You: {h.myTeam === 'green' ? 'Green' : 'Red'}</span>
-            <div className="capbar" role="img" aria-label={`Capture point: ${Math.round(Math.abs(h.progress) * 100)}% ${h.progress >= 0 ? 'green' : 'red'}`}>
-              <div className="mid" />
-              {h.progress >= 0 ? <div className="fill green" style={{ left: '50%', width: `${h.progress * 50}%` }} /> : <div className="fill red" style={{ right: '50%', width: `${-h.progress * 50}%` }} />}
+            <div className="capbar points" role="img" aria-label={`Round points: green ${h.points[0]}, red ${h.points[1]}, first to 100 wins`} title="Hold the plaza alone to score: 1 point per second, more with extra soldiers inside. First to 100 wins the round.">
+              <div className="fill green" style={{ left: 0, width: `${Math.min(100, h.points[0])}%` }} />
+              <div className="fill red" style={{ right: 0, width: `${Math.min(100, h.points[1])}%` }} />
+              <span className="pts"><b className="green">{h.points[0]}</b> / 100 / <b className="red">{h.points[1]}</b></span>
             </div>
             <span className="pill" title="Your kills and deaths this session">K {h.myKills} · D {h.myDeaths}{h.myDeaths > 0 ? ` · ${(h.myKills / h.myDeaths).toFixed(2)}` : ''}</span>
             {h.myNext && <span className="pill" title="Your class changes when you next respawn">{h.myClass} → {h.myNext} next life</span>}

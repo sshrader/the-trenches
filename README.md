@@ -85,3 +85,7 @@ Press **Join voice** in the top bar to enter your team's voice channel (the brow
 Needs a secure page: https (Railway) or localhost. On a plain `http://192.168...` address the browser blocks the microphone. Players behind very strict networks may not connect, since there is no relay (TURN) server.
 
 **Muting:** hold Tab, then click the speaker beside a player on the scoreboard to mute their voice and their chat for the rest of your session (click again to unmute). It only affects what you hear and read.
+
+**Scoring the plaza:** holding the middle plaza alone earns your side points: 1 per second with one soldier inside, +0.5 per second for each extra soldier (up to 6). If both sides are in it, nobody scores. The first side to 100 points wins the round (`CFG.POINTS_TO_WIN`, `POINT_RATE`, `POINT_EXTRA`); if time runs out, the side with more points wins. The bar in the top row shows both scores.
+
+**Sniper rounds** now fly at 2600 px/s (was 1000), with the lifetime shortened so the reach stays the same, so they are hard to dodge.

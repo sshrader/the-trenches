@@ -20,7 +20,7 @@ export const CFG = {
   CLASSES: {
     rifleman: { label: 'Rifleman', weapon: 'rifle', mag: 8, reloadS: 2, fireMs: 700, damage: 50, speed: 760, life: 1.5 }, // two hits kill, longest reach
     smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6 }, // five hits kill, short reach
-    sniper: { label: 'Sniper', weapon: 'sniper', mag: 5, reloadS: 3, fireMs: 1300, damage: 100, speed: 1000, life: 1.6, grenades: 1, arty: 0 }, // one hit kills; hold scope to see far, but slow, only 5 rounds, no artillery strike, and each shot gives him away
+    sniper: { label: 'Sniper', weapon: 'sniper', mag: 5, reloadS: 3, fireMs: 1300, damage: 100, speed: 2600, life: 0.65, grenades: 1, arty: 0 }, // one hit kills; hold scope to see far, but slow, only 5 rounds, no artillery strike, and each shot gives him away
     shotgunner: { label: 'Shotgunner', weapon: 'shotgun', mag: 5, reloadS: 2.5, fireMs: 450, damage: 25, falloff: [80, 200, 0.2], speed: 700, life: 0.28, pellets: 8, spread: 0.2, hp: 140, staminaX: 1.5, side: { weapon: 'pistol', mag: 12, reloadS: 1.5, fireMs: 280, damage: 20, speed: 600, life: 0.55 } }, // 140 HP, 8-pellet shotgun (deadly up close, 5 shells, quicker than the rifle, slower than the SMG) and a pistol to swap to
     medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, // heals teammates next to him
   },
@@ -54,9 +54,10 @@ export const CFG = {
   ROCKET_OUTER_MIN: 25,
   BASE_PAD: 32, // each side's safe zone: its spawn trench plus this much ground in front of it
   BASE_NO_FIRE: true, // nobody inside his own safe zone can shoot, throw or call a strike out of it (no sniping from invulnerability)
-  CAP_RATE: 0.012, // capture progress per second per player in the circle (up to CAP_MAX)
+  POINTS_TO_WIN: 100, // first side to this many points wins the round
+  POINT_RATE: 1, // points per second for a side that holds the point alone with one soldier ...
+  POINT_EXTRA: 0.5, // ... plus this much for each extra soldier standing in it (up to CAP_MAX soldiers)
   CAP_MAX: 6,
-  CAP_DECAY: 0.01, // an empty point drifts back to neutral
   ROUND_S: 360,
   END_S: 10,
   MAX_PER_TEAM: 30,
@@ -124,7 +125,8 @@ export function createWorld(map, rng = Math.random) {
     dyn: new Set(), // tiles taken by deployed nests, as 'tx,ty' (solid like sandbags)
     teamKills: { green: 0, red: 0 }, // kills this round
     wins: { green: 0, red: 0 }, // rounds won since the server started
-    progress: 0, // -1 red owns the point ... +1 green owns it
+    points: { green: 0, red: 0 }, // round points from holding the plaza
+    progress: 0, // the lead as a fraction of POINTS_TO_WIN, -1 (red) .. +1 (green): drives the bar
     round: { n: 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 },
     events: [],
     shots: [], // [x, y, shooterId] fired during the latest step, for clients to draw flashes and play sounds
@@ -445,6 +447,7 @@ function newRound(w, now) {
   w.teamKills = { green: 0, red: 0 };
   w.round = { n: w.round.n + 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
+  w.points = { green: 0, red: 0 };
   for (const n of [...w.nests]) dropNest(w, n.owner);
   w.bullets = [];
   w.nades = [];
@@ -834,19 +837,17 @@ export function step(w, dt, now = Date.now()) {
   for (const p of w.players.values()) {
     if (p.hp > 0 && Math.hypot(p.x - cap.x, p.y - cap.y) <= cap.r) inside[p.team]++;
   }
-  if (inside.green && !inside.red) w.progress += CFG.CAP_RATE * Math.min(inside.green, CFG.CAP_MAX) * dt;
-  else if (inside.red && !inside.green) w.progress -= CFG.CAP_RATE * Math.min(inside.red, CFG.CAP_MAX) * dt;
-  else if (!inside.green && !inside.red) {
-    const d = CFG.CAP_DECAY * dt;
-    w.progress = Math.abs(w.progress) <= d ? 0 : w.progress - Math.sign(w.progress) * d;
-  }
-  w.progress = clamp(w.progress, -1, 1);
-  if (w.progress >= 1) return endRound(w, 'green');
-  if (w.progress <= -1) return endRound(w, 'red');
+  // Holding the plaza alone earns points every second: POINT_RATE for one soldier, more for each extra one. A contested point scores nothing.
+  const rateFor = (n) => CFG.POINT_RATE + CFG.POINT_EXTRA * (Math.min(n, CFG.CAP_MAX) - 1);
+  if (inside.green && !inside.red) w.points.green += rateFor(inside.green) * dt;
+  else if (inside.red && !inside.green) w.points.red += rateFor(inside.red) * dt;
+  w.progress = clamp((w.points.green - w.points.red) / CFG.POINTS_TO_WIN, -1, 1);
+  if (w.points.green >= CFG.POINTS_TO_WIN) return endRound(w, 'green');
+  if (w.points.red >= CFG.POINTS_TO_WIN) return endRound(w, 'red');
 
   // Clock.
   w.round.left -= dt;
-  if (w.round.left <= 0) endRound(w, w.progress > 0.05 ? 'green' : w.progress < -0.05 ? 'red' : 'draw');
+  if (w.round.left <= 0) endRound(w, w.points.green - w.points.red > 0.5 ? 'green' : w.points.red - w.points.green > 0.5 ? 'red' : 'draw');
 }
 
 /** Who can a side see? Teammates are always visible; anything else only within VISION of a living teammate. */
@@ -893,6 +894,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,
+    pt: [Math.floor(w.points.green), Math.floor(w.points.red)],
     r: { n: w.round.n, s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
   };
 }
