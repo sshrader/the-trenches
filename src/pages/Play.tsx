@@ -152,7 +152,7 @@ export default function Play() {
             </div>
           )}
 
-          <div className="field">
+          <div className="field wide-field">
             <label>Class</label>
             <div className="classes" role="radiogroup" aria-label="Class">
               {CLASSES.map((c) => (

@@ -5,8 +5,23 @@ import Splash from './pages/Splash';
 import { WALLET_LOGIN } from './config';
 
 export default function App() {
-  const [entered, setEntered] = useState(false);
-  if (!entered) return <Splash onEnter={() => setEntered(true)} />;
+  // The briefing splash shows on a visitor's first visit only; the "How to play" footer link (/?intro) brings it back.
+  const [entered, setEntered] = useState(() => {
+    try {
+      return localStorage.getItem('ruins-splash-seen') === '1' && !location.search.includes('intro');
+    } catch {
+      return false;
+    }
+  });
+  const enter = () => {
+    try {
+      localStorage.setItem('ruins-splash-seen', '1');
+    } catch {
+      /* private window: the splash will show again next time */
+    }
+    setEntered(true);
+  };
+  if (!entered) return <Splash onEnter={enter} />;
   return (
     <>
       <header className="top">
@@ -16,7 +31,7 @@ export default function App() {
       <main>
         <Play />
       </main>
-      <footer className="foot muted small">A browser game. Be kind out there.</footer>
+      <footer className="foot muted small">A browser game. Be kind out there. · <a href="/?intro">How to play</a></footer>
     </>
   );
 }

@@ -1131,6 +1131,25 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         ctx.fill();
         ctx.globalAlpha = 1;
       }
+      // Spotting ping: enemies a scoped teammate is picking out at long range show as pulsing red dots on the minimap.
+      const scopers = alive.filter((q) => q.team === myTeam && q.scoped);
+      if (scopers.length) {
+        const pulse2 = 0.5 + 0.5 * Math.sin(Date.now() / 200);
+        for (const e of alive) {
+          if (e.team === myTeam || !scopers.some((q) => Math.hypot(q.x - e.x, q.y - e.y) <= w.scopeVision)) continue;
+          const ex = mx + e.x * k;
+          const ey = my + e.y * k;
+          ctx.fillStyle = '#f87171';
+          ctx.beginPath();
+          ctx.arc(ex, ey, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = `rgba(248,113,113,${0.4 + 0.5 * pulse2})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(ex, ey, 5 + pulse2 * 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
       for (const u of alive) {
         if (u.team !== myTeam) continue;
         if (u.bot) {

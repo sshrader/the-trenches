@@ -627,7 +627,7 @@ test('sniper: one shot kills, scope = slow + far sight, shots reveal him, limite
   sn.team = 'green';
   r.team = 'red';
   assert.equal(sn.cls, 'sniper');
-  assert.equal(sn.ammo, 4, 'four rounds');
+  assert.equal(sn.ammo, 5, 'five rounds');
   assert.equal(sn.arty, 0, 'no artillery strike');
   // Scoped: slow, no sprint, sees much farther.
   place(sn, 600, LANE, 0);

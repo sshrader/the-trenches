@@ -149,3 +149,8 @@ b.red { color: var(--red); }
 .brief-card.wide { flex: 2 1 0; }
 .brief-card ul.cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
 @media (max-width: 700px) { .brief-card ul.cols { grid-template-columns: 1fr; } }
+
+.field.wide-field { width: 100%; max-width: 760px; }
+.classes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 700px) { .classes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 440px) { .classes { grid-template-columns: 1fr; } }

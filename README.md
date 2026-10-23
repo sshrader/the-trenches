@@ -57,7 +57,7 @@ Press Enter to type a message to **everyone**; Tab inside the box switches to **
 Sniper rounds punch through light cover (barricades and rubble) but still stop at buildings, wrecks and the map edge, so a sniper can shoot through the clutter that blocks everyone else.
 
 
-One-hit kill, 4 rounds, 3 s reload, slow fire (1.8 s), 1 grenade, no artillery strike, max 2 per side (`CFG.MAX_SNIPERS`). Hold the **right mouse button** to scope: the side's fog opens to `CFG.SCOPE_VISION` (680 px) around him, but he moves at 35% speed and cannot sprint. Each shot reveals him to the enemy through the fog for 1.6 s (`CFG.SNIPER_REVEAL_S`).
+One-hit kill, 5 rounds, 3 s reload, slow fire (1.3 s), 1 grenade, no artillery strike, max 2 per side (`CFG.MAX_SNIPERS`). Hold the **right mouse button** to scope: the side's fog opens to `CFG.SCOPE_VISION` (680 px) around him, but he moves at 35% speed and cannot sprint. Each shot reveals him to the enemy through the fog for 1.6 s (`CFG.SNIPER_REVEAL_S`).
 
 ## Bazooka pickups
 
@@ -66,3 +66,6 @@ Each side has one bazooka crate in its own half, between 10 and 28 tiles from it
 ## Shotgunner class
 
 140 HP (`hp` on the class), a pump shotgun that fires 8 pellets in a spread (`pellets`, `spread`): 5 shells, one shot every 450 ms (quicker than the rifle's 700 ms, slower than the SMG's 110 ms), pellets reach only about 200 px, so it is deadly up close and weak at range. It also carries a 12-round pistol with its own ammo; mouse wheel or **Q** cycles main weapon, pistol and (if you hold one) the bazooka. He sprints 1.5x as long as other classes (`staminaX` on the class). Medics and the clinic tent heal him up to 140. Rockets and artillery still kill him inside their lethal ring.
+
+
+**Sniper aids:** rounds pierce barricades and rubble; enemies picked out by a scoped teammate pulse as red dots on the minimap. The intro splash shows once per visitor (footer link "How to play" or `/?intro` shows it again).
