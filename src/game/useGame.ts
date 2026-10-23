@@ -7,7 +7,7 @@ export type Team = 'green' | 'red';
 export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean };
 export type ClassId = 'rifleman' | 'smg' | 'medic' | 'sniper' | 'shotgunner';
 export const CLASSES: { id: ClassId; label: string; mag: number; hp: number; sideMag?: number; blurb: string }[] = [
-  { id: 'rifleman', label: 'Rifleman', mag: 8, hp: 100, blurb: 'Scavenged bolt rifle. One hit kills and it reaches farthest, but it fires slowly.' },
+  { id: 'rifleman', label: 'Rifleman', mag: 8, hp: 100, blurb: 'Scavenged bolt rifle. Two hits kill, it reaches farthest, but it fires slowly.' },
   { id: 'smg', label: 'SMG', mag: 20, hp: 100, blurb: 'Fast fire, 20 rounds. About five hits to kill, shorter reach.' },
   { id: 'medic', label: 'Medic', mag: 10, hp: 100, blurb: 'Pistol, 10 rounds. Heals teammates standing next to you.' },
   { id: 'sniper', label: 'Sniper', mag: 5, hp: 100, blurb: 'One hit kills. Hold the right mouse button to scope: you spot enemies for your team from far away, but you crawl, and each shot gives you away. Rounds punch through barricades and rubble. 5 rounds, no artillery strike, 2 per side.' },

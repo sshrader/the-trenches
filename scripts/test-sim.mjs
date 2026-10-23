@@ -83,11 +83,13 @@ test('a bullet hits an enemy, not a friend', () => {
   place(f, 460, LANE);
   place(e, 560, LANE);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
-  const t = run(w, 0.4);
+  const t0 = run(w, 0.4);
+  assert.equal(e.hp, CFG.HP - 50, 'one rifle hit takes half');
+  const t = run(w, 0.5, t0); // the second shot lands
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
   run(w, 0.5, t);
   assert.equal(f.hp, CFG.HP, 'friendly fire is off');
-  assert.equal(e.hp, 0);
+  assert.equal(e.hp, 0, 'two rifle hits kill');
 });
 
 test('cover blocks bullets', () => {
@@ -130,14 +132,14 @@ test('shots are reported once for sound and flashes', () => {
   assert.deepEqual(snapshot(w, 1050).f, [], 'not repeated on the next tick');
 });
 
-test('one rifle hit kills, then the player respawns protected', () => {
+test('two rifle hits kill, then the player respawns protected', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
   const e = addPlayer(w, { name: 'e', want: 'red' });
   place(a, 400, LANE, 0);
   place(e, 520, LANE);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
-  let now = run(w, 0.6);
+  let now = run(w, 1.2);
   assert.equal(e.hp, 0);
   assert.equal(a.kills, 1);
   assert.equal(e.deaths, 1);
@@ -529,7 +531,7 @@ test('team score: kills this round, rounds won across rounds', () => {
   place(a, 400, LANE, 0);
   place(e, 520, LANE);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
-  const now = run(w, 0.6);
+  const now = run(w, 1.2);
   assert.deepEqual(snapshot(w, now).ts, [1, 0, 0, 0]);
   w.progress = 0.999; // green captures: round won
   place(a, w.map.capture.x, w.map.capture.y);
