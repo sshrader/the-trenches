@@ -10,6 +10,10 @@ export const CFG = {
   STAMINA_DELAY_S: 0.8,
   STAMINA_RESUME: 25, // after running dry you must recover this much before sprinting again
   RADIUS: 11, // player body
+  NEST_AWAY_PX: 150, // a sniper's nest is abandoned once he is farther than this from it ...
+  NEST_AWAY_S: 10, // ... for this many seconds
+  NEST_COOLDOWN_MS: 4000,
+  NEST_REACH: 54, // the wall is built this far in front of him
   HP: 100,
   BULLET_R: 3,
   // Classes. `life` is how long a bullet flies, so speed x life is the weapon's reach.
@@ -113,6 +117,8 @@ export function createWorld(map, rng = Math.random) {
     tents: map.tents || [],
     crates: (map.crates || []).map((c) => ({ x: c.x, y: c.y, team: c.team, readyAt: 0 })),
     arty: [], // incoming artillery strikes
+    nests: [], // deployed sniper nests: { owner, team, tiles: [[tx, ty]], awayS }
+    dyn: new Set(), // tiles taken by deployed nests, as 'tx,ty' (solid like sandbags)
     teamKills: { green: 0, red: 0 }, // kills this round
     wins: { green: 0, red: 0 }, // rounds won since the server started
     progress: 0, // -1 red owns the point ... +1 green owns it
@@ -127,7 +133,7 @@ export const solidAt = (w, px, py) => {
   const tx = Math.floor(px / w.tile);
   const ty = Math.floor(py / w.tile);
   if (tx < 0 || ty < 0 || tx >= w.W || ty >= w.H) return true;
-  const c = w.rows[ty][tx];
+  const c = w.dyn?.has(tx + ',' + ty) ? 'c' : w.rows[ty][tx];
   return c === '#' || c === 'c' || c === 'B' || c === 'K' || c === 'Y'; // wall, sandbags, ruin, tank wreck, tree
 };
 export const blockedAt = (w, x, y, r = CFG.RADIUS) =>
@@ -299,7 +305,7 @@ export function removeBotsOf(w, ownerId) {
 
 export const removePlayer = (w, id) => w.players.delete(id);
 
-export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope, swap }) {
+export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope, swap, nest }) {
   const p = w.players.get(id);
   if (!p) return;
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -322,6 +328,10 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, 
   if (swap !== undefined && swap !== p.swapSeq) {
     if (p.swapSeq !== null) p.wantSwap = true;
     p.swapSeq = swap;
+  }
+  if (nest !== undefined && nest !== p.nestSeq) {
+    if (p.nestSeq !== null && p.nestSeq !== undefined) p.wantNest = true;
+    p.nestSeq = nest;
   }
   if (arty !== undefined && arty !== p.artySeq) {
     if (p.artySeq !== null) p.wantArty = true;
@@ -377,6 +387,41 @@ function rebalance(w, now, force) {
   }
 }
 
+/** Remove a sniper's deployed nest (he died, left it, or built a new one). */
+function dropNest(w, owner) {
+  const i = w.nests.findIndex((n) => n.owner === owner);
+  if (i < 0) return;
+  for (const [tx, ty] of w.nests[i].tiles) w.dyn.delete(tx + ',' + ty);
+  w.nests.splice(i, 1);
+}
+
+/** A sniper builds a short sandbag wall across his line of fire. It lasts until he dies or stays away from it too long. */
+function deployNest(w, p, now) {
+  if (p.cls !== 'sniper' || p.hp <= 0 || (CFG.BASE_NO_FIRE && isSafe(w, p)) || now - (p.lastNest || -1e9) < CFG.NEST_COOLDOWN_MS) return;
+  const dx = Math.cos(p.aim);
+  const dy = Math.sin(p.aim);
+  const cx = p.x + dx * CFG.NEST_REACH;
+  const cy = p.y + dy * CFG.NEST_REACH;
+  const tiles = [];
+  for (const off of [-1, 0, 1]) {
+    const x = cx - dy * off * w.tile;
+    const y = cy + dx * off * w.tile;
+    const tx = Math.floor(x / w.tile);
+    const ty = Math.floor(y / w.tile);
+    if (tx < 1 || ty < 1 || tx >= w.W - 1 || ty >= w.H - 1 || tiles.some(([a, b]) => a === tx && b === ty)) continue;
+    if (solidAt(w, x, y) || inBase(w, 'green', x) || inBase(w, 'red', x)) continue;
+    const mx = (tx + 0.5) * w.tile;
+    const my = (ty + 0.5) * w.tile;
+    if ([...w.players.values()].some((q) => q.hp > 0 && Math.abs(q.x - mx) < w.tile / 2 + CFG.RADIUS && Math.abs(q.y - my) < w.tile / 2 + CFG.RADIUS)) continue; // nobody is built over
+    tiles.push([tx, ty]);
+  }
+  if (tiles.length < 2) return;
+  dropNest(w, p.id);
+  p.lastNest = now;
+  for (const [tx, ty] of tiles) w.dyn.add(tx + ',' + ty);
+  w.nests.push({ owner: p.id, team: p.team, tiles, awayS: 0 });
+}
+
 function endRound(w, winner) {
   w.round.state = 'ended';
   w.round.winner = winner;
@@ -384,6 +429,7 @@ function endRound(w, winner) {
   w.bullets = [];
   w.nades = [];
   w.arty = [];
+  for (const n of [...w.nests]) dropNest(w, n.owner);
   for (const p of w.players.values()) {
     p.dx = p.dy = 0;
     p.fire = false;
@@ -396,6 +442,7 @@ function newRound(w, now) {
   w.teamKills = { green: 0, red: 0 };
   w.round = { n: w.round.n + 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
+  for (const n of [...w.nests]) dropNest(w, n.owner);
   w.bullets = [];
   w.nades = [];
   w.rockets = [];
@@ -415,7 +462,7 @@ function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   t.respawnAt = now + CFG.RESPAWN_S * 1000;
   t.dx = t.dy = 0;
   t.fire = false;
-  t.wantNade = t.wantReload = t.wantArty = false;
+  t.wantNade = t.wantReload = t.wantArty = t.wantNest = false;
   const k = w.players.get(ownerId);
   const own = !!k && k.team === t.team; // killed himself or a teammate: no credit
   if (k && !own) {
@@ -581,7 +628,22 @@ export function step(w, dt, now = Date.now()) {
     }
   }
 
+  for (const n of [...w.nests]) {
+    const o = w.players.get(n.owner);
+    if (!o || o.hp <= 0 || o.cls !== 'sniper') {
+      dropNest(w, n.owner);
+      continue;
+    }
+    const [tx, ty] = n.tiles[Math.floor(n.tiles.length / 2)];
+    const far = Math.hypot(o.x - (tx + 0.5) * w.tile, o.y - (ty + 0.5) * w.tile) > CFG.NEST_AWAY_PX;
+    n.awayS = far ? n.awayS + dt : 0;
+    if (n.awayS >= CFG.NEST_AWAY_S) dropNest(w, n.owner);
+  }
   for (const p of w.players.values()) {
+    if (p.wantNest) {
+      p.wantNest = false;
+      deployNest(w, p, now);
+    }
     if (p.wantNade) {
       p.wantNade = false;
       throwNade(w, p, now);
@@ -604,7 +666,7 @@ export function step(w, dt, now = Date.now()) {
       if (solidAt(w, b.x, b.y)) {
         // Sniper rounds punch through light cover (barricades, rubble) but not buildings, wrecks or the map edge.
         const tx = Math.floor(b.x / w.tile), ty = Math.floor(b.y / w.tile);
-        const ch = w.rows[ty]?.[tx];
+        const ch = w.dyn?.has(tx + ',' + ty) ? 'c' : w.rows[ty]?.[tx];
         if (b.pierce > 0 && (ch === 'c' || ch === 'Y')) {
           if (b.pierceTile !== tx + ',' + ty) { b.pierce--; b.pierceTile = tx + ',' + ty; }
         } else {
@@ -808,6 +870,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), 0, Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100]),
     rk: w.rockets.filter((r) => r.team === team || vis(r.x, r.y)).map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.aim * 100) / 100]),
     u: w.pickups.filter((q) => !team || q.team === team).map((q) => [q.x, q.y, team && holdsBazooka(w, team) ? 1 : 0]), // your side's crate only; 1 = your side already holds a bazooka, so it cannot be taken yet
+    nt: w.nests.filter((n) => !team || n.team === team || n.tiles.some(([tx, ty]) => vis((tx + 0.5) * w.tile, (ty + 0.5) * w.tile))).map((n) => [n.team === 'green' ? 0 : 1, n.owner, ...n.tiles.flat()]),
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,

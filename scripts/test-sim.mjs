@@ -1,7 +1,7 @@
 // Plain-Node checks for the simulation.  node scripts/test-sim.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { CFG, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, step, teamCount } from '../server/sim.mjs';
+import { CFG, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount } from '../server/sim.mjs';
 
 const map = JSON.parse(fs.readFileSync(new URL('../shared/map.json', import.meta.url), 'utf8'));
 let seed = 7;
@@ -878,6 +878,45 @@ test('shotgun damage falls off with distance', () => {
   const mid = dmgAt(140);
   assert.ok(near >= 100, `close blast kills a 100 HP soldier (${near})`);
   assert.ok(mid > 0 && mid < near * 0.7, `mid range hurts less (${mid} vs ${near})`);
+});
+
+test('sniper nest: built in front, blocks others\' bullets, pierced by his own, drops on death or after 10 s away', () => {
+  const w = fresh();
+  const sn = addPlayer(w, { name: 'sn', want: 'green', cls: 'sniper' });
+  const r = addPlayer(w, { name: 'r', want: 'red' });
+  sn.team = 'green';
+  r.team = 'red';
+  place(sn, 400, LANE, 0);
+  place(r, 600, LANE);
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 0 });
+  let now = run(w, 0.1);
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 1 });
+  now = run(w, 0.1, now);
+  assert.equal(w.nests.length, 1, 'a nest is built');
+  assert.ok(w.nests[0].tiles.length >= 2);
+  assert.ok(solidAt(w, 400 + 54, LANE), 'the wall is solid');
+  // the enemy's bullets stop at it
+  r.aim = Math.PI;
+  place(r, 600, LANE, Math.PI);
+  r.lastFire = -1e6;
+  setInput(w, r.id, { dx: 0, dy: 0, aim: Math.PI, fire: true });
+  now = run(w, 0.8, now);
+  setInput(w, r.id, { dx: 0, dy: 0, aim: Math.PI, fire: false });
+  assert.equal(sn.hp, CFG.HP, 'enemy rifle cannot shoot through the nest');
+  // he walks off for more than 10 s: it is abandoned
+  place(sn, 400 + 600, LANE, 0);
+  now = run(w, 11, now);
+  assert.equal(w.nests.length, 0, 'abandoned nest is removed');
+  assert.ok(!solidAt(w, 400 + 54, LANE), 'the tiles are open again');
+  // death removes it
+  place(sn, 400, LANE, 0);
+  sn.lastNest = -1e9;
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 2 });
+  now = run(w, 0.1, now);
+  assert.equal(w.nests.length, 1);
+  sn.hp = 0;
+  now = run(w, 0.1, now);
+  assert.equal(w.nests.length, 0, 'dying removes the nest');
 });
 
 test('leaving removes the player', () => {

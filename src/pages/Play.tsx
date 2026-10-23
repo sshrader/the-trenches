@@ -243,6 +243,9 @@ export default function Play() {
                 Bazooka: {h.myRockets} rocket{h.myRockets === 1 ? '' : 's'} {h.myBazooka ? '(equipped)' : '[wheel/Q to equip]'}
               </span>
             )}
+            {h.myClassId === 'sniper' && (
+              <span className="pill" title="Press E to build a sandbag wall in front of you. It stays until you die or stay away from it for 10 seconds. Your own rounds pierce it; enemy bullets do not.">Nest [E]</span>
+            )}
             <span className="pill" title="Press T to call in an artillery strike">Artillery: {h.myArty} [T]</span>
             <span className="pill score" title={`Kills this round. Rounds won: Green ${h.score[2]}, Red ${h.score[3]}`}>
               <b className="green">{h.score[0]}</b> – <b className="red">{h.score[1]}</b>
@@ -395,6 +398,7 @@ export default function Play() {
                   <dt>R</dt><dd>Reload</dd>
                   <dt>G</dt><dd>Grenade</dd>
                   <dt>T</dt><dd>Artillery strike</dd>
+                  <dt>E</dt><dd>Sniper: build a sandbag nest</dd>
                   <dt>F</dt><dd>Full screen</dd>
                   <dt>N</dt><dd>Team chat</dd>
                   <dt>Tab (hold)</dt><dd>Scoreboard</dd>

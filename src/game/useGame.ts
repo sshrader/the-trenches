@@ -30,16 +30,18 @@ export type World = {
   cam: { x: number; y: number };
   vision: number; // fog of war: how far your side sees from each living soldier
   scopeVision: number; // ... and from a scoped sniper
+  nests: number[][]; // deployed sniper nests: [team (0 green, 1 red), owner id, tx, ty, tx, ty ...]
+  nestTiles: Set<string>; // the same tiles as 'tx,ty', for walking and drawing
   rockets: [number, number, number][]; // x, y, heading
   pickups: [number, number, number][]; // bazooka crates: x, y, 1 if your side already holds a bazooka (so it cannot take this one)
 };
-export type Input = { sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number };
+export type Input = { sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number; nest: number };
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type ChatLine = { name: string; team: Team; text: string; at: number; mode?: 'all' | 'team' };
 export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 680, rockets: [], pickups: [] });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 680, rockets: [], pickups: [], nests: [], nestTiles: new Set() });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -50,7 +52,7 @@ export function useGame() {
   const [error, setError] = useState('');
   const [hud, setHud] = useState<Hud | null>(null);
   const world = useRef<World>(emptyWorld());
-  const input = useRef<Input>({ sprint: false, dx: 0, dy: 0, aim: 0, fire: false, nade: 0, range: 200, reload: 0, arty: 0, scope: false, swap: 0 });
+  const input = useRef<Input>({ sprint: false, dx: 0, dy: 0, aim: 0, fire: false, nade: 0, range: 200, reload: 0, arty: 0, scope: false, swap: 0, nest: 0 });
   const ws = useRef<WebSocket | null>(null);
   const training = useRef(false);
   const chat = useRef<ChatLine[]>([]);
@@ -212,6 +214,10 @@ export function useGame() {
             w.scopeVision = m.sv ?? 680;
             w.rockets = m.rk ?? [];
             w.pickups = m.u ?? [];
+            w.nests = m.nt ?? [];
+            const nt = new Set<string>();
+            for (const n of w.nests) for (let q = 2; q + 1 < n.length; q += 2) nt.add(`${n[q]},${n[q + 1]}`);
+            w.nestTiles = nt;
             // Gunfire: flash the shooter's muzzle and play a quiet shot, fainter the farther it is from you.
             const me = w.units.get(w.me);
             for (const [sx, sy, sid] of (m.f ?? []) as [number, number, number][]) {

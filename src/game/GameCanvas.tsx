@@ -7,9 +7,11 @@ import type { Input, Unit, World } from './useGame';
 const TILE = map.tile as number;
 const ROWS = map.rows as string[];
 const COLS = ROWS[0].length;
+let dynTiles: Set<string> = new Set(); // sandbag walls sniper players have built (refreshed every frame)
 const solidTile = (px: number, py: number) => {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
   if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS.length) return true;
+  if (dynTiles.has(`${tx},${ty}`)) return true;
   const c = ROWS[ty][tx];
   return c === '#' || c === 'c' || c === 'B' || c === 'K' || c === 'Y';
 };
@@ -729,6 +731,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (k === 'r' && !e.repeat) input.current.reload += 1;
       if (k === 't' && !e.repeat) input.current.arty += 1;
       if (k === 'q' && !e.repeat) input.current.swap += 1; // swap between the bazooka and your main weapon
+      if (k === 'e' && !e.repeat) input.current.nest += 1; // a sniper builds a sandbag nest
       if (k === 'g' && !e.repeat) input.current.nade += 1; // the server counts presses, so a lost packet cannot eat a throw
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) return;
       e.preventDefault();
@@ -803,6 +806,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     let lastT = performance.now();
     const frame = () => {
       const w = world.current;
+      dynTiles = w.nestTiles;
       const nowT = performance.now();
       const dt = Math.min(0.05, (nowT - lastT) / 1000);
       lastT = nowT;
@@ -850,6 +854,14 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       const y0 = Math.floor(camY / TILE);
       for (let ty = y0; ty <= y0 + VIEW_H / TILE + 1 && ty < ROWS.length; ty++) {
         for (let tx = x0; tx <= x0 + VIEW_W / TILE + 1 && tx < COLS; tx++) drawTile(ctx, ROWS[ty][tx], tx, ty, tx * TILE - camX, ty * TILE - camY);
+      }
+      // Sandbag nests that snipers have built this life
+      for (const n of w.nests) {
+        for (let i = 2; i + 1 < n.length; i += 2) {
+          drawTile(ctx, 'c', n[i], n[i + 1], n[i] * TILE - camX, n[i + 1] * TILE - camY);
+          ctx.fillStyle = n[0] === 0 ? 'rgba(74,222,128,0.28)' : 'rgba(248,113,113,0.28)';
+          ctx.fillRect(n[i] * TILE - camX, n[i + 1] * TILE - camY, TILE, TILE);
+        }
       }
       // Safe zones: your side's base and the strip in front of it (no enemies in, no damage, no firing out)
       const ZW = 8 * TILE; // matches the server: spawn zone + BASE_PAD
