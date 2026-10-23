@@ -75,12 +75,15 @@ export default function HudBar({ h }: { h: Hud }) {
         ) : (
           <Slot icon={weaponIcon} value={h.myReload > 0 ? '…' : `${h.myAmmo}/${h.myMag}`} sub={h.myReload > 0 ? 'reloading' : h.mySidearm ? 'pistol' : cls.label} keyHint="R" active fill={h.myReload > 0 ? h.myReload : undefined} title="Rounds in the magazine. R reloads." />
         )}
-        {h.myRockets > 0 && !h.myBazooka && <Slot icon="rocket" value={h.myRockets} sub="bazooka" keyHint="Q" title="Bazooka: mouse wheel or Q to equip" />}
         <Slot icon="grenade" value={h.myGren} sub="grenades" keyHint="G" dim={h.myGren === 0} />
         <Slot icon="artillery" value={h.myArty} sub="artillery" keyHint="T" dim={h.myArty === 0} />
-        {h.myClassId === 'sniper' && <Slot icon="nest" value={h.myNestUp ? 'up' : 'ready'} sub="nest" keyHint="E" active={h.myNestUp} title="Build a sandbag wall in front of you" />}
-        {h.myClassId === 'medic' && <Slot icon="medkit" value={`${h.myKit}`} sub="medkit" fill={h.myKit / 100} title="Medkit: healing left for teammates" />}
-        <Slot icon="tent" value={h.myTent < 0 ? 'healing' : h.myTent === 0 ? 'ready' : `${h.myTent}s`} sub="clinic" dim={h.myTent > 0} title="The clinic tent heals you while you stand in it, then needs 30 s" />
+        {h.myClassId === 'sniper' ? (
+          <Slot icon="nest" value={h.myNestUp ? 'up' : 'ready'} sub="nest" keyHint="E" active={h.myNestUp} title="Build a sandbag wall in front of you" />
+        ) : h.myClassId === 'medic' ? (
+          <Slot icon="medkit" value={`${h.myKit}`} sub="medkit" fill={h.myKit / 100} title="Medkit: healing left for teammates" />
+        ) : (
+          <Slot icon="rocket" value={h.myRockets > 0 ? h.myRockets : '–'} sub="bazooka" keyHint="Q" dim={h.myRockets === 0} title="Bazooka: walk over your side's gold crate for 2 rockets, then mouse wheel or Q to equip" />
+        )}
       </div>
     </div>
   );
