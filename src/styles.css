@@ -195,3 +195,14 @@ b.red { color: var(--red); }
 .hud-slot b { font-size: 13px; }
 .hud-slot small { font-size: 8px; }
 .hud-slot kbd { font-size: 8px; padding: 0 3px; top: 2px; left: 3px; }
+
+/* Gear bar, a step up now that the play area is larger */
+.hudbar { bottom: 8px; gap: 12px; padding: 7px 10px; }
+.hud-vitals { width: 145px; gap: 6px; }
+.hud-hp b { font-size: 14px; min-width: 28px; }
+.hud-hp .bar, .hud-sprint .bar { height: 9px; }
+.hud-slots { gap: 7px; }
+.hud-slot { width: 76px; padding: 4px 3px 4px; }
+.hud-slot b { font-size: 15px; }
+.hud-slot small { font-size: 9px; }
+.hud-slot kbd { font-size: 9px; }
