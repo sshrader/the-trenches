@@ -199,6 +199,26 @@ for (let i = 0; i < 40; i++) {
   if (get(x, y) === null && !taken.has(`${x},${y}`)) put(x, y, 'o');
 }
 
+// Sniper nests: a sandbag pocket on the edge of the two long avenues, with the lane in front of it cleared. Sniper rounds pierce sandbags,
+// so a sniper in a nest is covered from the front yet can shoot down the whole avenue. Two per side, mirrored for the other team.
+const nests = [];
+for (const [sx, sy, wallY, inner, laneY] of [[14, 15, 15, [16, 17], [16, 17]], [14, 52, 52, [50, 51], [50, 51]]]) {
+  // clear the lane (cover, rubble and wrecks) from the nest east to the plaza avenue
+  const x0 = sx + 3, x1 = 58;
+  for (const ly of laneY) for (let x = x0; x <= x1; x++) if ('cYK'.includes(left[ly][x] ?? '.')) left[ly][x] = null;
+  for (let i = props.length - 1; i >= 0; i--) {
+    const q = props[i];
+    if (!['car', 'debris'].includes(q.kind)) continue;
+    const qw = q.rot ? q.h : q.w, qh = q.rot ? q.w : q.h;
+    if (q.x <= x1 && q.x + qw > x0 && q.y <= laneY[1] && q.y + qh > laneY[0]) props.splice(i, 1);
+  }
+  // the pocket: back wall and a wall on the building side, open to the east and toward the street
+  for (let x = sx; x <= sx + 2; x++) put(x, wallY, 'c');
+  for (const iy of inner) put(sx, iy, 'c');
+  for (const iy of inner) for (let x = sx + 1; x <= sx + 2; x++) left[iy][x] = null;
+  nests.push({ x: (sx + 1.5) * TILE, y: ((inner[0] + inner[1] + 1) / 2) * TILE });
+}
+
 // Keep the way out of each base clear: nothing solid in the first street in front of it (columns 8..12).
 for (let y = 1; y < H - 1; y++) for (let x = 8; x <= 12; x++) if ('cYK'.includes(left[y][x] ?? '.')) left[y][x] = null;
 for (let i = props.length - 1; i >= 0; i--) if (['car', 'debris'].includes(props[i].kind) && props[i].x <= 12) props.splice(i, 1);
@@ -252,6 +272,7 @@ const map = {
   roads: { v: VST.flatMap(([a, b]) => [[a, b], [W - 1 - b, W - 1 - a]]), h: HST },
   crates: crateList,
   tents,
+  nests: [...nests.map((q) => ({ ...q, team: 'green' })), ...nests.map((q) => ({ x: W * TILE - q.x, y: q.y, team: 'red' }))],
   capture: { x: (W * TILE) / 2, y: (H * TILE) / 2, r: 3.5 * TILE },
   spawns: {
     green: { x0: 1 * TILE, x1: 7 * TILE, y0: 2 * TILE, y1: (H - 2) * TILE },

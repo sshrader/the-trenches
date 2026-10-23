@@ -23,6 +23,7 @@ type Prop = { kind: string; x: number; y: number; w: number; h: number; flip?: b
 const PROPS = ((map as unknown as { props?: Prop[] }).props ?? []) as Prop[];
 const CRATES = ((map as unknown as { crates?: { x: number; y: number; team: string }[] }).crates ?? []);
 const TENTS = ((map as unknown as { tents?: { x: number; y: number; team: string }[] }).tents ?? []);
+const NESTS = ((map as unknown as { nests?: { x: number; y: number; team: string }[] }).nests ?? []);
 const GREEN = '#4ade80';
 const RED = '#f87171';
 const teamColor = (t: string) => (t === 'green' ? GREEN : RED);
@@ -878,6 +879,25 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         if (pr.kind === 'car') drawCar(ctx, pr, px, py);
         else if (pr.kind === 'debris') drawDebris(ctx, pr, px, py);
         else if (pr.kind === 'tent') drawTent(ctx, pr, px, py);
+      }
+      // Sniper nests: a faint scope reticle on the ground inside each sandbag pocket, in the owning side's colour
+      for (const n of NESTS) {
+        const nx = n.x - camX;
+        const ny = n.y - camY;
+        if (nx < -60 || ny < -60 || nx > VIEW_W + 60 || ny > VIEW_H + 60) continue;
+        ctx.strokeStyle = n.team === 'green' ? 'rgba(74,222,128,0.55)' : 'rgba(248,113,113,0.55)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(nx, ny, 16, 0, Math.PI * 2);
+        ctx.moveTo(nx - 24, ny);
+        ctx.lineTo(nx - 8, ny);
+        ctx.moveTo(nx + 8, ny);
+        ctx.lineTo(nx + 24, ny);
+        ctx.moveTo(nx, ny - 24);
+        ctx.lineTo(nx, ny - 8);
+        ctx.moveTo(nx, ny + 8);
+        ctx.lineTo(nx, ny + 24);
+        ctx.stroke();
       }
       // Bazooka crates: an olive box with a rocket on the lid and a pulsing ring so they are easy to spot
       for (const [kx, ky, locked] of w.pickups) {

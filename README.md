@@ -69,3 +69,5 @@ Each side has one bazooka crate in its own half, between 10 and 28 tiles from it
 
 
 **Sniper aids:** rounds pierce barricades and rubble; enemies picked out by a scoped teammate pulse as red dots on the minimap. The intro splash shows once per visitor (footer link "How to play" or `/?intro` shows it again).
+
+**Sniper nests:** each side has two sandbag pockets (marked with a scope reticle on the ground) on the long north and south avenues, with the lane in front cleared of cover and wrecks. Sniper rounds pierce sandbags, so a sniper in a nest is covered from the front and can shoot down the whole avenue. Defined in `scripts/make-map.mjs` (`nests`).
