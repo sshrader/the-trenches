@@ -145,6 +145,20 @@ export function attachGame(server) {
         return;
       }
 
+      if (m.t === 'chat') {
+        const nowMs = Date.now();
+        const text = String(m.text ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, 120);
+        if (!text || nowMs - (me.lastChat || 0) < 800) return;
+        me.lastChat = nowMs;
+        const teamOnly = m.mode === 'team';
+        const raw = JSON.stringify({ t: 'chat', id: me.id, name: me.name, team: me.team, text, mode: teamOnly ? 'team' : 'all' });
+        for (const [pid, sock] of sockets) {
+          if (sock.readyState !== 1) continue;
+          if (!teamOnly || world.players.get(pid)?.team === me.team) sock.send(raw);
+        }
+        return;
+      }
+
       if (m.t === 'dummy') {
         if (!TRAINING) return;
         const b = sim.addBot(world, me.id);

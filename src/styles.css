@@ -138,3 +138,10 @@ b.red { color: var(--red); }
 .leaderboard tbody tr:nth-child(1) td:first-child { color: #fbbf24; }
 .leaderboard .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
 @media (max-width: 600px) { .leaderboard th:nth-child(n+6), .leaderboard td:nth-child(n+6) { display: none; } }
+
+.chatbox { position: absolute; left: 10px; bottom: 150px; display: flex; gap: 6px; align-items: center; background: rgba(0,0,0,.7); padding: 6px 8px; border-radius: 6px; width: min(420px, 80%); }
+.chatbox input { flex: 1; background: #111; color: #eee; border: 1px solid #444; border-radius: 4px; padding: 5px 8px; font-size: 14px; }
+.chatmode { font-size: 11px; font-weight: 700; padding: 3px 6px; border-radius: 4px; background: #555; color: #fff; }
+.chatmode.team, .chatlog i.team { background: #2563eb; }
+.chatlog i.tag { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; background: #555; color: #fff; }
+.chatlog i.tag.team { background: #2563eb; }

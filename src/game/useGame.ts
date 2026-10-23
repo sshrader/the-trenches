@@ -35,7 +35,7 @@ export type World = {
 };
 export type Input = { sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number };
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
-export type ChatLine = { name: string; team: Team; text: string; at: number };
+export type ChatLine = { name: string; team: Team; text: string; at: number; mode?: 'all' | 'team' };
 export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false });
@@ -156,7 +156,7 @@ export function useGame() {
             board.current = m.sb ?? [];
             setStatus('playing');
           } else if (m.t === 'chat') {
-            chat.current = [...chat.current.slice(-4), { name: m.name, team: m.team, text: m.text, at: Date.now() }];
+            chat.current = [...chat.current.slice(-7), { name: m.name, team: m.team, text: m.text, at: Date.now(), mode: m.mode }];
             const u = w.units.get(m.id);
             if (u) {
               u.say = m.text;
@@ -280,6 +280,10 @@ export function useGame() {
     if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'say', n }));
   }, []);
 
+  const sendChat = useCallback((text: string, mode: 'all' | 'team') => {
+    if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'chat', text, mode }));
+  }, []);
+
   const addBot = useCallback(() => {
     if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'dummy' }));
   }, []);
@@ -288,5 +292,5 @@ export function useGame() {
     if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'class', cls }));
   }, []);
 
-  return { status, error, hud, world, input, join, leave, setClass, addBot, say };
+  return { status, error, hud, world, input, join, leave, setClass, addBot, sendChat, say };
 }

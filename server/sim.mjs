@@ -576,7 +576,7 @@ export function step(w, dt, now = Date.now()) {
         const ca = Math.cos(a);
         const sa = Math.sin(a);
         const sp = k.speed * (k.pellets ? 0.9 + w.rng() * 0.2 : 1);
-        w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: ca * sp, vy: sa * sp, speed: sp, damage: k.damage, weapon: k.weapon, life: k.life, owner: p.id, team: p.team });
+        w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: ca * sp, vy: sa * sp, speed: sp, damage: k.damage, weapon: k.weapon, life: k.life, owner: p.id, team: p.team, pierce: k.weapon === 'sniper' ? 2 : 0 });
       }
     }
   }
@@ -602,8 +602,15 @@ export function step(w, dt, now = Date.now()) {
       b.x += (b.vx * dt) / steps;
       b.y += (b.vy * dt) / steps;
       if (solidAt(w, b.x, b.y)) {
-        dead = true;
-        break;
+        // Sniper rounds punch through light cover (barricades, rubble) but not buildings, wrecks or the map edge.
+        const tx = Math.floor(b.x / w.tile), ty = Math.floor(b.y / w.tile);
+        const ch = w.rows[ty]?.[tx];
+        if (b.pierce > 0 && (ch === 'c' || ch === 'Y')) {
+          if (b.pierceTile !== tx + ',' + ty) { b.pierce--; b.pierceTile = tx + ',' + ty; }
+        } else {
+          dead = true;
+          break;
+        }
       }
       for (const t of w.players.values()) {
         if (t.team === b.team || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;

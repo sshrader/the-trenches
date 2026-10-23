@@ -835,6 +835,27 @@ test('shotgunner sprints 1.5x as long as other classes', () => {
   assert.ok(Math.abs(heavy / normal - 1.5) < 0.15, `ratio ${heavy / normal}`);
 });
 
+test('sniper rounds pierce light cover but not buildings', () => {
+  for (const [ch, shouldKill] of [['c', true], ['B', false]]) {
+    const w = fresh();
+    w.rows = w.rows.slice();
+    const sn = addPlayer(w, { name: 'sn', want: 'green', cls: 'sniper' });
+    const r = addPlayer(w, { name: 'r', want: 'red' });
+    sn.team = 'green';
+    r.team = 'red';
+    const ty = Math.floor(LANE / 32);
+    w.rows[ty] = w.rows[ty].slice(0, 14) + ch + w.rows[ty].slice(15); // wall tile between them
+    place(sn, 12 * 32 + 16, LANE, 0);
+    place(r, 17 * 32 + 16, LANE);
+    r.hp = CFG.HP;
+    sn.lastFire = -1e6;
+    setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, fire: true });
+    let now = run(w, 0.5);
+    setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, fire: false });
+    assert.equal(r.hp <= 0, shouldKill, `tile ${ch}`);
+  }
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

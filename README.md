@@ -50,7 +50,12 @@ Each side's spawn trench plus a 32 px strip in front of it is a safe zone (`CFG.
 
 A side only sees enemies, bullets and blasts within `CFG.VISION` (420 px) of one of its living soldiers, and the server never sends anything outside that, so it cannot be cheated from the browser. Teammates are always visible. The client dims everything outside your side's sight. The camera is also zoomed out a little (`VIEW_W`/`VIEW_H` in `GameCanvas.tsx`).
 
+## Chat
+Press Enter to type a message to **everyone**; Tab inside the box switches to **team-only**; Enter sends, Esc cancels (game keys are paused while typing). Messages are limited to 120 characters and rate-limited server-side. N still opens the one-key team quick chat.
+
 ## Sniper class
+Sniper rounds punch through light cover (barricades and rubble) but still stop at buildings, wrecks and the map edge, so a sniper can shoot through the clutter that blocks everyone else.
+
 
 One-hit kill, 4 rounds, 3 s reload, slow fire (1.8 s), 1 grenade, no artillery strike, max 2 per side (`CFG.MAX_SNIPERS`). Hold the **right mouse button** to scope: the side's fog opens to `CFG.SCOPE_VISION` (680 px) around him, but he moves at 35% speed and cannot sprint. Each shot reveals him to the enemy through the fog for 1.6 s (`CFG.SNIPER_REVEAL_S`).
 

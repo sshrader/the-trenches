@@ -51,6 +51,12 @@ export default function Play() {
   });
   const [pickOpen, setPickOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const typingRef = useRef(false);
+  typingRef.current = typing;
+  const [chatMode, setChatMode] = useState<'all' | 'team'>('all');
+  const [chatText, setChatText] = useState('');
+  const chatInputRef = useRef<HTMLInputElement>(null);
   const [showKeys, setShowKeys] = useState(true);
   const playing = game.status === 'playing';
   // Full screen: the battlefield, its overlays (feed, chat, score) and nothing else. F toggles it, Esc leaves it.
@@ -87,7 +93,13 @@ export default function Play() {
       const t = e.target as HTMLElement | null;
       if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
       const k = e.key.toLowerCase();
-      if (k === 'f' && !e.repeat) {
+      if (k === 'enter' && !e.repeat) {
+        e.preventDefault();
+        setChatOpen(false);
+        setChatText('');
+        setTyping(true);
+        setTimeout(() => chatInputRef.current?.focus(), 0);
+      } else if (k === 'f' && !e.repeat) {
         toggleFull();
       } else if (k === 'n') {
         setChatOpen((o) => !o);
@@ -242,7 +254,35 @@ export default function Play() {
 
           <div className="play-row">
           <div className="canvas-wrap" ref={wrapRef}>
-            <GameCanvas world={game.world} input={game.input} />
+            <GameCanvas world={game.world} input={game.input} typing={() => typingRef.current} />
+            {typing && (
+              <form
+                className="chatbox"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const t = chatText.trim();
+                  if (t) game.sendChat(t, chatMode);
+                  setChatText('');
+                  setTyping(false);
+                }}
+              >
+                <span className={'chatmode ' + chatMode}>{chatMode === 'team' ? 'TEAM' : 'ALL'}</span>
+                <input
+                  ref={chatInputRef}
+                  value={chatText}
+                  maxLength={120}
+                  placeholder="Enter to send · Tab switches All/Team · Esc cancels"
+                  onChange={(e) => setChatText(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Tab') { e.preventDefault(); setChatMode((m) => (m === 'all' ? 'team' : 'all')); }
+                    else if (e.key === 'Escape') { setChatText(''); setTyping(false); }
+                  }}
+                  onKeyUp={(e) => e.stopPropagation()}
+                  onBlur={() => setTyping(false)}
+                />
+              </form>
+            )}
             {chatOpen && (
               <div className="quickchat" role="menu" aria-label="Team chat">
                 <p className="muted small">Team chat · press a number</p>
@@ -255,7 +295,7 @@ export default function Play() {
             )}
             <div className="chatlog" aria-live="polite">
               {h.chat.map((c, i) => (
-                <p key={i}><b className={c.team}>{c.name}:</b> {c.text}</p>
+                <p key={i}>{c.mode && <i className={'tag ' + (c.mode === 'team' ? 'team' : 'all')}>{c.mode === 'team' ? 'TEAM' : 'ALL'}</i>} <b className={c.team}>{c.name}:</b> {c.text}</p>
               ))}
             </div>
             <div className="feed" aria-live="polite">
