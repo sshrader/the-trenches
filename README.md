@@ -79,3 +79,7 @@ Each side has one bazooka crate in its own half, between 10 and 28 tiles from it
 **Exit protection:** stepping out of your own base grants 1 s of invincibility (the same shield shown after a respawn), at most once every 6 s, so the doorway cannot be camped (`CFG.EXIT_PROTECT_*`).
 
 **Scope view:** while a sniper holds the scope, the camera slides toward where he aims (`SCOPE_PAN`) and pulls back slightly (`SCOPE_ZOOM`), and the fog opens in a long narrow beam along his aim (`CFG.SCOPE_VISION` 1000 px reach, `CFG.SCOPE_HALF` 0.3 rad each side) on top of his normal sight circle. Enemies outside the beam and outside normal sight stay hidden, for him and his team.
+
+## Team voice chat (opt in)
+Press **Join voice** in the top bar to enter your team's voice channel (the browser asks for your microphone). Hold **V** to talk, or tick **Open mic**. Leave with **Leave voice**; changing sides, leaving the game or closing the tab also leaves it. Enemies cannot hear it: the game server only relays the connection setup between teammates who both joined, and the audio then goes browser to browser (WebRTC, free STUN servers, no recording and no audio passes through the server). `src/game/useVoice.ts` (client) and the `vjoin` / `vleave` / `vsig` messages in `server/game.mjs`.
+Needs a secure page: https (Railway) or localhost. On a plain `http://192.168...` address the browser blocks the microphone. Players behind very strict networks may not connect, since there is no relay (TURN) server.

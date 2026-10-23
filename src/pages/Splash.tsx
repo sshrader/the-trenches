@@ -17,6 +17,7 @@ const KEYS: [string, string][] = [
   ['Right-click (Sniper)', 'Scope'],
   ['Enter', 'Chat (Tab: all/team)'],
   ['N', 'Team quick chat'],
+  ['V', 'Hold to talk on team voice'],
   ['F', 'Full screen'],
   ['Tab (hold)', 'Scoreboard'],
 ];

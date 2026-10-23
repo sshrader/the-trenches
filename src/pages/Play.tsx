@@ -156,6 +156,29 @@ export default function Play() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [playing, chatOpen]);
+  // V is push-to-talk for team voice (only once you have chosen to join voice).
+  const pushRef = useRef(game.voice.push);
+  pushRef.current = game.voice.push;
+  useEffect(() => {
+    if (!playing) return;
+    const field = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      return !!t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName);
+    };
+    const down = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'v' && !e.repeat && !field(e)) pushRef.current(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'v') pushRef.current(false);
+    };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      pushRef.current(false);
+    };
+  }, [playing]);
   const start = (team: Team | 'random') => {
     unlockAudio(); // joining is a click, so the browser allows sound from here on
     try {
@@ -231,6 +254,19 @@ export default function Play() {
             </div>
             <span className="pill" title="Your kills and deaths this session">K {h.myKills} · D {h.myDeaths}{h.myDeaths > 0 ? ` · ${(h.myKills / h.myDeaths).toFixed(2)}` : ''}</span>
             {h.myNext && <span className="pill" title="Your class changes when you next respawn">{h.myClass} → {h.myNext} next life</span>}
+            <span className="voice-ctl">
+              {game.voice.on ? (
+                <>
+                  <button className="btn" onClick={() => game.voice.leave()} title="Leave your team's voice channel">Leave voice</button>
+                  <label className="check small" title="Off: hold V to talk. On: your mic stays open.">
+                    <input type="checkbox" checked={game.voice.openMic} onChange={(e) => game.voice.setOpenMic(e.target.checked)} /> Open mic
+                  </label>
+                  <span className={`pill mic ${game.voice.talking ? 'live' : ''}`}>{game.voice.talking ? 'Mic live' : 'Hold V to talk'}</span>
+                </>
+              ) : (
+                <button className="btn" onClick={() => void game.voice.join()} title="Opt in to your team's voice channel (asks for your microphone)">Join voice</button>
+              )}
+            </span>
             <span className="pill score" title={`Kills this round. Rounds won: Green ${h.score[2]}, Red ${h.score[3]}`}>
               <b className="green">{h.score[0]}</b> – <b className="red">{h.score[1]}</b>
               <small> · Round {h.round.n} · won {h.score[2]}–{h.score[3]}</small>
@@ -324,6 +360,14 @@ export default function Play() {
               </div>
             )}
             <HudBar h={h} />
+            {game.voice.error && <p className="status voice-err" role="alert">{game.voice.error}</p>}
+            {game.voice.on && game.voice.speaking.length > 0 && (
+              <div className="voicebox" aria-live="polite">
+                {game.voice.speaking.map((id) => (
+                  <p key={id}>🎙 {id === -1 ? 'You' : game.world.current.units.get(id)?.name ?? 'Teammate'}</p>
+                ))}
+              </div>
+            )}
             <div className="chatlog" aria-live="polite">
               {h.chat.map((c, i) => (
                 <p key={i}>{c.mode && <i className={'tag ' + (c.mode === 'team' ? 'team' : 'all')}>{c.mode === 'team' ? 'TEAM' : 'ALL'}</i>} <b className={c.team}>{c.name}:</b> {c.text}</p>
@@ -386,6 +430,7 @@ export default function Play() {
                   <dt>E</dt><dd>Sniper: build a sandbag nest</dd>
                   <dt>F</dt><dd>Full screen</dd>
                   <dt>N</dt><dd>Team chat</dd>
+                  <dt>V (hold)</dt><dd>Talk (after Join voice)</dd>
                   <dt>Tab (hold)</dt><dd>Scoreboard</dd>
                 </dl>
               )}

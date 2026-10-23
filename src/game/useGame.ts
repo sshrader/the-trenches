@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WALLET_LOGIN } from '../config';
+import { useVoice } from './useVoice';
 import { playBoom, playCannon, playPickup, playReload, playShot, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
@@ -55,6 +56,12 @@ export function useGame() {
   const world = useRef<World>(emptyWorld());
   const input = useRef<Input>({ sprint: false, dx: 0, dy: 0, aim: 0, fire: false, nade: 0, range: 200, reload: 0, arty: 0, scope: false, swap: 0, nest: 0 });
   const ws = useRef<WebSocket | null>(null);
+  const sendRaw = useCallback((msg: object) => {
+    if (ws.current?.readyState === 1) ws.current.send(JSON.stringify(msg));
+  }, []);
+  const voice = useVoice(sendRaw);
+  const voiceRef = useRef(voice);
+  voiceRef.current = voice;
   const training = useRef(false);
   const chat = useRef<ChatLine[]>([]);
   const feed = useRef<FeedLine[]>([]);
@@ -66,6 +73,7 @@ export function useGame() {
   }, []);
 
   const leave = useCallback(() => {
+    voiceRef.current.leave(false);
     statusRef.current = 'idle';
     ws.current?.close();
     ws.current = null;
@@ -152,6 +160,7 @@ export function useGame() {
           } catch {
             return;
           }
+          if (voiceRef.current.handle(m)) return; // voice chat setup messages
           const w = world.current;
           if (m.t === 'welcome') {
             w.me = m.id;
@@ -266,6 +275,7 @@ export function useGame() {
           }
         };
         sock.onclose = (ev) => {
+          voiceRef.current.leave(false);
           const before = statusRef.current;
           ws.current = null;
           world.current = emptyWorld();
@@ -301,5 +311,5 @@ export function useGame() {
     if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'class', cls }));
   }, []);
 
-  return { status, error, hud, world, input, join, leave, setClass, addBot, sendChat, say };
+  return { status, error, hud, world, input, join, leave, setClass, addBot, sendChat, say, voice };
 }

@@ -206,3 +206,9 @@ b.red { color: var(--red); }
 .hud-slot b { font-size: 15px; }
 .hud-slot small { font-size: 9px; }
 .hud-slot kbd { font-size: 9px; }
+
+.voice-ctl { display: inline-flex; align-items: center; gap: 8px; }
+.pill.mic.live { color: #4ade80; border-color: #4ade80; }
+.voicebox { position: absolute; left: 10px; top: 10px; font-size: 13px; pointer-events: none; text-shadow: 0 1px 2px #000; background: rgba(0,0,0,.45); border-radius: 8px; padding: 4px 8px; }
+.voicebox p { margin: 2px 0; }
+.voice-err { position: absolute; left: 10px; top: 46px; max-width: 360px; background: rgba(60,10,10,.85); padding: 6px 10px; border-radius: 8px; font-size: 13px; }
