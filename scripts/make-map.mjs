@@ -182,8 +182,8 @@ for (let tries = 0, n = 0; tries < 800 && n < 24; tries++) {
 for (const [x, y] of [[capX - 6, capY - 4], [capX - 6, capY + 3], [capX - 8, capY], [capX - 4, capY - 7], [capX - 4, capY + 6]]) if (!taken.has(`${x},${y}`)) put(x, y, 'c');
 
 // The field clinic sits on the main avenue behind the plaza. Resupply crates sit on the sidewalks near the front.
-props.push({ kind: 'tent', x: 47, y: 33, w: 4, h: 2 });
-claim(47, 33, 4, 2);
+props.push({ kind: 'tent', x: 40, y: 33, w: 4, h: 2 });
+claim(40, 33, 4, 2);
 const crates = [];
 for (let tries = 0; tries < 400 && crates.length < 3; tries++) {
   const x = ri(9, 23);

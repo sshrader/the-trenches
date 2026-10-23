@@ -246,7 +246,13 @@ function drawDebris(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: numb
 function drawTent(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number) {
   const w = p.w * TILE;
   const h = p.h * TILE;
-  ctx.strokeStyle = 'rgba(134,239,172,0.3)';
+  const red = !!p.flip; // the mirrored tent belongs to the red side
+  const tint = red ? '248,113,113' : '74,222,128';
+  ctx.fillStyle = `rgba(${tint},0.10)`;
+  ctx.beginPath();
+  ctx.arc(sx + w / 2, sy + h / 2, 80, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(${tint},0.7)`;
   ctx.lineWidth = 2;
   ctx.setLineDash([6, 6]);
   ctx.beginPath();
@@ -255,12 +261,12 @@ function drawTent(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number
   ctx.setLineDash([]);
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.fillRect(sx + 6, sy + 8, w - 8, h - 8);
-  ctx.fillStyle = '#c9c2a4';
+  ctx.fillStyle = red ? '#c9a4a0' : '#a8c9ae';
   ctx.fillRect(sx + 2, sy + 2, w - 8, h - 8);
-  ctx.fillStyle = '#b3ab8b'; // the ridge line and two roof panels
+  ctx.fillStyle = red ? '#b08580' : '#86ad8e'; // the ridge line and two roof panels
   ctx.fillRect(sx + 2, sy + 2 + (h - 8) / 2 - 2, w - 8, 4);
-  ctx.strokeStyle = '#6f6850';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = red ? '#b91c1c' : '#15803d';
+  ctx.lineWidth = 3;
   ctx.strokeRect(sx + 2, sy + 2, w - 8, h - 8);
   ctx.fillStyle = '#dc2626';
   const cx = sx + 2 + (w - 8) / 2;
