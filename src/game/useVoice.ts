@@ -131,8 +131,15 @@ export function useVoice(send: Send) {
     }
     try {
       stream.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
-    } catch {
-      setError('Microphone blocked. Allow it for this site to join voice.');
+    } catch (e) {
+      const name = (e as DOMException)?.name;
+      setError(
+        name === 'NotFoundError'
+          ? 'No microphone found. Plug one in and try again.'
+          : name === 'NotAllowedError'
+            ? 'Microphone blocked. Click the lock icon in the address bar, allow the microphone for this site, then try again.'
+            : `Could not start the microphone (${name || 'unknown error'}).`,
+      );
       return;
     }
     onRef.current = true;
