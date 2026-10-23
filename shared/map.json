@@ -28,9 +28,9 @@
   "#TTTTTTc.....................BfffBffffff......ffffffBc.c...cc...c.cBffffff......ffffffBfffB.....................cTTTTTT#",
   "#TTTTTTc..........cc..o......BfffBcffffB......BfBfffBY.c........c.YBfffBfB......BffffcBfffB......o..cc..........cTTTTTT#",
   "#TTTTTT........o.c.Y..cY.....BfffBffcffB........Y......................Y........BffcffBfffB.....Yc..Y.c.o........TTTTTT#",
-  "#TTTTTT........c.c....c......BfffBcffffB.........cc.....c......c.....cc.........BffffcBfffB......c....c.c........TTTTTT#",
+  "#TTTTTT........c.c....c......BfffBcffffB................c......c................BffffcBfffB......c....c.c........TTTTTT#",
   "#TTTTTT........c....c........Bfffcffffff............Y...o.cccc.o...Y............ffffffcfffB........c....c........TTTTTT#",
-  "#TTTTTT.............Y....c...BfffffffffB...cc....o..Y..............Y..o....cc...BfffffffffB...c....Y.............TTTTTT#",
+  "#TTTTTT.............Y....c...BfffffffffB...cc.......Y..............Y.......cc...BfffffffffB...c....Y.............TTTTTT#",
   "#TTTTTTc.o.......Y.......c...BfBfffBBfBB........YY.Y..c..........c..Y.YY........BBfBBfffBfB...c.......Y.......o.cTTTTTT#",
   "#TTTTTTc..........c..Y............................c.cc............cc.c............................Y..c..........cTTTTTT#",
   "#TTTTTT...........c..........................c....c..................c....c..........................c...........TTTTTT#",
@@ -454,6 +454,13 @@
    "y": 33,
    "w": 4,
    "h": 2
+  },
+  {
+   "kind": "tower",
+   "x": 49,
+   "y": 27,
+   "w": 3,
+   "h": 3
   },
   {
    "kind": "debris",
@@ -886,6 +893,14 @@
    "w": 4,
    "h": 2,
    "flip": true
+  },
+  {
+   "kind": "tower",
+   "x": 68,
+   "y": 27,
+   "w": 3,
+   "h": 3,
+   "flip": true
   }
  ],
  "roads": {
@@ -979,6 +994,18 @@
   {
    "x": 2496,
    "y": 1088,
+   "team": "red"
+  }
+ ],
+ "towers": [
+  {
+   "x": 1616,
+   "y": 912,
+   "team": "green"
+  },
+  {
+   "x": 2224,
+   "y": 912,
    "team": "red"
   }
  ],

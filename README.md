@@ -89,3 +89,5 @@ Needs a secure page: https (Railway) or localhost. On a plain `http://192.168...
 **Scoring the plaza:** holding the middle plaza alone earns your side points: 1 per second with one soldier inside, +0.5 per second for each extra soldier (up to 6). If both sides are in it, nobody scores. The first side to 100 points wins the round (`CFG.POINTS_TO_WIN`, `POINT_RATE`, `POINT_EXTRA`); if time runs out, the side with more points wins. The bar in the top row shows both scores.
 
 **Sniper rounds** now fly at 2600 px/s (was 1000), with the lifetime shortened so the reach stays the same, so they are hard to dodge.
+
+**Sniper towers:** each side has one raised platform a short way from the plaza (flag in the side's colour, `towers` in the map file, placed by `scripts/make-map.mjs`). A sniper next to his own side's tower presses **E** to climb it: he is then fixed in place, one sniper per tower, and his rounds fly over low cover (barricades, rubble, wrecks) but still stop at buildings and the map edge. He can still be shot by anyone who has a clear line to him. E again climbs down; dying also frees the tower (`CFG.TOWER_REACH`).

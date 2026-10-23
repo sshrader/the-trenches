@@ -440,7 +440,7 @@ export default function Play() {
                   <dt>R</dt><dd>Reload</dd>
                   <dt>G</dt><dd>Grenade</dd>
                   <dt>T</dt><dd>Artillery strike</dd>
-                  <dt>E</dt><dd>Sniper: build a sandbag nest</dd>
+                  <dt>E</dt><dd>Sniper: nest / climb tower</dd>
                   <dt>F</dt><dd>Full screen</dd>
                   <dt>N</dt><dd>Team chat</dd>
                   <dt>V (hold)</dt><dd>Talk (after Join voice)</dd>

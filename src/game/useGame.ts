@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WALLET_LOGIN } from '../config';
+import map from '../../shared/map.json';
 import { useVoice } from './useVoice';
 import { playBoom, playCannon, playPickup, playReload, playShot, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
-export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean };
+export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean };
 export type ClassId = 'rifleman' | 'smg' | 'medic' | 'sniper' | 'shotgunner';
 export const CLASSES: { id: ClassId; label: string; mag: number; hp: number; sideMag?: number; blurb: string }[] = [
   { id: 'rifleman', label: 'Rifleman', mag: 8, hp: 100, blurb: 'Scavenged bolt rifle. Two hits kill, it reaches farthest, but it fires slowly.' },
@@ -41,9 +42,10 @@ export type World = {
 export type Input = { sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number; nest: number };
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type ChatLine = { name: string; team: Team; text: string; at: number; mode?: 'all' | 'team' };
-export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myNestUp: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
+export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myNestUp: boolean; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
-const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false });
+const TOWERS = ((map as unknown as { towers?: { x: number; y: number; team: string }[] }).towers ?? []);
+const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false });
 const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], nests: [], nestTiles: new Set() });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
@@ -128,6 +130,8 @@ export function useGame() {
         myRockets: me?.rockets ?? 0,
         myBazooka: me?.bazooka ?? false,
         myNestUp: w.nests.some((n) => n[1] === w.me),
+        myElev: me?.elev ?? false,
+        myNearTower: !!me && TOWERS.some((t) => t.team === me.team && Math.hypot(t.x - me.x, t.y - me.y) <= 70),
         myTeam: me?.team ?? null,
         feed: [...feed.current],
         board: board.current,
@@ -187,7 +191,7 @@ export function useGame() {
             w.units.delete(m.id);
           } else if (m.t === 's') {
             const inSight = new Set<number>();
-            for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next, kit, kills, deaths, stamina, winded, scoped, rockets, weap] of m.p as number[][]) {
+            for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next, kit, kills, deaths, stamina, winded, scoped, rockets, weap, elev] of m.p as number[][]) {
               const u = w.units.get(id);
               if (!u) continue;
               inSight.add(id);
@@ -219,6 +223,7 @@ export function useGame() {
               u.stamina = stamina;
               u.winded = winded === 1;
               u.scoped = scoped === 1;
+              u.elev = elev === 1;
               u.rockets = rockets;
               u.bazooka = weap === 1;
               u.sidearm = weap === 2;

@@ -12,7 +12,7 @@ const KEYS: [string, string][] = [
   ['R', 'Reload'],
   ['G', 'Grenade (2 per life)'],
   ['T', 'Artillery strike (1 per life)'],
-  ['E', 'Sniper: build a sandbag nest'],
+  ['E', 'Sniper: sandbag nest / climb tower'],
   ['Q / Mouse wheel', 'Swap to the bazooka (when you have one)'],
   ['Right-click (Sniper)', 'Scope'],
   ['Enter', 'Chat (Tab: all/team)'],

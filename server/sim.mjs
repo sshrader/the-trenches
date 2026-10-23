@@ -10,6 +10,7 @@ export const CFG = {
   STAMINA_DELAY_S: 0.8,
   STAMINA_RESUME: 25, // after running dry you must recover this much before sprinting again
   RADIUS: 11, // player body
+  TOWER_REACH: 70, // a sniper this close to his side's tower can climb it (E)
   NEST_AWAY_PX: 150, // a sniper's nest is abandoned once he is farther than this from it ...
   NEST_AWAY_S: 10, // ... for this many seconds
   NEST_COOLDOWN_MS: 4000,
@@ -121,6 +122,7 @@ export function createWorld(map, rng = Math.random) {
     tents: map.tents || [],
     crates: (map.crates || []).map((c) => ({ x: c.x, y: c.y, team: c.team, readyAt: 0 })),
     arty: [], // incoming artillery strikes
+    towers: (map.towers || []).map((t) => ({ x: t.x, y: t.y, team: t.team, by: null })), // raised firing platforms; `by` = the sniper on it
     nests: [], // deployed sniper nests: { owner, team, tiles: [[tx, ty]], awayS }
     dyn: new Set(), // tiles taken by deployed nests, as 'tx,ty' (solid like sandbags)
     teamKills: { green: 0, red: 0 }, // kills this round
@@ -308,7 +310,10 @@ export function removeBotsOf(w, ownerId) {
   return ids;
 }
 
-export const removePlayer = (w, id) => w.players.delete(id);
+export const removePlayer = (w, id) => {
+  for (const t of w.towers) if (t.by === id) t.by = null;
+  return w.players.delete(id);
+};
 
 export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope, swap, nest }) {
   const p = w.players.get(id);
@@ -390,6 +395,25 @@ function rebalance(w, now, force) {
     w.events.push({ t: 'team', id: pick.id, team: pick.team });
     if (pick.hp > 0) respawn(w, pick, now);
   }
+}
+
+/** The tower of his own side that this sniper is close enough to climb (or is standing on). */
+function towerNear(w, p) {
+  return w.towers.find((t) => t.team === p.team && Math.hypot(t.x - p.x, t.y - p.y) <= CFG.TOWER_REACH && (t.by === null || t.by === p.id));
+}
+function leaveTower(w, p) {
+  for (const t of w.towers) if (t.by === p.id) t.by = null;
+  p.elevated = false;
+}
+/** E near his tower: climb up (fixed in place, rounds fly over low cover) or climb back down. */
+function toggleTower(w, p) {
+  if (p.elevated) return leaveTower(w, p);
+  const t = towerNear(w, p);
+  if (!t || p.hp <= 0 || p.cls !== 'sniper') return;
+  t.by = p.id;
+  p.elevated = true;
+  p.x = t.x;
+  p.y = t.y;
 }
 
 /** Remove a sniper's deployed nest (he died, left it, or built a new one). */
@@ -563,6 +587,7 @@ export function step(w, dt, now = Date.now()) {
   // Players: respawn, move, shoot.
   for (const p of w.players.values()) {
     if (p.hp <= 0) {
+      if (p.elevated) leaveTower(w, p);
       if (p.respawnAt && now >= p.respawnAt) respawn(w, p, now);
       continue;
     }
@@ -578,7 +603,7 @@ export function step(w, dt, now = Date.now()) {
       if (p.sprintRest <= 0) p.stamina = Math.min(CFG.STAMINA, p.stamina + CFG.STAMINA_REGEN * dt);
       if (p.winded && p.stamina >= CFG.STAMINA_RESUME) p.winded = false;
     }
-    if (len > 0) {
+    if (len > 0 && !p.elevated) {
       const k = (len > 1 ? 1 / len : 1) * CFG.SPEED * (sprinting ? CFG.SPRINT_MULT : p.scoped ? CFG.SCOPE_SPEED : 1) * dt;
       const nx = p.x + p.dx * k;
       if (!blockedAt(w, nx, p.y) && !inEnemyBase(w, p.team, nx)) p.x = nx;
@@ -635,7 +660,7 @@ export function step(w, dt, now = Date.now()) {
         const ca = Math.cos(a);
         const sa = Math.sin(a);
         const sp = k.speed * (k.pellets ? 0.9 + w.rng() * 0.2 : 1);
-        w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: ca * sp, vy: sa * sp, speed: sp, damage: k.damage, weapon: k.weapon, life: k.life, owner: p.id, team: p.team, pierce: k.weapon === 'sniper' ? 2 : 0, sx: p.x + c * 14, sy: p.y + s * 14, falloff: k.falloff });
+        w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: ca * sp, vy: sa * sp, speed: sp, damage: k.damage, weapon: k.weapon, life: k.life, owner: p.id, team: p.team, pierce: k.weapon === 'sniper' ? 2 : 0, over: !!p.elevated, sx: p.x + c * 14, sy: p.y + s * 14, falloff: k.falloff });
       }
     }
   }
@@ -654,7 +679,8 @@ export function step(w, dt, now = Date.now()) {
   for (const p of w.players.values()) {
     if (p.wantNest) {
       p.wantNest = false;
-      deployNest(w, p, now);
+      if (p.elevated || (p.cls === 'sniper' && towerNear(w, p))) toggleTower(w, p);
+      else deployNest(w, p, now);
     }
     if (p.wantNade) {
       p.wantNade = false;
@@ -679,7 +705,9 @@ export function step(w, dt, now = Date.now()) {
         // Sniper rounds punch through light cover (barricades, rubble) but not buildings, wrecks or the map edge.
         const tx = Math.floor(b.x / w.tile), ty = Math.floor(b.y / w.tile);
         const ch = w.dyn?.has(tx + ',' + ty) ? 'c' : w.rows[ty]?.[tx];
-        if (b.pierce > 0 && (ch === 'c' || ch === 'Y')) {
+        if (b.over && (ch === 'c' || ch === 'Y' || ch === 'K')) {
+          // fired from a tower: low cover (barricades, rubble, wrecks) is shot over; buildings and the map edge still stop it
+        } else if (b.pierce > 0 && (ch === 'c' || ch === 'Y')) {
           if (b.pierceTile !== tx + ',' + ty) { b.pierce--; b.pierceTile = tx + ',' + ty; }
         } else {
           dead = true;
@@ -874,7 +902,7 @@ export function snapshot(w, now = Date.now(), team = null) {
   const p = [];
   for (const q of w.players.values()) {
     if (team && q.team !== team && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
-    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0]);
+    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0]);
   }
   const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
   const owner = (id) => w.players.get(id);

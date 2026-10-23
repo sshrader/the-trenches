@@ -77,7 +77,9 @@ export default function HudBar({ h }: { h: Hud }) {
         )}
         <Slot icon="grenade" value={h.myGren} sub="grenades" keyHint="G" dim={h.myGren === 0} />
         <Slot icon="artillery" value={h.myArty} sub="artillery" keyHint="T" dim={h.myArty === 0} />
-        {h.myClassId === 'sniper' ? (
+        {h.myClassId === 'sniper' && (h.myElev || h.myNearTower) ? (
+          <Slot icon="nest" value={h.myElev ? 'up' : 'climb'} sub="tower" keyHint="E" active={h.myElev} title={h.myElev ? 'On your tower: your rounds fly over low cover. Press E to climb down.' : 'Press E to climb your side\'s tower'} />
+        ) : h.myClassId === 'sniper' ? (
           <Slot icon="nest" value={h.myNestUp ? 'up' : 'ready'} sub="nest" keyHint="E" active={h.myNestUp} title="Build a sandbag wall in front of you" />
         ) : h.myClassId === 'medic' ? (
           <Slot icon="medkit" value={`${h.myKit}`} sub="medkit" fill={h.myKit / 100} title="Medkit: healing left for teammates" />

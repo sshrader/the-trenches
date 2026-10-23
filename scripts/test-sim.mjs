@@ -982,6 +982,52 @@ test('scoped sniper sees a long narrow beam along his aim, not a big circle', ()
   assert.ok(!snapshot(w, n2, 'green').p.some((q) => q[0] === ahead.id), 'and the one behind is lost again');
 });
 
+test('sniper tower: climb with E, locked in place, rounds fly over low cover but not buildings, tower frees on death', () => {
+  const w = fresh();
+  const sn = addPlayer(w, { name: 'sn', want: 'green', cls: 'sniper' });
+  const r = addPlayer(w, { name: 'r', want: 'red' });
+  sn.team = 'green';
+  r.team = 'red';
+  const tw = w.towers.find((t) => t.team === 'green');
+  // use the cleared test lane: pretend the tower stands in it
+  tw.x = 400;
+  tw.y = LANE;
+  place(sn, 420, LANE, 0);
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 0 });
+  let now = run(w, 0.1);
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 1 });
+  now = run(w, 0.1, now);
+  assert.ok(sn.elevated, 'climbed up');
+  assert.equal(tw.by, sn.id);
+  assert.equal(w.nests.length, 0, 'E climbed instead of building a nest');
+  setInput(w, sn.id, { dx: 1, dy: 0, aim: 0, nest: 1 });
+  now = run(w, 0.5, now);
+  assert.equal(sn.x, 400, 'cannot walk off the platform');
+  // low cover in the line of fire is shot over; the same shot from the ground would be stopped (cover is not pierced after 2 tiles here)
+  const ty = Math.floor(LANE / 32);
+  w.rows = w.rows.slice();
+  for (const x of [13, 14, 15]) w.rows[ty] = w.rows[ty].slice(0, x) + 'K' + w.rows[ty].slice(x + 1); // a wreck wall three tiles thick
+  place(r, 600, LANE);
+  r.hp = CFG.HP;
+  r.wasSafe = false; // teleported test target: do not count it as walking out of his base
+  r.exitProtectReadyAt = 1e12;
+  sn.lastFire = -1e6;
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, fire: true, nest: 1 });
+  now = run(w, 0.6, now);
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, fire: false, nest: 1 });
+  assert.ok(r.hp <= 0, 'shot over the wrecks');
+  // down again, then dying frees the tower
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 2 });
+  now = run(w, 0.1, now);
+  assert.ok(!sn.elevated && tw.by === null, 'climbed down');
+  setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 3 });
+  now = run(w, 0.1, now);
+  assert.ok(sn.elevated, 'up again');
+  sn.hp = 0;
+  now = run(w, 0.1, now);
+  assert.ok(!sn.elevated && tw.by === null, 'dying frees the tower');
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

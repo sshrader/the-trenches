@@ -288,6 +288,53 @@ function drawTent(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number
   ctx.fillRect(cx - 16, cy - 5, 32, 10);
 }
 
+/** A raised sniper platform (3x3 tiles), seen from above: planks, corner posts, a ladder, a rail and a flag in the owning side's colour. */
+function drawTower(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number, units: Map<number, Unit>) {
+  const w = p.w * TILE;
+  const h = p.h * TILE;
+  const red = !!p.flip;
+  const col = red ? '#f87171' : '#4ade80';
+  let taken = false;
+  for (const u of units.values()) if (u.elev && u.hp > 0 && Math.hypot(u.tx - (p.x * TILE + w / 2), u.ty - (p.y * TILE + h / 2)) < 6) taken = true;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(sx + 12, sy + 16, w - 12, h - 12);
+  // ladder (south side)
+  ctx.fillStyle = '#6b5a3a';
+  ctx.fillRect(sx + w / 2 - 14, sy + h - 14, 4, 18);
+  ctx.fillRect(sx + w / 2 + 10, sy + h - 14, 4, 18);
+  ctx.fillStyle = '#8b7a52';
+  for (let i = 0; i < 4; i++) ctx.fillRect(sx + w / 2 - 14, sy + h - 10 + i * 4, 28, 2);
+  // deck
+  ctx.fillStyle = '#9a8658';
+  ctx.fillRect(sx + 8, sy + 8, w - 16, h - 20);
+  ctx.strokeStyle = '#6f6040';
+  ctx.lineWidth = 2;
+  for (let i = 1; i < 6; i++) {
+    ctx.beginPath();
+    ctx.moveTo(sx + 8, sy + 8 + ((h - 20) / 6) * i);
+    ctx.lineTo(sx + w - 8, sy + 8 + ((h - 20) / 6) * i);
+    ctx.stroke();
+  }
+  // rail and posts
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 4;
+  ctx.strokeRect(sx + 8, sy + 8, w - 16, h - 20);
+  ctx.fillStyle = '#3b3220';
+  for (const [cx, cy] of [[8, 8], [w - 8, 8], [8, h - 12], [w - 8, h - 12]]) ctx.fillRect(sx + cx - 4, sy + cy - 4, 8, 8);
+  // flag
+  ctx.fillStyle = col;
+  ctx.fillRect(sx + w - 18, sy + 2, 12, 8);
+  ctx.fillStyle = '#2a2418';
+  ctx.fillRect(sx + w - 20, sy, 2, 20);
+  if (taken) {
+    ctx.strokeStyle = 'rgba(251,191,36,0.9)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(sx + 2, sy + 2, w - 4, h - 12);
+    ctx.setLineDash([]);
+  }
+}
+
 /** A wooden resupply crate with a team-coloured band; dimmed while it is being restocked. */
 function drawCrate(ctx: CanvasRenderingContext2D, team: string, ready: boolean, sx: number, sy: number) {
   ctx.globalAlpha = ready ? 1 : 0.35;
@@ -823,7 +870,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       for (const u of w.units.values()) {
         const px = u.x;
         const py = u.y;
-        if (u.id === w.me && u.hp > 0 && Math.hypot(u.tx - u.x, u.ty - u.y) < 80) {
+        if (u.id === w.me && u.hp > 0 && !u.elev && Math.hypot(u.tx - u.x, u.ty - u.y) < 80) {
           // Client-side prediction: move our own soldier right away with the same rules as the server, then ease toward the
           // server's answer. The server still decides where we really are.
           const { dx, dy, sprint } = input.current;
@@ -912,6 +959,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         if (pr.kind === 'car') drawCar(ctx, pr, px, py);
         else if (pr.kind === 'debris') drawDebris(ctx, pr, px, py);
         else if (pr.kind === 'tent') drawTent(ctx, pr, px, py);
+        else if (pr.kind === 'tower') drawTower(ctx, pr, px, py, w.units);
       }
       // Sniper nests: a faint scope reticle on the ground inside each sandbag pocket, in the owning side's colour
       for (const n of NESTS) {
@@ -1015,7 +1063,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       const alive = seen.filter((u) => u.hp > 0).sort((a, b) => a.y - b.y);
       const now = Date.now();
       for (const u of seen) if (u.hp <= 0) drawFallen(ctx, u, u.x - camX, u.y - camY);
-      for (const u of alive) drawSoldier(ctx, u, u.x - camX, u.y - camY, u.id === w.me, myTeam, now);
+      for (const u of alive) drawSoldier(ctx, u, u.x - camX, u.y - camY - (u.elev ? 12 : 0), u.id === w.me, myTeam, now); // a sniper on a tower stands a little higher
       if (you && you.hp > 0 && you.scoped) {
         // scoped: a faint sight line out to the edge of what he can see
         ctx.save();
