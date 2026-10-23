@@ -812,6 +812,29 @@ test('shotgunner: 140 HP, 5 shells, spread kills up close but not far away, can 
   assert.equal(a.hp, 140, 'the tent heals him to 140, not 100');
 });
 
+test('shotgunner sprints 1.5x as long as other classes', () => {
+  const run1 = (cls) => {
+    const w = fresh();
+    const a = addPlayer(w, { name: 'a', want: 'green', cls });
+    a.team = 'green';
+    place(a, 400, LANE, 0);
+    setInput(w, a.id, { dx: 0, dy: 0, aim: 0, sprint: true });
+    run(w, 0.05);
+    let t = 0;
+    let now = 1100;
+    setInput(w, a.id, { dx: 1, dy: 0, aim: 0, sprint: true });
+    while (!a.winded && t < 10) {
+      now += 50;
+      step(w, 0.05, now);
+      t += 0.05;
+    }
+    return t;
+  };
+  const normal = run1('rifleman');
+  const heavy = run1('shotgunner');
+  assert.ok(Math.abs(heavy / normal - 1.5) < 0.15, `ratio ${heavy / normal}`);
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });
