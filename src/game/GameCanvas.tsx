@@ -7,6 +7,13 @@ import type { Input, Unit, World } from './useGame';
 const TILE = map.tile as number;
 const ROWS = map.rows as string[];
 const COLS = ROWS[0].length;
+const solidTile = (px: number, py: number) => {
+  const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
+  if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS.length) return true;
+  const c = ROWS[ty][tx];
+  return c === '#' || c === 'c' || c === 'B' || c === 'K' || c === 'Y';
+};
+const blockedAt = (x: number, y: number, r = 11) => solidTile(x - r, y - r) || solidTile(x + r, y - r) || solidTile(x - r, y + r) || solidTile(x + r, y + r);
 const VIEW_W = 1152; // a wider field of view than before: the camera is zoomed out a little
 const VIEW_H = 720;
 const MAP_W = COLS * TILE;
@@ -785,13 +792,36 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     const ctx = cv?.getContext('2d');
     if (!cv || !ctx) return;
     let raf = 0;
+    let lastT = performance.now();
     const frame = () => {
       const w = world.current;
+      const nowT = performance.now();
+      const dt = Math.min(0.05, (nowT - lastT) / 1000);
+      lastT = nowT;
       for (const u of w.units.values()) {
         const px = u.x;
         const py = u.y;
-        u.x += (u.tx - u.x) * 0.4; // glide toward the latest server position
-        u.y += (u.ty - u.y) * 0.4;
+        if (u.id === w.me && u.hp > 0 && Math.hypot(u.tx - u.x, u.ty - u.y) < 80) {
+          // Client-side prediction: move our own soldier right away with the same rules as the server, then ease toward the
+          // server's answer. The server still decides where we really are.
+          const { dx, dy, sprint } = input.current;
+          const len = Math.hypot(dx, dy);
+          if (len > 0) {
+            const fast = sprint && !u.winded && u.stamina > 0 && !u.scoped;
+            const k = (len > 1 ? 1 / len : 1) * 150 * (fast ? 1.6 : u.scoped ? 0.35 : 1) * dt;
+            const nx = u.x + dx * k;
+            const ZW2 = 8 * TILE;
+            const enemyX = (x: number) => (u.team === 'green' ? x > MAP_W - ZW2 : x < ZW2);
+            if (!blockedAt(nx, u.y) && !enemyX(nx)) u.x = nx;
+            const ny = u.y + dy * k;
+            if (!blockedAt(u.x, ny)) u.y = ny;
+          }
+          u.x += (u.tx - u.x) * 0.1;
+          u.y += (u.ty - u.y) * 0.1;
+        } else {
+          u.x += (u.tx - u.x) * 0.4; // glide toward the latest server position
+          u.y += (u.ty - u.y) * 0.4;
+        }
         u.walk += Math.hypot(u.x - px, u.y - py); // drives the walking animation
       }
       const you = w.units.get(w.me);

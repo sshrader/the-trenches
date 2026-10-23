@@ -76,12 +76,12 @@ export function useGame() {
 
   useEffect(() => () => ws.current?.close(), []);
 
-  // While playing: send our controls 20 times a second, and refresh the on-screen numbers 4 times a second.
+  // While playing: send our controls 30 times a second, and refresh the on-screen numbers 4 times a second.
   useEffect(() => {
     if (status !== 'playing') return;
     const send = setInterval(() => {
       if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'in', ...input.current }));
-    }, 50);
+    }, 33);
     const refresh = setInterval(() => {
       const w = world.current;
       const units = [...w.units.values()];
