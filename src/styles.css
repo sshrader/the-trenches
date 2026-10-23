@@ -212,3 +212,8 @@ b.red { color: var(--red); }
 .voicebox { position: absolute; left: 10px; top: 10px; font-size: 13px; pointer-events: none; text-shadow: 0 1px 2px #000; background: rgba(0,0,0,.45); border-radius: 8px; padding: 4px 8px; }
 .voicebox p { margin: 2px 0; }
 .voice-err { position: absolute; left: 10px; top: 46px; max-width: 360px; background: rgba(60,10,10,.85); padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+
+.board th:last-child, .board td:last-child { width: 48px; text-align: center !important; }
+.mute-btn { background: none; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 0 4px; opacity: .75; }
+.mute-btn:hover { opacity: 1; border-color: var(--line); }
+.mute-btn.on { opacity: 1; }

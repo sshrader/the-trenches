@@ -169,6 +169,7 @@ export function useGame() {
             board.current = m.sb ?? [];
             setStatus('playing');
           } else if (m.t === 'chat') {
+            if (voiceRef.current.isMuted(m.id)) return; // you muted this player
             chat.current = [...chat.current.slice(-7), { name: m.name, team: m.team, text: m.text, at: Date.now(), mode: m.mode }];
             const u = w.units.get(m.id);
             if (u) {

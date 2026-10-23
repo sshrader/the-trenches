@@ -399,7 +399,7 @@ export default function Play() {
               <div className="board">
                 <table>
                   <thead>
-                    <tr><th>Soldier</th><th>K</th><th>D</th></tr>
+                    <tr><th>Soldier</th><th>K</th><th>D</th><th>Mute</th></tr>
                   </thead>
                   <tbody>
                     {h.board.map((r) => (
@@ -407,6 +407,18 @@ export default function Play() {
                         <td>{r.name}</td>
                         <td>{r.k}</td>
                         <td>{r.d}</td>
+                        <td>
+                          {r.id !== game.world.current.me && (
+                            <button
+                              type="button"
+                              className={`mute-btn${game.voice.mutedIds.includes(r.id) ? ' on' : ''}`}
+                              title={game.voice.mutedIds.includes(r.id) ? 'Unmute: hear their voice and chat again' : 'Mute their voice and chat'}
+                              onClick={() => game.voice.toggleMute(r.id)}
+                            >
+                              {game.voice.mutedIds.includes(r.id) ? '🔇' : '🔊'}
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -431,7 +443,7 @@ export default function Play() {
                   <dt>F</dt><dd>Full screen</dd>
                   <dt>N</dt><dd>Team chat</dd>
                   <dt>V (hold)</dt><dd>Talk (after Join voice)</dd>
-                  <dt>Tab (hold)</dt><dd>Scoreboard</dd>
+                  <dt>Tab (hold)</dt><dd>Scoreboard · click 🔊 to mute a player</dd>
                 </dl>
               )}
             </aside>

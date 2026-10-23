@@ -16,6 +16,9 @@ export function useVoice(send: Send) {
   const [talking, setTalking] = useState(false);
   const [speaking, setSpeaking] = useState<number[]>([]);
   const [peerCount, setPeerCount] = useState(0);
+  // Players you have muted (their voice and their chat), for this session.
+  const [mutedIds, setMutedIds] = useState<number[]>([]);
+  const mutedRef = useRef(new Set<number>());
 
   const sendRef = useRef(send);
   sendRef.current = send;
@@ -79,6 +82,7 @@ export function useVoice(send: Send) {
       const pc = new RTCPeerConnection({ iceServers: ICE });
       const audio = new Audio();
       audio.autoplay = true;
+      audio.muted = mutedRef.current.has(id);
       const peer: Peer = { pc, queue: [], audio };
       peers.current.set(id, peer);
       setPeerCount(peers.current.size);
@@ -192,6 +196,16 @@ export function useVoice(send: Send) {
     [closePeer, leave, makePeer],
   );
 
+  const toggleMute = useCallback((id: number) => {
+    const set = mutedRef.current;
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    const p = peers.current.get(id);
+    if (p) p.audio.muted = set.has(id);
+    setMutedIds([...set]);
+  }, []);
+  const isMuted = useCallback((id: number) => mutedRef.current.has(id), []);
+
   const setOpenMic = useCallback(
     (v: boolean) => {
       openRef.current = v;
@@ -223,7 +237,7 @@ export function useVoice(send: Send) {
   useEffect(() => () => leave(false), [leave]);
 
   return useMemo(
-    () => ({ on, error, openMic, talking, speaking, peers: peerCount, join, leave, handle, setOpenMic, push }),
-    [on, error, openMic, talking, speaking, peerCount, join, leave, handle, setOpenMic, push],
+    () => ({ on, error, openMic, talking, speaking, peers: peerCount, join, leave, handle, setOpenMic, push, mutedIds, toggleMute, isMuted }),
+    [on, error, openMic, talking, speaking, peerCount, join, leave, handle, setOpenMic, push, mutedIds, toggleMute, isMuted],
   );
 }

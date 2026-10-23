@@ -83,3 +83,5 @@ Each side has one bazooka crate in its own half, between 10 and 28 tiles from it
 ## Team voice chat (opt in)
 Press **Join voice** in the top bar to enter your team's voice channel (the browser asks for your microphone). Hold **V** to talk, or tick **Open mic**. Leave with **Leave voice**; changing sides, leaving the game or closing the tab also leaves it. Enemies cannot hear it: the game server only relays the connection setup between teammates who both joined, and the audio then goes browser to browser (WebRTC, free STUN servers, no recording and no audio passes through the server). `src/game/useVoice.ts` (client) and the `vjoin` / `vleave` / `vsig` messages in `server/game.mjs`.
 Needs a secure page: https (Railway) or localhost. On a plain `http://192.168...` address the browser blocks the microphone. Players behind very strict networks may not connect, since there is no relay (TURN) server.
+
+**Muting:** hold Tab, then click the speaker beside a player on the scoreboard to mute their voice and their chat for the rest of your session (click again to unmute). It only affects what you hear and read.
