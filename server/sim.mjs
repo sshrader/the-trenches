@@ -33,8 +33,8 @@ export const CFG = {
   SCOPE_SPEED: 0.35, // ... but walks at this fraction of normal speed and cannot sprint while scoped
   SNIPER_REVEAL_S: 1.6, // after a sniper fires, the enemy sees him (through the fog) for this long
   MAX_SNIPERS: 2, // per side
-  PICKUP_EVERY_S: 40, // a new bazooka crate drops at a random spot this often ...
-  PICKUP_MAX: 2, // ... while fewer than this many are lying around
+  PICKUP_COUNT: 2, // bazooka crates on the field at once ...
+  PICKUP_RESPAWN_S: 30, // ... when one is taken, a new one appears somewhere else this long after
   PICKUP_R: 26, // walk this close to take it
   PICKUP_EDGE: 14, // ... never closer than this many tiles to either side's trench
   ROCKETS: 2, // a bazooka holds two rockets: no reload, no resupply
@@ -99,7 +99,7 @@ export function createWorld(map, rng = Math.random) {
     nades: [],
     rockets: [], // bazooka rockets in flight
     pickups: [], // bazooka crates waiting on the field
-    nextPickupAt: 0,
+    pickupDue: null, // times when a missing crate will be replaced (set on the first tick of a round)
     nextPickupId: 1,
     tents: map.tents || [],
     crates: (map.crates || []).map((c) => ({ x: c.x, y: c.y, team: c.team, readyAt: 0 })),
@@ -386,7 +386,7 @@ function newRound(w, now) {
   w.nades = [];
   w.rockets = [];
   w.pickups = [];
-  w.nextPickupAt = 0;
+  w.pickupDue = null;
   w.arty = [];
   for (const c of w.crates) c.readyAt = 0;
   rebalance(w, now, true);
@@ -440,7 +440,7 @@ function fireRocket(w, p, now) {
   }
 }
 
-/** Random bazooka crates: one drops every PICKUP_EVERY_S on open ground in the middle of the field. */
+/** Drop a bazooka crate on open ground in the middle of the field. Returns false if it found no spot. */
 function spawnPickup(w) {
   const edge = CFG.PICKUP_EDGE * w.tile;
   for (let i = 0; i < 60; i++) {
@@ -450,9 +450,13 @@ function spawnPickup(w) {
     if (w.pickups.some((q) => Math.hypot(q.x - x, q.y - y) < 300)) continue;
     w.pickups.push({ id: w.nextPickupId++, x: Math.round(x), y: Math.round(y) });
     w.events.push({ t: 'drop', x: Math.round(x), y: Math.round(y) });
-    return;
+    return true;
   }
+  return false;
 }
+
+/** One bazooka per side at a time: a side cannot pick up another while one of its soldiers still holds rockets. */
+const holdsBazooka = (w, team) => [...w.players.values()].some((q) => q.team === team && q.hp > 0 && q.rockets > 0);
 
 function throwNade(w, p, now) {
   if (p.hp <= 0 || (CFG.BASE_NO_FIRE && isSafe(w, p)) || p.grenades <= 0 || now - p.lastNade < CFG.NADE_COOLDOWN_MS) return;
@@ -612,20 +616,20 @@ export function step(w, dt, now = Date.now()) {
   }
   w.rockets = flying;
 
-  // Pickups: a new crate every so often; walk over one to take the bazooka (two rockets).
-  if (!w.nextPickupAt) w.nextPickupAt = now + 15000; // the first one comes quickly
-  if (now >= w.nextPickupAt) {
-    w.nextPickupAt = now + CFG.PICKUP_EVERY_S * 1000;
-    if (w.pickups.length < CFG.PICKUP_MAX) spawnPickup(w);
-  }
+  // Pickups: two crates on the field; each time one is taken, a new one appears elsewhere 30 s later.
+  if (!w.pickupDue) w.pickupDue = Array.from({ length: CFG.PICKUP_COUNT }, (_, i) => now + 15000 + i * 8000); // the first ones come quickly
+  w.pickupDue = w.pickupDue.filter((t) => !(now >= t && spawnPickup(w)));
+  const busy = { green: holdsBazooka(w, 'green'), red: holdsBazooka(w, 'red') };
   for (const pk of w.pickups) {
     for (const p of w.players.values()) {
-      if (p.hp <= 0 || p.isBot || p.rockets > 0) continue;
+      if (p.hp <= 0 || p.isBot || p.rockets > 0 || busy[p.team]) continue;
       if (Math.hypot(p.x - pk.x, p.y - pk.y) > CFG.PICKUP_R) continue;
       p.rockets = CFG.ROCKETS;
       p.weapon = 'rocket';
       p.scoped = false;
       pk.taken = true;
+      busy[p.team] = true;
+      w.pickupDue.push(now + CFG.PICKUP_RESPAWN_S * 1000);
       w.events.push({ t: 'got', id: p.id });
       break;
     }
@@ -774,7 +778,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     g: w.nades.filter((n) => vis(n.x, n.y) || n.team === team).map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
     a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), a.delay > 0 ? 0 : 1, a.delay > 0 ? Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100 : Math.round((a.gas / CFG.ARTY_GAS_S) * 100) / 100]),
     rk: w.rockets.filter((r) => r.team === team || vis(r.x, r.y)).map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.aim * 100) / 100]),
-    u: w.pickups.map((q) => [q.x, q.y]),
+    u: w.pickups.map((q) => [q.x, q.y, team && holdsBazooka(w, team) ? 1 : 0]), // 1 = your side already has a bazooka, so you cannot take this one yet
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,

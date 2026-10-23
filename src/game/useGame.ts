@@ -30,7 +30,7 @@ export type World = {
   vision: number; // fog of war: how far your side sees from each living soldier
   scopeVision: number; // ... and from a scoped sniper
   rockets: [number, number, number][]; // x, y, heading
-  pickups: [number, number][]; // bazooka crates lying on the field
+  pickups: [number, number, number][]; // bazooka crates: x, y, 1 if your side already holds a bazooka (so it cannot take this one)
 };
 export type Input = { sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number };
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';

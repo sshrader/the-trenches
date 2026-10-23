@@ -776,11 +776,12 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         else if (pr.kind === 'tent') drawTent(ctx, pr, px, py);
       }
       // Bazooka crates: an olive box with a rocket on the lid and a pulsing ring so they are easy to spot
-      for (const [kx, ky] of w.pickups) {
+      for (const [kx, ky, locked] of w.pickups) {
         const px = kx - camX;
         const py = ky - camY;
         if (px < -60 || py < -60 || px > VIEW_W + 60 || py > VIEW_H + 60) continue;
         const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 260);
+        ctx.globalAlpha = locked ? 0.45 : 1; // dimmed while your side's bazooka is still in play
         ctx.strokeStyle = `rgba(251,191,36,${0.35 + 0.4 * pulse})`;
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -802,6 +803,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         ctx.fill();
         ctx.fillStyle = '#ef4444';
         ctx.fillRect(px - 11, py - 5, 3, 8); // fins
+        ctx.globalAlpha = 1;
       }
       CRATES.forEach((cr, i) => {
         const px = cr.x - camX;
@@ -1005,9 +1007,29 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       ctx.beginPath();
       ctx.arc(mx + CAP.x * k, my + CAP.y * k, CAP.r * k, 0, Math.PI * 2);
       ctx.stroke();
-      for (const [kx, ky] of w.pickups) {
-        ctx.fillStyle = '#fbbf24'; // bazooka crates show on the map for everyone
-        ctx.fillRect(mx + kx * k - 2.5, my + ky * k - 2.5, 5, 5);
+      for (const [kx, ky, locked] of w.pickups) {
+        // bazooka crates: a pulsing gold marker with a rocket on it, so they are easy to find (dim while your side's bazooka is in play)
+        const bx = mx + kx * k;
+        const by = my + ky * k;
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 260);
+        ctx.globalAlpha = locked ? 0.4 : 1;
+        ctx.strokeStyle = `rgba(251,191,36,${0.5 + 0.4 * pulse})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(bx, by, 6 + pulse * 2.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#0b0f12';
+        ctx.beginPath();
+        ctx.arc(bx, by, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(bx - 3.5, by - 1, 7, 2); // a tiny rocket
+        ctx.beginPath();
+        ctx.moveTo(bx + 3.5, by - 1.8);
+        ctx.lineTo(bx + 6, by);
+        ctx.lineTo(bx + 3.5, by + 1.8);
+        ctx.fill();
+        ctx.globalAlpha = 1;
       }
       for (const u of alive) {
         if (u.team !== myTeam) continue;
