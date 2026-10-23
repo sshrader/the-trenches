@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { MouseEvent, MutableRefObject } from 'react';
 import map from '../../shared/map.json';
+import { CLASSES } from './useGame';
 import type { Input, Unit, World } from './useGame';
 
 const TILE = map.tile as number;
@@ -307,6 +308,7 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   const dark = 'rgba(0,0,0,0.55)';
   const green = u.team === 'green';
   const sniper = u.cls === 3;
+  const shotgunner = u.cls === 4;
   const cloth = UNIFORM[u.team];
   const trouser = green ? '#4a5a30' : '#6e3326';
   const limb = (x1: number, y1: number, x2: number, y2: number, w: number, col: string) => {
@@ -385,6 +387,48 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
     ctx.stroke();
     ctx.fillStyle = '#c9b88a';
     ctx.fillRect(4, -3.5, 3, 2.5); // sight
+  } else if (u.sidearm) {
+    // pistol held out in front
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#1b1d20';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(10, 2);
+    ctx.lineTo(24, 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#34373b';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(8, 3);
+    ctx.lineTo(14, 3);
+    ctx.stroke();
+  } else if (shotgunner) {
+    // pump shotgun: stock, fat barrel, forend slide, magazine tube underneath
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#6b4a2a';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-2, 2);
+    ctx.lineTo(12, 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#1b1d20';
+    ctx.lineWidth = 3.4;
+    ctx.beginPath();
+    ctx.moveTo(12, 2);
+    ctx.lineTo(34, 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#3a3f45';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(14, 4.4);
+    ctx.lineTo(30, 4.4);
+    ctx.stroke();
+    ctx.strokeStyle = '#5b3a1e';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(18, 2);
+    ctx.lineTo(27, 2);
+    ctx.stroke();
   } else {
   // rifle: wooden stock, steel barrel
     ctx.lineCap = 'round';
@@ -448,6 +492,24 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.fillRect(2, -8, 3.5, 4);
   ctx.fillRect(2, -2, 3.5, 4);
   ctx.fillRect(2, 4, 3.5, 4);
+  if (shotgunner) {
+    // heavy armour: a chest plate and shoulder guards
+    ctx.fillStyle = '#6b7178';
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(-4, -9, 9, 18, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#8a9097';
+    ctx.fillRect(-2, -7, 3, 14);
+    ctx.fillStyle = '#4b5057';
+    ctx.beginPath();
+    ctx.ellipse(1, -12, 5, 3.6, 0, 0, Math.PI * 2);
+    ctx.ellipse(1, 12, 5, 3.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
   // shoulder epaulettes in the team colour
   ctx.fillStyle = teamColor(u.team);
   ctx.fillRect(-1, -13, 5, 3);
@@ -563,8 +625,10 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   // Health bar over everyone, so you can see how hurt a soldier is (yours and theirs)
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.fillRect(sx - 16, sy - 29, 32, 7);
-  ctx.fillStyle = u.hp > 50 ? '#4ade80' : u.hp > 25 ? '#fbbf24' : '#f87171';
-  ctx.fillRect(sx - 15, sy - 28, (30 * Math.max(0, Math.min(100, u.hp))) / 100, 5);
+  const top = CLASSES[u.cls]?.hp ?? 100; // a shotgunner has more health than the others
+  const frac = Math.max(0, Math.min(1, u.hp / top));
+  ctx.fillStyle = frac > 0.5 ? '#4ade80' : frac > 0.25 ? '#fbbf24' : '#f87171';
+  ctx.fillRect(sx - 15, sy - 28, 30 * frac, 5);
   ctx.strokeStyle = teamColor(u.team);
   ctx.lineWidth = 1;
   ctx.strokeRect(sx - 16.5, sy - 29.5, 33, 8);

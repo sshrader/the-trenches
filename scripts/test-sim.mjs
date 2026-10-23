@@ -759,6 +759,59 @@ test('bazooka: one crate per side, own side only, one carrier at a time, a taken
   assert.equal(g2.rockets, CFG.ROCKETS, 'allowed once his side has none');
 });
 
+test('shotgunner: 140 HP, 5 shells, spread kills up close but not far away, can swap to a pistol with its own ammo', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green', cls: 'shotgunner' });
+  const e = addPlayer(w, { name: 'e', want: 'red' });
+  a.team = 'green';
+  e.team = 'red';
+  assert.equal(a.cls, 'shotgunner');
+  assert.equal(a.hp, 140, 'extra health');
+  assert.equal(a.ammo, 5);
+  assert.equal(a.sideAmmo, 12);
+  // Point blank: one blast kills.
+  place(a, 400, LANE, 0);
+  place(e, 440, LANE);
+  e.hp = CFG.HP;
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  let now = run(w, 0.2);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
+  now = run(w, 0.5, now);
+  assert.ok(e.hp <= 0, 'a close blast kills');
+  assert.equal(a.ammo, 4, 'one shell used');
+  // Far away: the pellets fall short.
+  place(e, 400 + 330, LANE);
+  e.hp = CFG.HP;
+  e.respawnAt = 0;
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  now = run(w, 0.5, now);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
+  now = run(w, 0.5, now);
+  assert.equal(e.hp, CFG.HP, 'out of range');
+  // Fire rate: quicker than the rifle (700 ms), slower than the SMG (110 ms).
+  assert.ok(CFG.CLASSES.shotgunner.fireMs < CFG.CLASSES.rifleman.fireMs && CFG.CLASSES.shotgunner.fireMs > CFG.CLASSES.smg.fireMs);
+  // Swap to the pistol: separate ammo, different fire rate.
+  const shells = a.ammo;
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, swap: 0 }); // the first value only sets the counter
+  now = run(w, 0.05, now);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, swap: 1 });
+  now = run(w, 0.1, now);
+  assert.equal(a.weapon, 'side');
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true, swap: 1 });
+  now = run(w, 0.6, now);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false, swap: 1 });
+  assert.ok(a.sideAmmo < 12, 'pistol ammo used');
+  assert.equal(a.ammo, shells, 'shotgun shells untouched');
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, swap: 2 });
+  now = run(w, 0.1, now);
+  assert.equal(a.weapon, 'main', 'swap goes back to the shotgun');
+  // Healing stops at his own maximum.
+  a.hp = 120;
+  place(a, w.tents[0].x, w.tents[0].y);
+  now = run(w, 5, now);
+  assert.equal(a.hp, 140, 'the tent heals him to 140, not 100');
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

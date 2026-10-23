@@ -17,6 +17,7 @@ export const CFG = {
     rifleman: { label: 'Rifleman', weapon: 'rifle', mag: 8, reloadS: 2, fireMs: 700, damage: 100, speed: 760, life: 1.5 }, // one hit kills, longest reach
     smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6 }, // five hits kill, short reach
     sniper: { label: 'Sniper', weapon: 'sniper', mag: 4, reloadS: 3, fireMs: 1800, damage: 100, speed: 1000, life: 1.6, grenades: 1, arty: 0 }, // one hit kills; hold scope to see far, but slow, only 4 rounds, no artillery strike, and each shot gives him away
+    shotgunner: { label: 'Shotgunner', weapon: 'shotgun', mag: 5, reloadS: 2.5, fireMs: 450, damage: 15, speed: 700, life: 0.28, pellets: 8, spread: 0.2, hp: 140, side: { weapon: 'pistol', mag: 12, reloadS: 1.5, fireMs: 280, damage: 20, speed: 600, life: 0.55 } }, // 140 HP, 8-pellet shotgun (deadly up close, 5 shells, quicker than the rifle, slower than the SMG) and a pistol to swap to
     medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, // heals teammates next to him
   },
   HEAL_RADIUS: 60, // a medic heals teammates this close ...
@@ -74,8 +75,16 @@ export const CFG = {
   NADE_OUTER_MIN: 20, // ... fading to this at the edge
 };
 
-export const CLASS_IDS = ['rifleman', 'smg', 'medic', 'sniper']; // the client uses the index, so new classes go on the end
+export const CLASS_IDS = ['rifleman', 'smg', 'medic', 'sniper', 'shotgunner']; // the client uses the index, so new classes go on the end
 const cls = (p) => CFG.CLASSES[p.cls];
+const maxHp = (p) => cls(p).hp ?? CFG.HP;
+/** The weapon a soldier is holding: his class weapon, or his sidearm if he has one and switched to it. */
+const spec = (p) => (p.weapon === 'side' && cls(p).side ? cls(p).side : cls(p));
+const ammoOf = (p) => (spec(p) === cls(p) ? p.ammo : p.sideAmmo);
+const setAmmo = (p, v) => {
+  if (spec(p) === cls(p)) p.ammo = v;
+  else p.sideAmmo = v;
+};
 const maxGren = (p) => cls(p).grenades ?? CFG.GRENADES;
 const maxArty = (p) => cls(p).arty ?? CFG.ARTY;
 /** Snipers on a side (counting those waiting to become one), so a team cannot be all snipers. */
@@ -169,7 +178,7 @@ function respawn(w, p, now) {
   const s = p.isBot ? p.post : spawnPoint(w, p.team);
   p.x = s.x;
   p.y = s.y;
-  p.hp = CFG.HP;
+  p.hp = maxHp(p);
   p.protectUntil = now + CFG.PROTECT_S * 1000;
   p.respawnAt = 0;
   p.grenades = maxGren(p);
@@ -178,6 +187,7 @@ function respawn(w, p, now) {
   p.rockets = 0;
   p.weapon = 'main';
   p.ammo = cls(p).mag;
+  p.sideAmmo = cls(p).side?.mag ?? 0;
   p.reloadLeft = 0;
   p.tentReadyAt = 0;
   p.tentUsing = false;
@@ -215,7 +225,8 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' 
     scope: false,
     revealUntil: 0,
     rockets: 0,
-    weapon: 'main', // 'main' or 'rocket' (the bazooka, once picked up)
+    sideAmmo: 0,
+    weapon: 'main', // 'main', 'side' (the sidearm, for classes that have one) or 'rocket' (the bazooka, once picked up)
     swapSeq: null,
     wantSwap: false,
     lastRocket: 0,
@@ -338,7 +349,10 @@ export function setClass(w, id, wantCls, now = Date.now()) {
     p.grenades = Math.min(p.grenades, maxGren(p));
     p.arty = Math.min(p.arty, maxArty(p));
     p.scoped = false;
+    p.weapon = p.weapon === 'rocket' ? 'rocket' : 'main';
     p.ammo = cls(p).mag;
+    p.sideAmmo = cls(p).side?.mag ?? 0;
+    p.hp = Math.min(p.hp, maxHp(p));
     p.reloadLeft = 0;
     p.fire = false;
   } else {
@@ -421,7 +435,7 @@ function explode(w, n, now, spec = NADE_SPEC(), weapon = 'grenade') {
     if ((!CFG.FRIENDLY_BLASTS && t.team === n.team) || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
     const d = Math.hypot(t.x - n.x, t.y - n.y);
     if (d > spec.r || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
-    const dmg = d <= spec.lethal ? CFG.HP : spec.hi - ((spec.hi - spec.lo) * (d - spec.lethal)) / (spec.r - spec.lethal);
+    const dmg = d <= spec.lethal ? 999 : spec.hi - ((spec.hi - spec.lo) * (d - spec.lethal)) / (spec.r - spec.lethal);
     hurt(w, t, dmg, n.owner, n.team, now, weapon);
   }
 }
@@ -527,31 +541,43 @@ export function step(w, dt, now = Date.now()) {
       p.reloadLeft -= dt;
       if (p.reloadLeft <= 0) {
         p.reloadLeft = 0;
-        p.ammo = cls(p).mag;
+        setAmmo(p, spec(p).mag);
       }
     }
     if (p.wantReload) {
       p.wantReload = false;
-      if (p.reloadLeft <= 0 && p.ammo < cls(p).mag) p.reloadLeft = cls(p).reloadS;
+      if (p.reloadLeft <= 0 && ammoOf(p) < spec(p).mag) p.reloadLeft = spec(p).reloadS;
     }
     if (!p.fire) p.fireHold = false;
     if (p.wantSwap) {
       p.wantSwap = false;
-      if (p.rockets > 0) p.weapon = p.weapon === 'rocket' ? 'main' : 'rocket';
+      // cycle through what he carries: main weapon, sidearm (if his class has one), bazooka (if he holds rockets)
+      const slots = ['main', ...(cls(p).side ? ['side'] : []), ...(p.rockets > 0 ? ['rocket'] : [])];
+      if (slots.length > 1) {
+        p.weapon = slots[(Math.max(0, slots.indexOf(p.weapon)) + 1) % slots.length];
+        p.reloadLeft = 0; // switching cancels a reload in progress
+      }
     }
     if (p.weapon === 'rocket' && p.rockets <= 0) p.weapon = 'main';
     if (p.weapon === 'rocket') {
       if (p.fire && !(CFG.BASE_NO_FIRE && isSafe(w, p))) fireRocket(w, p, now);
-    } else if (p.fire && !p.fireHold && !(CFG.BASE_NO_FIRE && isSafe(w, p)) && p.reloadLeft <= 0 && p.ammo > 0 && now - p.lastFire >= cls(p).fireMs) {
+    } else if (p.fire && !p.fireHold && !(CFG.BASE_NO_FIRE && isSafe(w, p)) && p.reloadLeft <= 0 && ammoOf(p) > 0 && now - p.lastFire >= spec(p).fireMs) {
+      const k = spec(p);
       p.lastFire = now;
-      p.ammo--;
-      if (p.ammo <= 0) p.reloadLeft = cls(p).reloadS; // empty: reload on its own
+      setAmmo(p, ammoOf(p) - 1);
+      if (ammoOf(p) <= 0) p.reloadLeft = k.reloadS; // empty: reload on its own
       const c = Math.cos(p.aim);
       const s = Math.sin(p.aim);
       w.shots.push([Math.round(p.x), Math.round(p.y), p.id]);
       if (p.cls === 'sniper') p.revealUntil = now + CFG.SNIPER_REVEAL_S * 1000; // the flash gives him away
-      const k = cls(p);
-      w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: c * k.speed, vy: s * k.speed, speed: k.speed, damage: k.damage, weapon: k.weapon, life: k.life, owner: p.id, team: p.team });
+      // a shotgun fires a spread of pellets; everything else fires one bullet
+      for (let i = 0; i < (k.pellets ?? 1); i++) {
+        const a = p.aim + (k.pellets ? (w.rng() * 2 - 1) * k.spread : 0);
+        const ca = Math.cos(a);
+        const sa = Math.sin(a);
+        const sp = k.speed * (k.pellets ? 0.9 + w.rng() * 0.2 : 1);
+        w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: ca * sp, vy: sa * sp, speed: sp, damage: k.damage, weapon: k.weapon, life: k.life, owner: p.id, team: p.team });
+      }
     }
   }
 
@@ -666,9 +692,9 @@ export function step(w, dt, now = Date.now()) {
     if (m.cls !== 'medic' || m.hp <= 0) continue;
     m.medkit = Math.min(CFG.HEAL_POOL, m.medkit + CFG.HEAL_REGEN * dt);
     for (const t of w.players.values()) {
-      if (t === m || t.team !== m.team || t.hp <= 0 || t.hp >= CFG.HP) continue;
+      if (t === m || t.team !== m.team || t.hp <= 0 || t.hp >= maxHp(t)) continue;
       if (Math.hypot(t.x - m.x, t.y - m.y) > CFG.HEAL_RADIUS) continue;
-      const amt = Math.min(CFG.HEAL_RATE * dt, CFG.HP - t.hp, m.medkit);
+      const amt = Math.min(CFG.HEAL_RATE * dt, maxHp(t) - t.hp, m.medkit);
       if (amt <= 0) continue;
       t.hp += amt;
       m.medkit -= amt;
@@ -678,7 +704,7 @@ export function step(w, dt, now = Date.now()) {
   // Test bots get wounded again a few seconds after they are fully healed.
   for (const b of w.players.values()) {
     if (!b.isBot || b.hp <= 0) continue;
-    if (b.hp >= CFG.HP) {
+    if (b.hp >= maxHp(b)) {
       if (!b.fullAt) b.fullAt = now;
       else if (now - b.fullAt > 3000) {
         b.hp = 30;
@@ -689,13 +715,13 @@ export function step(w, dt, now = Date.now()) {
   // The tent heals a soldier while he stands in it; once he is full or walks away, he must wait out the cooldown.
   for (const t of w.players.values()) {
     const inTent = t.hp > 0 && w.tents.some((tent) => tent.team === t.team && Math.hypot(t.x - tent.x, t.y - tent.y) <= CFG.TENT_R);
-    if (t.tentUsing && (!inTent || t.hp >= CFG.HP)) {
+    if (t.tentUsing && (!inTent || t.hp >= maxHp(t))) {
       t.tentUsing = false;
       t.tentReadyAt = now + CFG.TENT_COOLDOWN_S * 1000;
     }
-    if (inTent && t.hp < CFG.HP && (t.tentUsing || now >= t.tentReadyAt)) {
+    if (inTent && t.hp < maxHp(t) && (t.tentUsing || now >= t.tentReadyAt)) {
       t.tentUsing = true;
-      t.hp = Math.min(CFG.HP, t.hp + CFG.TENT_RATE * dt);
+      t.hp = Math.min(maxHp(t), t.hp + CFG.TENT_RATE * dt);
     }
   }
 
@@ -705,8 +731,9 @@ export function step(w, dt, now = Date.now()) {
     if (now < c.readyAt) continue;
     for (const p of w.players.values()) {
       if (p.team !== c.team || p.hp <= 0 || Math.hypot(p.x - c.x, p.y - c.y) > CFG.CRATE_R) continue;
-      if (p.ammo >= cls(p).mag && p.grenades >= maxGren(p) && p.arty >= maxArty(p)) continue; // nothing to take
+      if (p.ammo >= cls(p).mag && p.sideAmmo >= (cls(p).side?.mag ?? 0) && p.grenades >= maxGren(p) && p.arty >= maxArty(p)) continue; // nothing to take
       p.ammo = cls(p).mag;
+      p.sideAmmo = cls(p).side?.mag ?? 0;
       p.reloadLeft = 0;
       p.grenades = maxGren(p);
       p.arty = maxArty(p);
@@ -752,7 +779,7 @@ export function snapshot(w, now = Date.now(), team = null) {
   const p = [];
   for (const q of w.players.values()) {
     if (team && q.team !== team && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
-    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, q.ammo, q.reloadLeft > 0 ? Math.round((q.reloadLeft / cls(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : 0]);
+    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0]);
   }
   const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
   const owner = (id) => w.players.get(id);

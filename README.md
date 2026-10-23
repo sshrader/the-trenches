@@ -57,3 +57,7 @@ One-hit kill, 4 rounds, 3 s reload, slow fire (1.8 s), 1 grenade, no artillery s
 ## Bazooka pickups
 
 Each side has one bazooka crate in its own half, between 10 and 28 tiles from its base edge (`CFG.PICKUP_NEAR`). Only that side can take it, only that side sees it (a pulsing gold marker on its minimap, dimmed while one of its soldiers still holds a bazooka), and only one soldier per side can hold a bazooka at a time. When the crate is taken a new one appears at a different spot on the same side 30 s later (`CFG.PICKUP_RESPAWN_S`). Walk over it to get a bazooka with 2 rockets (`CFG.ROCKETS`): no reload, no resupply, lost when you fall. Mouse wheel or **Q** swaps between it and your main weapon. A rocket flies about 640 px, bursts on the first wall or soldier it touches, kills inside 62 px and hurts out to 125 px (it hurts your own side too).
+
+## Shotgunner class
+
+140 HP (`hp` on the class), a pump shotgun that fires 8 pellets in a spread (`pellets`, `spread`): 5 shells, one shot every 450 ms (quicker than the rifle's 700 ms, slower than the SMG's 110 ms), pellets reach only about 200 px, so it is deadly up close and weak at range. It also carries a 12-round pistol with its own ammo; mouse wheel or **Q** cycles main weapon, pistol and (if you hold one) the bazooka. Medics and the clinic tent heal him up to 140. Rockets and artillery still kill him inside their lethal ring.

@@ -44,7 +44,7 @@ export default function Play() {
   const [cls, setCls] = useState<ClassId>(() => {
     try {
       const c = localStorage.getItem('trenches-class');
-      return c === 'smg' || c === 'medic' || c === 'sniper' ? c : 'rifleman';
+      return c === 'smg' || c === 'medic' || c === 'sniper' || c === 'shotgunner' ? c : 'rifleman';
     } catch {
       return 'rifleman';
     }
@@ -132,7 +132,7 @@ export default function Play() {
           </div>
           <p className="muted small">If one side has more soldiers, you will be placed on the other to keep it fair.</p>
           {game.error && <p className="status" role="alert">{game.error}</p>}
-          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a clinic tent behind the plaza · Sniper: hold the right mouse button to scope · Your side's bazooka crate (gold marker on your minimap, near your base): walk over it for 2 rockets, one carrier at a time, and it reappears elsewhere on your side 30 s after it is taken (mouse wheel or Q swaps weapons) · Grenade: G (2 per life) · Artillery strike: T (1 per life, lands at your cursor after 3 s and bursts like a big grenade) · Scoreboard: hold Tab</p>
+          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a clinic tent behind the plaza · Sniper: hold the right mouse button to scope · Your side's bazooka crate (gold marker on your minimap, near your base): walk over it for 2 rockets, one carrier at a time, and it reappears elsewhere on your side 30 s after it is taken (mouse wheel or Q cycles your weapons: rifle, pistol, bazooka) · Grenade: G (2 per life) · Artillery strike: T (1 per life, lands at your cursor after 3 s and bursts like a big grenade) · Scoreboard: hold Tab</p>
         </section>
       )}
 
@@ -146,7 +146,7 @@ export default function Play() {
               <div className="mid" />
               {h.progress >= 0 ? <div className="fill green" style={{ left: '50%', width: `${h.progress * 50}%` }} /> : <div className="fill red" style={{ right: '50%', width: `${-h.progress * 50}%` }} />}
             </div>
-            <span className="pill" title="R to reload">{h.myClass}{h.myNext ? ` → ${h.myNext} next life` : ''} · {h.myReload > 0 ? 'Reloading…' : `Ammo ${h.myAmmo}/${h.myMag}`}</span>
+            <span className="pill" title="R to reload">{h.myClass}{h.myNext ? ` → ${h.myNext} next life` : ''} · {h.myReload > 0 ? 'Reloading…' : `${h.mySidearm ? 'Pistol ' : ''}Ammo ${h.myAmmo}/${h.myMag}`}</span>
             {h.myClassId === 'medic' && (
               <span className="pill" title="Your medkit holds 100 HP of healing and refills at 4 HP per second">Medkit: {h.myKit}/100</span>
             )}
