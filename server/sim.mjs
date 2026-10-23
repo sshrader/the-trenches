@@ -362,7 +362,7 @@ export function setClass(w, id, wantCls, now = Date.now()) {
     p.weapon = p.weapon === 'rocket' ? 'rocket' : 'main';
     p.ammo = cls(p).mag;
     p.sideAmmo = cls(p).side?.mag ?? 0;
-    p.hp = Math.min(p.hp, maxHp(p));
+    p.hp = maxHp(p); // in your own trench you are patched up to the new class's full health (a shotgunner has more)
     p.reloadLeft = 0;
     p.fire = false;
   } else {

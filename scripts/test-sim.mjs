@@ -919,6 +919,19 @@ test('sniper nest: built in front, blocks others\' bullets, pierced by his own, 
   assert.equal(w.nests.length, 0, 'dying removes the nest');
 });
 
+test('switching class at home sets health to the new class maximum', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  a.team = 'green';
+  const z = w.map.spawns.green;
+  place(a, z.x0 + 40, LANE, 0);
+  setClass(w, a.id, 'shotgunner', 100000);
+  assert.equal(a.cls, 'shotgunner');
+  assert.equal(a.hp, 140, 'full shotgunner health');
+  setClass(w, a.id, 'rifleman', 200000);
+  assert.equal(a.hp, CFG.HP, 'back to 100 for a rifleman');
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });
