@@ -23,8 +23,11 @@ const drawings: Record<string, ReactNode> = {
   heart: (<path d="M16 28 C2 18 4 7 11 7 C14 7 16 9 16 11 C16 9 18 7 21 7 C28 7 30 18 16 28Z" fill="#ef4444" />),
 };
 
-function Icon({ name, size = 36 }: { name: string; size?: number }) {
-  const url = art[name];
+// If there is no art for an exact name, these generic files stand in (your ammo icon for weapons, the special icon for class abilities).
+const FALLBACK: Record<string, string> = { rifle: 'ammo', smg: 'ammo', pistol: 'ammo', shotgun: 'ammo', sniper: 'ammo', rocket: 'special', nest: 'special', medkit: 'special', tent: 'special' };
+
+function Icon({ name, size = 48 }: { name: string; size?: number }) {
+  const url = art[name] ?? (FALLBACK[name] ? art[FALLBACK[name]] : undefined);
   if (url) return <img src={url} width={size} height={size} alt="" draggable={false} />;
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">

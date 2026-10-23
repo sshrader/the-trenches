@@ -6,3 +6,5 @@ Name the files exactly like this (any of .png .webp .svg):
   rocket                                   the bazooka (when equipped, and its own slot)
   grenade  artillery  nest  medkit  tent   the other slots
   heart                                    next to your health bar
+
+In use now: ammo.png (stands in for every weapon), grenade.png, artillery.png, special.png (stands in for nest, medkit, bazooka and clinic). Add rifle.png, nest.png, etc. to give any of those their own art.
