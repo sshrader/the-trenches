@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import HudBar from '../game/HudBar';
 import GameCanvas from '../game/GameCanvas';
 import { CLASSES, useGame } from '../game/useGame';
 import type { ClassId, Team } from '../game/useGame';
@@ -228,25 +229,8 @@ export default function Play() {
               <div className="mid" />
               {h.progress >= 0 ? <div className="fill green" style={{ left: '50%', width: `${h.progress * 50}%` }} /> : <div className="fill red" style={{ right: '50%', width: `${-h.progress * 50}%` }} />}
             </div>
-            <span className="pill" title="R to reload">{h.myClass}{h.myNext ? ` → ${h.myNext} next life` : ''} · {h.myReload > 0 ? 'Reloading…' : `${h.mySidearm ? 'Pistol ' : ''}Ammo ${h.myAmmo}/${h.myMag}`}</span>
-            {h.myClassId === 'medic' && (
-              <span className="pill" title="Your medkit holds 100 HP of healing and refills at 4 HP per second">Medkit: {h.myKit}/100</span>
-            )}
-            <span className="pill" title="The medic tent heals you while you stand in it, then needs 30 s before it heals you again">Tent: {h.myTent < 0 ? 'healing…' : h.myTent === 0 ? 'ready' : `${h.myTent}s`}</span>
             <span className="pill" title="Your kills and deaths this session">K {h.myKills} · D {h.myDeaths}{h.myDeaths > 0 ? ` · ${(h.myKills / h.myDeaths).toFixed(2)}` : ''}</span>
-            <span className={`pill stamina ${h.myWinded ? 'winded' : ''}`} title="Sprint: hold Shift or the right mouse button. It runs out after about 2.5 s and then recovers.">
-              Sprint <i><u style={{ width: `${Math.max(0, Math.min(100, h.myStamina))}%` }} /></i>
-            </span>
-            <span className="pill" title="Press G to throw">Grenades: {h.myGren} [G]</span>
-            {h.myRockets > 0 && (
-              <span className="pill" title="Mouse wheel or Q swaps between the bazooka and your main weapon. No reloads, and you lose it when you fall.">
-                Bazooka: {h.myRockets} rocket{h.myRockets === 1 ? '' : 's'} {h.myBazooka ? '(equipped)' : '[wheel/Q to equip]'}
-              </span>
-            )}
-            {h.myClassId === 'sniper' && (
-              <span className="pill" title="Press E to build a sandbag wall in front of you. It stays until you die or stay away from it for 10 seconds. Your own rounds pierce it; enemy bullets do not.">Nest [E]</span>
-            )}
-            <span className="pill" title="Press T to call in an artillery strike">Artillery: {h.myArty} [T]</span>
+            {h.myNext && <span className="pill" title="Your class changes when you next respawn">{h.myClass} → {h.myNext} next life</span>}
             <span className="pill score" title={`Kills this round. Rounds won: Green ${h.score[2]}, Red ${h.score[3]}`}>
               <b className="green">{h.score[0]}</b> – <b className="red">{h.score[1]}</b>
               <small> · Round {h.round.n} · won {h.score[2]}–{h.score[3]}</small>
@@ -339,6 +323,7 @@ export default function Play() {
                 ))}
               </div>
             )}
+            <HudBar h={h} />
             <div className="chatlog" aria-live="polite">
               {h.chat.map((c, i) => (
                 <p key={i}>{c.mode && <i className={'tag ' + (c.mode === 'team' ? 'team' : 'all')}>{c.mode === 'team' ? 'TEAM' : 'ALL'}</i>} <b className={c.team}>{c.name}:</b> {c.text}</p>

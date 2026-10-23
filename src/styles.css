@@ -162,3 +162,25 @@ b.red { color: var(--red); }
 .roster-col h3 { margin: 0 0 6px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; }
 .roster-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 14px; max-height: 160px; overflow: auto; }
 .roster-col li { display: flex; justify-content: space-between; gap: 8px; }
+
+/* Bottom gear bar */
+.hudbar { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 14px; padding: 8px 12px; background: rgba(8,10,12,.78); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; pointer-events: none; backdrop-filter: blur(2px); }
+.hud-vitals { display: grid; gap: 8px; width: 170px; }
+.hud-hp { display: flex; align-items: center; gap: 6px; }
+.hud-hp b { font-size: 14px; min-width: 28px; text-align: right; }
+.hud-hp .bar, .hud-sprint .bar { flex: 1; height: 10px; background: rgba(255,255,255,.12); border-radius: 6px; overflow: hidden; display: block; }
+.hud-hp .bar u, .hud-sprint .bar u { display: block; height: 100%; text-decoration: none; background: #4ade80; transition: width .15s; }
+.hud-sprint { display: flex; align-items: center; gap: 6px; }
+.hud-sprint .bar u { background: #38bdf8; }
+.hud-sprint.winded .bar u { background: #ef4444; }
+.hud-sprint small { font-size: 10px; letter-spacing: .08em; opacity: .7; }
+.hud-slots { display: flex; gap: 8px; }
+.hud-slot { position: relative; overflow: hidden; width: 78px; padding: 6px 4px 5px; display: flex; flex-direction: column; align-items: center; gap: 1px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; }
+.hud-slot.active { border-color: #fbbf24; background: rgba(251,191,36,.12); }
+.hud-slot.dim { opacity: .45; }
+.hud-slot b { font-size: 16px; line-height: 1.1; }
+.hud-slot small { font-size: 10px; opacity: .7; text-transform: uppercase; letter-spacing: .05em; }
+.hud-slot kbd { position: absolute; top: 3px; left: 4px; font-size: 10px; padding: 0 4px; border-radius: 4px; background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.25); }
+.hud-slot img, .hud-slot svg { display: block; }
+.hud-slot .slot-fill { position: absolute; left: 0; bottom: 0; width: 100%; background: rgba(251,191,36,.22); pointer-events: none; }
+@media (max-width: 760px) { .hudbar { flex-direction: column; align-items: stretch; gap: 6px; width: calc(100% - 20px); } .hud-vitals { width: auto; } .hud-slots { justify-content: space-between; } .hud-slot { width: auto; flex: 1; } }
