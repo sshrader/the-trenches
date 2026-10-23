@@ -26,6 +26,7 @@ const PROPS = ((map as unknown as { props?: Prop[] }).props ?? []) as Prop[];
 const CRATES = ((map as unknown as { crates?: { x: number; y: number; team: string }[] }).crates ?? []);
 const TENTS = ((map as unknown as { tents?: { x: number; y: number; team: string }[] }).tents ?? []);
 const NESTS = ((map as unknown as { nests?: { x: number; y: number; team: string }[] }).nests ?? []);
+const SCOPE_ZOOM = 0.58; // how far a scoped sniper's view pulls back (1 = normal)
 const GREEN = '#4ade80';
 const RED = '#f87171';
 const teamColor = (t: string) => (t === 'green' ? GREEN : RED);
@@ -804,6 +805,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     if (!cv || !ctx) return;
     let raf = 0;
     let lastT = performance.now();
+    let zoom = 1;
     const frame = () => {
       const w = world.current;
       dynTiles = w.nestTiles;
@@ -837,23 +839,31 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         u.walk += Math.hypot(u.x - px, u.y - py); // drives the walking animation
       }
       const you = w.units.get(w.me);
-      const camX = Math.max(0, Math.min(MAP_W - VIEW_W, (you?.x ?? CAP.x) - VIEW_W / 2));
-      const camY = Math.max(0, Math.min(MAP_H - VIEW_H, (you?.y ?? CAP.y) - VIEW_H / 2));
+      // Sniper scope: while scoped the view pulls back so you can see the whole of your scope's reach, past the normal window.
+      const wantZoom = you?.cls === 3 && input.current.scope && you.hp > 0 ? SCOPE_ZOOM : 1;
+      zoom += (wantZoom - zoom) * 0.18;
+      if (Math.abs(wantZoom - zoom) < 0.002) zoom = wantZoom;
+      const VW = VIEW_W / zoom;
+      const VH = VIEW_H / zoom;
+      const camX = Math.max(0, Math.min(MAP_W - VW, (you?.x ?? CAP.x) - VW / 2));
+      const camY = Math.max(0, Math.min(MAP_H - VH, (you?.y ?? CAP.y) - VH / 2));
       w.cam.x = camX;
       w.cam.y = camY;
       if (you) {
-        const mdx = mouse.current.x - (you.x - camX);
-        const mdy = mouse.current.y - (you.y - camY);
+        const mdx = mouse.current.x / zoom - (you.x - camX);
+        const mdy = mouse.current.y / zoom - (you.y - camY);
         input.current.aim = Math.atan2(mdy, mdx);
         input.current.range = Math.hypot(mdx, mdy); // grenades land where the cursor is
       }
 
+      ctx.save();
+      ctx.scale(zoom, zoom);
       ctx.fillStyle = '#16181a';
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.fillRect(0, 0, VW, VH);
       const x0 = Math.floor(camX / TILE);
       const y0 = Math.floor(camY / TILE);
-      for (let ty = y0; ty <= y0 + VIEW_H / TILE + 1 && ty < ROWS.length; ty++) {
-        for (let tx = x0; tx <= x0 + VIEW_W / TILE + 1 && tx < COLS; tx++) drawTile(ctx, ROWS[ty][tx], tx, ty, tx * TILE - camX, ty * TILE - camY);
+      for (let ty = y0; ty <= y0 + VH / TILE + 1 && ty < ROWS.length; ty++) {
+        for (let tx = x0; tx <= x0 + VW / TILE + 1 && tx < COLS; tx++) drawTile(ctx, ROWS[ty][tx], tx, ty, tx * TILE - camX, ty * TILE - camY);
       }
       // Sandbag nests that snipers have built this life
       for (const n of w.nests) {
@@ -887,7 +897,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       for (const pr of PROPS) {
         const px = pr.x * TILE - camX;
         const py = pr.y * TILE - camY;
-        if (px < -200 || py < -200 || px > VIEW_W + 100 || py > VIEW_H + 100) continue;
+        if (px < -200 || py < -200 || px > VW + 100 || py > VH + 100) continue;
         if (pr.kind === 'car') drawCar(ctx, pr, px, py);
         else if (pr.kind === 'debris') drawDebris(ctx, pr, px, py);
         else if (pr.kind === 'tent') drawTent(ctx, pr, px, py);
@@ -896,7 +906,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       for (const n of NESTS) {
         const nx = n.x - camX;
         const ny = n.y - camY;
-        if (nx < -60 || ny < -60 || nx > VIEW_W + 60 || ny > VIEW_H + 60) continue;
+        if (nx < -60 || ny < -60 || nx > VW + 60 || ny > VH + 60) continue;
         ctx.strokeStyle = n.team === 'green' ? 'rgba(74,222,128,0.55)' : 'rgba(248,113,113,0.55)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -915,7 +925,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       for (const [kx, ky, locked] of w.pickups) {
         const px = kx - camX;
         const py = ky - camY;
-        if (px < -60 || py < -60 || px > VIEW_W + 60 || py > VIEW_H + 60) continue;
+        if (px < -60 || py < -60 || px > VW + 60 || py > VH + 60) continue;
         const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 260);
         ctx.globalAlpha = locked ? 0.45 : 1; // dimmed while your side's bazooka is still in play
         ctx.strokeStyle = `rgba(251,191,36,${0.35 + 0.4 * pulse})`;
@@ -944,7 +954,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       CRATES.forEach((cr, i) => {
         const px = cr.x - camX;
         const py = cr.y - camY;
-        if (px > -40 && py > -40 && px < VIEW_W + 40 && py < VIEW_H + 40) drawCrate(ctx, cr.team, w.crates[i] !== 0, px, py);
+        if (px > -40 && py > -40 && px < VW + 40 && py < VH + 40) drawCrate(ctx, cr.team, w.crates[i] !== 0, px, py);
       });
       // Capture point
       const p = w.progress;
@@ -1082,21 +1092,21 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       // Fog of war: the field outside your side's sight is dimmed. Teammates (alive) each light a circle around them.
       {
         fogCv ??= document.createElement('canvas');
-        if (fogCv.width !== VIEW_W) fogCv.width = VIEW_W;
-        if (fogCv.height !== VIEW_H) fogCv.height = VIEW_H;
+        if (fogCv.width !== Math.ceil(VW)) fogCv.width = Math.ceil(VW);
+        if (fogCv.height !== Math.ceil(VH)) fogCv.height = Math.ceil(VH);
         const fc = fogCv.getContext('2d');
         if (fc) {
           fc.globalCompositeOperation = 'source-over';
-          fc.clearRect(0, 0, VIEW_W, VIEW_H);
+          fc.clearRect(0, 0, VW, VH);
           fc.fillStyle = 'rgba(6,9,11,0.74)';
-          fc.fillRect(0, 0, VIEW_W, VIEW_H);
+          fc.fillRect(0, 0, VW, VH);
           fc.globalCompositeOperation = 'destination-out';
           const vr = w.vision;
           for (const u of seen) {
             if (u.team !== myTeam || u.hp <= 0) continue;
             const ux = u.x - camX;
             const uy = u.y - camY;
-            if (ux < -w.scopeVision || uy < -w.scopeVision || ux > VIEW_W + w.scopeVision || uy > VIEW_H + w.scopeVision) continue;
+            if (ux < -w.scopeVision || uy < -w.scopeVision || ux > VW + w.scopeVision || uy > VH + w.scopeVision) continue;
             const rr = u.scoped ? w.scopeVision : vr;
             const g = fc.createRadialGradient(ux, uy, rr * 0.72, ux, uy, rr);
             g.addColorStop(0, 'rgba(0,0,0,1)');
@@ -1110,6 +1120,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         }
       }
 
+      ctx.restore();
       // Minimap: the whole field, your side's soldiers and the point. Enemies stay hidden.
       const mw = 168;
       const mh = (mw * MAP_H) / MAP_W;
