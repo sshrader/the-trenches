@@ -132,7 +132,7 @@ export default function Play() {
           </div>
           <p className="muted small">If one side has more soldiers, you will be placed on the other to keep it fair.</p>
           {game.error && <p className="status" role="alert">{game.error}</p>}
-          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a clinic tent behind the plaza · Sniper: hold the right mouse button to scope · Bazooka crates (gold marker on the minimap): walk over one for 2 rockets, one carrier per side, a new crate appears 30 s after one is taken (mouse wheel or Q swaps weapons) · Grenade: G (2 per life) · Gas strike: T (1 per life, lands at your cursor after 3 s, gas burns for 4 s) · Scoreboard: hold Tab</p>
+          <p className="muted small">Move: W A S D · Aim: mouse · Fire: hold left button or space · reload takes 2 s (R reloads early) · Medics heal teammates next to them, and each side has a clinic tent behind the plaza · Sniper: hold the right mouse button to scope · Bazooka crates (gold marker on the minimap): walk over one for 2 rockets, one carrier per side, a new crate appears 30 s after one is taken (mouse wheel or Q swaps weapons) · Grenade: G (2 per life) · Artillery strike: T (1 per life, lands at your cursor after 3 s and bursts like a big grenade) · Scoreboard: hold Tab</p>
         </section>
       )}
 
@@ -161,7 +161,7 @@ export default function Play() {
                 Bazooka: {h.myRockets} rocket{h.myRockets === 1 ? '' : 's'} {h.myBazooka ? '(equipped)' : '[wheel/Q to equip]'}
               </span>
             )}
-            <span className="pill" title="Press T to call in a gas strike">Gas strike: {h.myArty} [T]</span>
+            <span className="pill" title="Press T to call in an artillery strike">Artillery: {h.myArty} [T]</span>
             <span className="pill score" title={`Kills this round. Rounds won: Green ${h.score[2]}, Red ${h.score[3]}`}>
               <b className="green">{h.score[0]}</b> – <b className="red">{h.score[1]}</b>
               <small> · Round {h.round.n} · won {h.score[2]}–{h.score[3]}</small>
@@ -235,11 +235,11 @@ export default function Play() {
                 <p key={i}>
                   {f.self ? (
                     <>
-                      <b className={f.kteam}>{f.killer}</b> {f.weapon === 'gas' ? 'gassed themselves' : 'blew themselves up'}
+                      <b className={f.kteam}>{f.killer}</b> {f.weapon === 'artillery' ? 'shelled themselves' : 'blew themselves up'}
                     </>
                   ) : (
                     <>
-                      <b className={f.kteam}>{f.killer}</b> {f.tk ? (f.weapon === 'gas' ? 'gassed teammate' : 'blew up teammate') : f.weapon === 'grenade' ? 'blew up' : f.weapon === 'gas' ? 'gassed' : 'eliminated'} <b className={f.vteam}>{f.victim}</b>
+                      <b className={f.kteam}>{f.killer}</b> {f.tk ? (f.weapon === 'artillery' ? 'shelled teammate' : 'blew up teammate') : f.weapon === 'grenade' || f.weapon === 'rocket' ? 'blew up' : f.weapon === 'artillery' ? 'shelled' : 'eliminated'} <b className={f.vteam}>{f.victim}</b>
                     </>
                   )}
                 </p>
@@ -283,7 +283,7 @@ export default function Play() {
                   <dt>Shift / Right-click</dt><dd>Sprint</dd>
                   <dt>R</dt><dd>Reload</dd>
                   <dt>G</dt><dd>Grenade</dd>
-                  <dt>T</dt><dd>Gas strike</dd>
+                  <dt>T</dt><dd>Artillery strike</dd>
                   <dt>N</dt><dd>Team chat</dd>
                   <dt>Tab (hold)</dt><dd>Scoreboard</dd>
                 </dl>

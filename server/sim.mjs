@@ -16,7 +16,7 @@ export const CFG = {
   CLASSES: {
     rifleman: { label: 'Rifleman', weapon: 'rifle', mag: 8, reloadS: 2, fireMs: 700, damage: 100, speed: 760, life: 1.5 }, // one hit kills, longest reach
     smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6 }, // five hits kill, short reach
-    sniper: { label: 'Sniper', weapon: 'sniper', mag: 4, reloadS: 3, fireMs: 1800, damage: 100, speed: 1000, life: 1.6, grenades: 1, arty: 0 }, // one hit kills; hold scope to see far, but slow, only 4 rounds, no gas strike, and each shot gives him away
+    sniper: { label: 'Sniper', weapon: 'sniper', mag: 4, reloadS: 3, fireMs: 1800, damage: 100, speed: 1000, life: 1.6, grenades: 1, arty: 0 }, // one hit kills; hold scope to see far, but slow, only 4 rounds, no artillery strike, and each shot gives him away
     medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, // heals teammates next to him
   },
   HEAL_RADIUS: 60, // a medic heals teammates this close ...
@@ -55,13 +55,14 @@ export const CFG = {
   MAX_PER_TEAM: 30,
   ARTY: 1, // artillery strikes per life
   ARTY_DELAY_S: 3, // call-in to impact
-  ARTY_GAS_S: 4, // how long the gas lingers
-  ARTY_DPS: 26, // 4 s in the cloud is 104 damage: a full-health soldier does not survive
-  ARTY_RADIUS: 120,
+  ARTY_RADIUS: 130, // the shell bursts like a big grenade: kills inside ARTY_LETHAL, hurts out to this reach
+  ARTY_LETHAL: 55,
+  ARTY_OUTER_MAX: 70,
+  ARTY_OUTER_MIN: 20,
   ARTY_COOLDOWN_MS: 1000,
   CRATE_R: 24, // walk this close to your own crate to resupply
   CRATE_COOLDOWN_S: 30,
-  FRIENDLY_BLASTS: true, // grenades and gas hurt your own side and yourself (bullets still do not)
+  FRIENDLY_BLASTS: true, // grenades, rockets and artillery hurt your own side and yourself (bullets still do not)
   GRENADES: 2, // per life
   NADE_FLIGHT_S: 0.7, // in the air (flies over cover)
   NADE_FUSE_S: 2.0, // from the throw to the bang
@@ -103,7 +104,7 @@ export function createWorld(map, rng = Math.random) {
     nextPickupId: 1,
     tents: map.tents || [],
     crates: (map.crates || []).map((c) => ({ x: c.x, y: c.y, team: c.team, readyAt: 0 })),
-    arty: [], // incoming strikes and lingering gas clouds
+    arty: [], // incoming artillery strikes
     teamKills: { green: 0, red: 0 }, // kills this round
     wins: { green: 0, red: 0 }, // rounds won since the server started
     progress: 0, // -1 red owns the point ... +1 green owns it
@@ -412,10 +413,11 @@ function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
 }
 
 const NADE_SPEC = () => ({ r: CFG.NADE_RADIUS, lethal: CFG.NADE_LETHAL, hi: CFG.NADE_OUTER_MAX, lo: CFG.NADE_OUTER_MIN });
+const ARTY_SPEC = () => ({ r: CFG.ARTY_RADIUS, lethal: CFG.ARTY_LETHAL, hi: CFG.ARTY_OUTER_MAX, lo: CFG.ARTY_OUTER_MIN });
 const ROCKET_SPEC = () => ({ r: CFG.ROCKET_RADIUS, lethal: CFG.ROCKET_LETHAL, hi: CFG.ROCKET_OUTER_MAX, lo: CFG.ROCKET_OUTER_MIN });
 
 function explode(w, n, now, spec = NADE_SPEC(), weapon = 'grenade') {
-  w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y), big: weapon === 'rocket' });
+  w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y), big: weapon === 'rocket' || weapon === 'artillery' });
   for (const t of w.players.values()) {
     if ((!CFG.FRIENDLY_BLASTS && t.team === n.team) || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
     const d = Math.hypot(t.x - n.x, t.y - n.y);
@@ -479,7 +481,7 @@ function callArty(w, p, now) {
   let dist = p.nadeRange; // same reach as a grenade
   while (dist > CFG.NADE_MIN / 2 && solidAt(w, p.x + c * dist, p.y + s * dist)) dist -= 8;
   w.events.push({ t: 'arty', x: Math.round(p.x + c * dist), y: Math.round(p.y + s * dist), fx: Math.round(w.map.tile * (p.team === 'green' ? 3 : w.W - 3)), fy: Math.round(p.y), delay: CFG.ARTY_DELAY_S, team: p.team });
-  w.arty.push({ x: p.x + c * dist, y: p.y + s * dist, delay: CFG.ARTY_DELAY_S, gas: 0, owner: p.id, team: p.team });
+  w.arty.push({ x: p.x + c * dist, y: p.y + s * dist, delay: CFG.ARTY_DELAY_S, owner: p.id, team: p.team });
 }
 
 /** Advance the world by dt seconds. `now` is a millisecond clock. */
@@ -651,26 +653,14 @@ export function step(w, dt, now = Date.now()) {
   }
   w.nades = live;
 
-  // Artillery: the shell is on its way for a few seconds, lands, and leaves gas that burns anyone standing in it.
-  const clouds = [];
+  // Artillery: the shell is on its way for a few seconds, then bursts with grenade-style damage over a wider area.
+  const incoming = [];
   for (const a of w.arty) {
-    if (a.delay > 0) {
-      a.delay -= dt;
-      if (a.delay <= 0) {
-        a.delay = 0;
-        a.gas = CFG.ARTY_GAS_S;
-        w.events.push({ t: 'boom', x: Math.round(a.x), y: Math.round(a.y), big: true });
-      }
-    } else {
-      a.gas -= dt;
-      for (const t of w.players.values()) {
-        if ((!CFG.FRIENDLY_BLASTS && t.team === a.team) || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
-        if (Math.hypot(t.x - a.x, t.y - a.y) <= CFG.ARTY_RADIUS) hurt(w, t, CFG.ARTY_DPS * dt, a.owner, a.team, now, 'gas');
-      }
-    }
-    if (a.delay > 0 || a.gas > 0) clouds.push(a);
+    a.delay -= dt;
+    if (a.delay <= 0) explode(w, a, now, ARTY_SPEC(), 'artillery');
+    else incoming.push(a);
   }
-  w.arty = clouds;
+  w.arty = incoming;
 
   // Healing: a medic mends teammates standing next to him, and each side's tent mends anyone close to it.
   for (const p of w.players.values()) p.healing = false;
@@ -711,7 +701,7 @@ export function step(w, dt, now = Date.now()) {
     }
   }
 
-  // Resupply crates: a soldier on his own side's crate gets a full magazine, grenades and a gas strike back.
+  // Resupply crates: a soldier on his own side's crate gets a full magazine, grenades and an artillery strike back.
   for (let i = 0; i < w.crates.length; i++) {
     const c = w.crates[i];
     if (now < c.readyAt) continue;
@@ -776,7 +766,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     b,
     f: w.shots.filter(([x, y, id]) => vis(x, y) || owner(id)?.team === team || (owner(id)?.cls === 'sniper' && now < owner(id).revealUntil)),
     g: w.nades.filter((n) => vis(n.x, n.y) || n.team === team).map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
-    a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), a.delay > 0 ? 0 : 1, a.delay > 0 ? Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100 : Math.round((a.gas / CFG.ARTY_GAS_S) * 100) / 100]),
+    a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), 0, Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100]),
     rk: w.rockets.filter((r) => r.team === team || vis(r.x, r.y)).map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.aim * 100) / 100]),
     u: w.pickups.map((q) => [q.x, q.y, team && holdsBazooka(w, team) ? 1 : 0]), // 1 = your side already has a bazooka, so you cannot take this one yet
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],

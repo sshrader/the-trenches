@@ -303,16 +303,17 @@ test('8 rounds, then a 2 second reload', () => {
   assert.ok(a.ammo >= CFG.CLASSES.rifleman.mag - 2, 'magazine is back after the reload');
 });
 
-test('artillery lands after 3 s, then gas kills a full-health enemy in 4 s, and never hurts friends', () => {
+test('artillery lands after 3 s and bursts like a big grenade: kills close, hurts farther out, never spares friends', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
   const e = addPlayer(w, { name: 'e', want: 'red' });
   const f = addPlayer(w, { name: 'f', want: 'green' });
+  const h = addPlayer(w, { name: 'h', want: 'red' });
   const y = openRow() * 32 + 16;
   place(a, 500, y, 0);
   place(e, 650, y, 0);
   place(f, 640, y + 10, 0);
-  e.dx = e.dy = 0;
+  place(h, 650 + 100, y, 0); // 100 px from the impact: outside the lethal ring
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false, range: 150, arty: 0 });
   step(w, 0.05, 1000);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false, range: 150, arty: 1 });
@@ -324,12 +325,10 @@ test('artillery lands after 3 s, then gas kills a full-health enemy in 4 s, and 
   assert.equal(e.hp, CFG.HP, 'still in the air');
   assert.equal(snapshot(w, now).a[0][2], 0);
   now = run(w, 1, now); // impact
-  assert.equal(snapshot(w, now).a[0][2], 1, 'gas is down');
-  assert.ok(e.hp < CFG.HP && e.hp > 0, 'burning but alive early on');
-  now = run(w, 3.6, now);
-  assert.equal(e.hp, 0, 'a full 4 seconds kills');
-  assert.equal(f.hp, 0, 'gas does not spare teammates');
-  assert.equal(w.arty.length, 0, 'gas is gone after 4 s');
+  assert.equal(w.arty.length, 0, 'one burst, no lingering cloud');
+  assert.equal(e.hp, 0, 'killed at the centre');
+  assert.equal(f.hp, 0, 'does not spare teammates');
+  assert.ok(h.hp > 0 && h.hp < CFG.HP, 'hurt but alive farther out');
   a.hp = 0;
   a.respawnAt = now + 1;
   run(w, 1, now + 100);
@@ -629,7 +628,7 @@ test('sniper: one shot kills, scope = slow + far sight, shots reveal him, limite
   r.team = 'red';
   assert.equal(sn.cls, 'sniper');
   assert.equal(sn.ammo, 4, 'four rounds');
-  assert.equal(sn.arty, 0, 'no gas strike');
+  assert.equal(sn.arty, 0, 'no artillery strike');
   // Scoped: slow, no sprint, sees much farther.
   place(sn, 600, LANE, 0);
   place(r, 600 + CFG.VISION + 150, LANE);

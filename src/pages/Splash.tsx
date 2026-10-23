@@ -11,7 +11,7 @@ const KEYS: [string, string][] = [
   ['Shift / Right-click', 'Sprint'],
   ['R', 'Reload'],
   ['G', 'Grenade (2 per life)'],
-  ['T', 'Gas strike (1 per life)'],
+  ['T', 'Artillery strike (1 per life)'],
   ['Q / Mouse wheel', 'Swap to the bazooka (when you have one)'],
   ['Right-click (Sniper)', 'Scope'],
   ['N', 'Team quick chat'],

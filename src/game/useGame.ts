@@ -10,7 +10,7 @@ export const CLASSES: { id: ClassId; label: string; mag: number; blurb: string }
   { id: 'rifleman', label: 'Rifleman', mag: 8, blurb: 'Scavenged bolt rifle. One hit kills and it reaches farthest, but it fires slowly.' },
   { id: 'smg', label: 'SMG', mag: 20, blurb: 'Fast fire, 20 rounds. About five hits to kill, shorter reach.' },
   { id: 'medic', label: 'Medic', mag: 10, blurb: 'Pistol, 10 rounds. Heals teammates standing next to you.' },
-  { id: 'sniper', label: 'Sniper', mag: 4, blurb: 'One hit kills. Hold the right mouse button to scope: you spot enemies for your team from far away, but you crawl, and each shot gives you away. 4 rounds, no gas strike, 2 per side.' },
+  { id: 'sniper', label: 'Sniper', mag: 4, blurb: 'One hit kills. Hold the right mouse button to scope: you spot enemies for your team from far away, but you crawl, and each shot gives you away. 4 rounds, no artillery strike, 2 per side.' },
 ];
 export type RoundInfo = { n: number; s: 'live' | 'ended'; l: number; w: string | null };
 export type FeedLine = { self: boolean; tk: boolean; weapon: string; text: string; kteam: Team; vteam: Team; at: number; killer: string; victim: string };
@@ -20,7 +20,7 @@ export type World = {
   units: Map<number, Unit>;
   bullets: [number, number][];
   nades: [number, number, number][]; // x, y, and how much of the flight is left (0 = on the ground)
-  gas: [number, number, number, number][]; // x, y, 0 incoming | 1 gas cloud, fraction of that phase left
+  gas: [number, number, number, number][]; // incoming artillery: x, y, 0, fraction of the flight left
   booms: { x: number; y: number; at: number; big?: boolean }[];
   crates: number[]; // 1 = ready to use, in the same order as the crates in the map file
   progress: number;
