@@ -21,7 +21,7 @@ const KEYS: [string, string][] = [
 const OBJECTIVES = [
   'Hold the plaza in the middle of the ruined city. Stand in the circle with no enemy inside it and the bar fills for your side.',
   'Fill the bar all the way to win the round. If the 6 minute clock runs out first, whoever is ahead on the bar wins.',
-  'Use cover: walls, wrecked cars, barriers and rubble all stop bullets. Grenades fly over cover, and blasts hurt your own side too. Watch for bazooka crates dropping around the map.',
+  'Use cover: walls, wrecked cars, barriers and rubble all stop bullets. Grenades fly over cover, and blasts hurt your own side too. Each side has a bazooka crate near its base: grab it for two rockets.',
   'Heal at your clinic tent or from a Medic, and restock at your crates. You respawn 4 seconds after you fall.',
   'Your base is a safe zone (the shaded strip): nobody can hurt you there and the enemy cannot enter, but you cannot fire from inside it either.',
 ];

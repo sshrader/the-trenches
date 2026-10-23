@@ -679,10 +679,11 @@ test('bazooka: random crate, two rockets, swap with the main weapon, blast kills
   let now = run(w, 1);
   assert.equal(w.pickups.length, 0);
   now = run(w, 20, now);
-  assert.ok(w.pickups.length >= 1, 'a bazooka crate appears');
+  assert.equal(w.pickups.length, 2, 'each side gets a bazooka crate');
+  assert.ok(w.pickups.find((q) => q.team === 'green').x < 29 * 32 && w.pickups.find((q) => q.team === 'red').x > (map.rows[0].length - 29) * 32, 'each near its own base');
   // Take one: put a crate under the soldier.
   place(a, 390, LANE, 0);
-  w.pickups = [{ id: 99, x: 390, y: LANE }];
+  w.pickups = [{ id: 99, x: 390, y: LANE, team: 'green' }];
   now = run(w, 0.2, now);
   assert.equal(a.rockets, CFG.ROCKETS);
   assert.equal(a.weapon, 'rocket');
@@ -723,7 +724,7 @@ test('bazooka: random crate, two rockets, swap with the main weapon, blast kills
   assert.equal(w.pickups.length, 1, 'cannot take a crate while holding rockets');
 });
 
-test('bazooka: one carrier per side, a taken crate comes back elsewhere after 30 s', () => {
+test('bazooka: one crate per side, own side only, one carrier at a time, a taken crate returns elsewhere after 30 s', () => {
   const w = fresh();
   const g1 = addPlayer(w, { name: 'g1', want: 'green' });
   const g2 = addPlayer(w, { name: 'g2', want: 'green' });
@@ -731,30 +732,31 @@ test('bazooka: one carrier per side, a taken crate comes back elsewhere after 30
   g1.team = g2.team = 'green';
   r.team = 'red';
   w.pickupDue = []; // no automatic drops in this test
-  w.pickups = [{ id: 1, x: 390, y: LANE }, { id: 2, x: 560, y: LANE }];
-  place(g1, 390, LANE);
-  place(g2, 560, LANE);
-  place(r, 2000, LANE);
+  w.pickups = [{ id: 1, x: 390, y: LANE, team: 'green' }];
+  place(r, 390, LANE);
+  place(g1, 2000, LANE);
+  place(g2, 2100, LANE);
   let now = run(w, 0.3);
-  assert.equal(g1.rockets, CFG.ROCKETS, 'the first green soldier takes one');
-  assert.equal(g2.rockets, 0, 'the second green soldier cannot while his side holds one');
-  assert.equal(w.pickups.length, 1, 'the other crate is still there');
-  // The enemy side can take it.
-  place(r, 560, LANE);
+  assert.equal(r.rockets, 0, 'the other side cannot take it');
+  place(g1, 390, LANE);
   now = run(w, 0.3, now);
-  assert.equal(r.rockets, CFG.ROCKETS, 'the other side can take it');
+  assert.equal(g1.rockets, CFG.ROCKETS, 'its own side can');
   assert.equal(w.pickups.length, 0);
-  // New crates appear 30 s after being taken, not before.
+  // It comes back 30 s later, on the same side, elsewhere.
   now = run(w, 25, now);
   assert.equal(w.pickups.length, 0, 'not yet');
   now = run(w, 8, now);
-  assert.equal(w.pickups.length, 2, 'both come back after 30 s');
-  // Once green has used up his rockets, a teammate can take one.
-  g1.rockets = 0;
-  g1.weapon = 'main';
+  assert.equal(w.pickups.length, 1, 'back after 30 s');
+  assert.equal(w.pickups[0].team, 'green');
+  assert.ok(w.pickups[0].x < 29 * 32, 'on the green side');
+  // While g1 still holds rockets a teammate cannot take the new one; once g1 is out, he can.
   place(g2, w.pickups[0].x, w.pickups[0].y);
   now = run(w, 0.3, now);
-  assert.equal(g2.rockets, CFG.ROCKETS, 'allowed again once his side has none');
+  assert.equal(g2.rockets, 0, 'one carrier at a time');
+  g1.rockets = 0;
+  g1.weapon = 'main';
+  now = run(w, 0.3, now);
+  assert.equal(g2.rockets, CFG.ROCKETS, 'allowed once his side has none');
 });
 
 test('leaving removes the player', () => {
