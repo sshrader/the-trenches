@@ -858,6 +858,28 @@ test('sniper rounds pierce light cover but not buildings', () => {
   }
 });
 
+test('shotgun damage falls off with distance', () => {
+  const dmgAt = (dist) => {
+    const w = fresh();
+    const a = addPlayer(w, { name: 'a', want: 'green', cls: 'shotgunner' });
+    const e = addPlayer(w, { name: 'e', want: 'red' });
+    a.team = 'green';
+    e.team = 'red';
+    place(a, 400, LANE, 0);
+    place(e, 400 + dist, LANE);
+    e.hp = 10000; // measure total damage instead of killing
+    setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+    let now = run(w, 0.1);
+    setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
+    run(w, 0.6, now);
+    return 10000 - e.hp;
+  };
+  const near = dmgAt(40);
+  const mid = dmgAt(140);
+  assert.ok(near >= 100, `close blast kills a 100 HP soldier (${near})`);
+  assert.ok(mid > 0 && mid < near * 0.7, `mid range hurts less (${mid} vs ${near})`);
+});
+
 test('leaving removes the player', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a' });

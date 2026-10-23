@@ -17,7 +17,7 @@ export const CFG = {
     rifleman: { label: 'Rifleman', weapon: 'rifle', mag: 8, reloadS: 2, fireMs: 700, damage: 50, speed: 760, life: 1.5 }, // two hits kill, longest reach
     smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6 }, // five hits kill, short reach
     sniper: { label: 'Sniper', weapon: 'sniper', mag: 5, reloadS: 3, fireMs: 1300, damage: 100, speed: 1000, life: 1.6, grenades: 1, arty: 0 }, // one hit kills; hold scope to see far, but slow, only 5 rounds, no artillery strike, and each shot gives him away
-    shotgunner: { label: 'Shotgunner', weapon: 'shotgun', mag: 5, reloadS: 2.5, fireMs: 450, damage: 15, speed: 700, life: 0.28, pellets: 8, spread: 0.2, hp: 140, staminaX: 1.5, side: { weapon: 'pistol', mag: 12, reloadS: 1.5, fireMs: 280, damage: 20, speed: 600, life: 0.55 } }, // 140 HP, 8-pellet shotgun (deadly up close, 5 shells, quicker than the rifle, slower than the SMG) and a pistol to swap to
+    shotgunner: { label: 'Shotgunner', weapon: 'shotgun', mag: 5, reloadS: 2.5, fireMs: 450, damage: 25, falloff: [80, 200, 0.2], speed: 700, life: 0.28, pellets: 8, spread: 0.2, hp: 140, staminaX: 1.5, side: { weapon: 'pistol', mag: 12, reloadS: 1.5, fireMs: 280, damage: 20, speed: 600, life: 0.55 } }, // 140 HP, 8-pellet shotgun (deadly up close, 5 shells, quicker than the rifle, slower than the SMG) and a pistol to swap to
     medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, // heals teammates next to him
   },
   HEAL_RADIUS: 60, // a medic heals teammates this close ...
@@ -576,7 +576,7 @@ export function step(w, dt, now = Date.now()) {
         const ca = Math.cos(a);
         const sa = Math.sin(a);
         const sp = k.speed * (k.pellets ? 0.9 + w.rng() * 0.2 : 1);
-        w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: ca * sp, vy: sa * sp, speed: sp, damage: k.damage, weapon: k.weapon, life: k.life, owner: p.id, team: p.team, pierce: k.weapon === 'sniper' ? 2 : 0 });
+        w.bullets.push({ x: p.x + c * 14, y: p.y + s * 14, vx: ca * sp, vy: sa * sp, speed: sp, damage: k.damage, weapon: k.weapon, life: k.life, owner: p.id, team: p.team, pierce: k.weapon === 'sniper' ? 2 : 0, sx: p.x + c * 14, sy: p.y + s * 14, falloff: k.falloff });
       }
     }
   }
@@ -616,7 +616,14 @@ export function step(w, dt, now = Date.now()) {
         if (t.team === b.team || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
         if (Math.hypot(t.x - b.x, t.y - b.y) <= CFG.RADIUS + CFG.BULLET_R) {
           dead = true;
-          hurt(w, t, b.damage, b.owner, b.team, now, b.weapon);
+          let dmg = b.damage;
+          if (b.falloff) {
+            // pellets lose punch with distance: full damage up close, down to a fraction at the end of their reach
+            const [near, far, minF] = b.falloff;
+            const d = Math.hypot(b.x - b.sx, b.y - b.sy);
+            dmg *= d <= near ? 1 : Math.max(minF, 1 - ((1 - minF) * (d - near)) / (far - near));
+          }
+          hurt(w, t, dmg, b.owner, b.team, now, b.weapon);
           break;
         }
       }
