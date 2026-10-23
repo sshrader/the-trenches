@@ -37,7 +37,7 @@ a { color: var(--accent); }
 .canvas-wrap { position: relative; }
 .canvas-wrap:fullscreen, .canvas-wrap:-webkit-full-screen { background: #000; display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; }
 .canvas-wrap:fullscreen .game-canvas, .canvas-wrap:-webkit-full-screen .game-canvas { width: min(100vw, calc(100vh * 1152 / 720)); height: auto; border: 0; border-radius: 0; }
-.game-canvas { display: block; width: 100%; height: auto; aspect-ratio: 1152 / 720; background: #16181a; border: 1px solid var(--line); border-radius: 12px; cursor: crosshair; touch-action: none; }
+.game-canvas { display: block; width: 100%; height: auto; aspect-ratio: 1152 / 720; width: min(100%, calc((100vh - 130px) * 1152 / 720)); margin: 0 auto; background: #16181a; border: 1px solid var(--line); border-radius: 12px; cursor: crosshair; touch-action: none; }
 .feed { position: absolute; left: 10px; top: 10px; font-size: 13px; pointer-events: none; text-shadow: 0 1px 2px #000; }
 .feed p { margin: 2px 0; }
 b.green { color: var(--green); }
@@ -67,7 +67,7 @@ b.red { color: var(--red); }
 .pill.score b.red { color: #f87171; }
 .pill.score small { font-weight: 500; opacity: 0.75; }
 
-.keys { flex: 0 0 168px; align-self: flex-start; font-size: 12px; background: rgba(10,16,18,0.7); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 10px; }
+.keys { flex: 0 0 150px; align-self: flex-start; font-size: 12px; background: rgba(10,16,18,0.7); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 10px; }
 .keys-toggle { background: none; border: 0; color: inherit; font: inherit; font-weight: 700; cursor: pointer; padding: 0; opacity: 0.85; }
 .keys dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 6px 0 0; }
 .keys dt { font-weight: 700; color: #fbbf24; white-space: nowrap; }
@@ -80,7 +80,7 @@ b.red { color: var(--red); }
 .chatlog b.green { color: #4ade80; }
 .chatlog b.red { color: #f87171; }
 
-.wrap.wide { max-width: 1260px; }
+.wrap.wide { max-width: 1840px; padding: 10px 10px 16px; }
 .play-row { display: flex; gap: 12px; align-items: flex-start; }
 .play-row .canvas-wrap { flex: 1 1 auto; min-width: 0; }
 @media (max-width: 900px) { .play-row { flex-direction: column; } .keys { flex-basis: auto; width: 100%; } .keys dl { grid-template-columns: auto 1fr auto 1fr; } }
@@ -184,3 +184,14 @@ b.red { color: var(--red); }
 .hud-slot img, .hud-slot svg { display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
 .hud-slot .slot-fill { position: absolute; left: 0; bottom: 0; width: 100%; background: rgba(251,191,36,.22); pointer-events: none; }
 @media (max-width: 760px) { .hudbar { flex-direction: column; align-items: stretch; gap: 6px; width: calc(100% - 20px); } .hud-vitals { width: auto; } .hud-slots { justify-content: space-between; } .hud-slot { width: auto; flex: 1; } }
+
+/* Compact gear bar */
+.hudbar { bottom: 6px; gap: 10px; padding: 5px 8px; border-radius: 10px; background: rgba(8,10,12,.62); }
+.hud-vitals { width: 120px; gap: 5px; }
+.hud-hp b { font-size: 12px; min-width: 24px; }
+.hud-hp .bar, .hud-sprint .bar { height: 7px; }
+.hud-slots { gap: 5px; }
+.hud-slot { width: 62px; padding: 3px 2px 3px; border-radius: 8px; }
+.hud-slot b { font-size: 13px; }
+.hud-slot small { font-size: 8px; }
+.hud-slot kbd { font-size: 8px; padding: 0 3px; top: 2px; left: 3px; }

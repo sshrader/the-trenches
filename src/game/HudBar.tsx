@@ -26,7 +26,7 @@ const drawings: Record<string, ReactNode> = {
 // If there is no art for an exact name, these generic files stand in (your ammo icon for weapons, the special icon for class abilities).
 const FALLBACK: Record<string, string> = { rifle: 'ammo', smg: 'ammo', pistol: 'ammo', shotgun: 'ammo', sniper: 'ammo', rocket: 'special', nest: 'special', medkit: 'special', tent: 'special' };
 
-function Icon({ name, size = 48 }: { name: string; size?: number }) {
+function Icon({ name, size = 34 }: { name: string; size?: number }) {
   const url = art[name] ?? (FALLBACK[name] ? art[FALLBACK[name]] : undefined);
   if (url) return <img src={url} width={size} height={size} alt="" draggable={false} />;
   return (
@@ -60,7 +60,7 @@ export default function HudBar({ h }: { h: Hud }) {
     <div className="hudbar" aria-label="Your gear">
       <div className="hud-vitals">
         <div className="hud-hp" title="Health">
-          <Icon name="heart" size={22} />
+          <Icon name="heart" size={16} />
           <span className="bar"><u style={{ width: `${hpFrac * 100}%`, background: hpFrac > 0.5 ? '#4ade80' : hpFrac > 0.25 ? '#fbbf24' : '#ef4444' }} /></span>
           <b>{Math.ceil(h.myHp)}</b>
         </div>
