@@ -22,7 +22,7 @@ const get = (x, y) => (x > 0 && y > 0 && x < W / 2 && y < H - 1 ? left[y][x] : n
 // The safe zone: floor columns 1..6 and a barricade line at column 7 with a gap every 5 rows.
 for (let y = 1; y < H - 1; y++) {
   for (let x = 1; x <= 6; x++) put(x, y, 'T');
-  if (y % 5 !== 0) put(7, y, 'c');
+  if (y % 6 <= 1) put(7, y, 'c'); // short barricade segments with wide gaps (4 tiles) so nobody gets stuck leaving the base
 }
 
 let seed = 4242;
@@ -198,6 +198,10 @@ for (let i = 0; i < 40; i++) {
   const y = ri(2, H - 3);
   if (get(x, y) === null && !taken.has(`${x},${y}`)) put(x, y, 'o');
 }
+
+// Keep the way out of each base clear: nothing solid in the first street in front of it (columns 8..12).
+for (let y = 1; y < H - 1; y++) for (let x = 8; x <= 12; x++) if ('cYK'.includes(left[y][x] ?? '.')) left[y][x] = null;
+for (let i = props.length - 1; i >= 0; i--) if (['car', 'debris'].includes(props[i].kind) && props[i].x <= 12) props.splice(i, 1);
 
 for (let y = 0; y < H; y++) {
   for (let x = 0; x < W / 2; x++) {
