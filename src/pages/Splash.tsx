@@ -68,10 +68,10 @@ export default function Splash({ onEnter }: { onEnter: () => void }) {
           </dl>
         </section>
         <span className="chev" aria-hidden="true">›</span>
-        <section className="brief-card" aria-labelledby="b-classes">
+        <section className="brief-card wide" aria-labelledby="b-classes">
           <span className="step">2</span>
           <h2 id="b-classes">Classes</h2>
-          <ul>
+          <ul className="cols">
             {CLASSES.map((c) => (
               <li key={c.id}>
                 <b>{c.label}</b>
