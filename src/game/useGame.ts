@@ -25,6 +25,7 @@ export type World = {
   nades: [number, number, number, number][]; // x, y, and how much of the flight is left (0 = on the ground)
   gas: [number, number, number, number][]; // incoming artillery: x, y, 0, fraction of the flight left
   booms: { x: number; y: number; at: number; big?: boolean }[];
+  pops: { x: number; y: number; at: number; kind: string }[]; // smoke / flash / flare canisters going off
   crates: number[]; // 1 = ready to use, in the same order as the crates in the map file
   progress: number;
   points: [number, number]; // round points, green and red (first to 100 wins the round)
@@ -48,7 +49,7 @@ export type ChatLine = { name: string; team: Team; text: string; at: number; mod
 export type Hud = { myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0 });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [] });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], pops: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [] });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -278,6 +279,7 @@ export function useGame() {
             const me = w.units.get(w.me);
             playBoom(me ? Math.hypot(m.x - me.tx, m.y - me.ty) : 600, !!m.big);
           } else if (m.t === 'pop') {
+            w.pops.push({ x: m.x, y: m.y, at: Date.now(), kind: m.kind ?? '' });
             const me = w.units.get(w.me);
             playPop(me ? Math.hypot(m.x - me.tx, m.y - me.ty) : 600);
           } else if (m.t === 'arty') {

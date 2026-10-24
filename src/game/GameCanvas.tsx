@@ -287,6 +287,115 @@ function drawTent(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number
 }
 
 /** A raised sniper platform (96 px square), seen from above: planks, corner posts, a ladder, a rail and a flag in the owning side's colour. */
+/** A thrown canister, drawn along the x axis and rotated by `rot`: frag (0), smoke (1), flash (2) or flare (3). */
+function drawThrown(ctx: CanvasRenderingContext2D, kind: number, x: number, y: number, rot: number, lit: boolean) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#0b0c0a';
+  ctx.lineWidth = 1.5;
+  if (kind === 2) {
+    // flashbang: a steel tube with glowing holes
+    if (lit) {
+      ctx.shadowColor = '#7dd3fc';
+      ctx.shadowBlur = 12;
+    }
+    ctx.fillStyle = '#5b636c';
+    ctx.beginPath();
+    ctx.roundRect(-9, -4.5, 18, 9, 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#2a2f35';
+    ctx.fillRect(-9, -4.5, 3, 9);
+    ctx.fillRect(6, -4.5, 3, 9);
+    ctx.fillStyle = '#bae6fd';
+    for (const hx of [-3, 1, 5]) {
+      ctx.beginPath();
+      ctx.arc(hx - 1, -1.8, 1.1, 0, Math.PI * 2);
+      ctx.arc(hx - 1, 1.8, 1.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#9aa0a8'; // spoon and ring
+    ctx.fillRect(-10, -6, 7, 2);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.arc(-10, -4, 2.4, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (kind === 1) {
+    // smoke grenade: a green canister with a cloud mark
+    ctx.fillStyle = '#4d6b3a';
+    ctx.beginPath();
+    ctx.roundRect(-9, -4.5, 18, 9, 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#d9e2d0';
+    ctx.fillRect(-1, -4.5, 7, 9);
+    ctx.fillStyle = '#4d6b3a';
+    for (const [cx, cy, cr] of [[1.5, 0.6, 1.8], [3.6, -0.6, 2], [5, 0.8, 1.5]]) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#9aa0a8';
+    ctx.fillRect(-11, -2, 3, 4);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.arc(-12, 0, 2.4, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (kind === 3) {
+    // flare: a red tube with a white band and a spark
+    ctx.fillStyle = '#b91c1c';
+    ctx.beginPath();
+    ctx.roundRect(-8, -3.5, 16, 7, 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(-1, -3.5, 4, 7);
+    if (lit) {
+      ctx.fillStyle = '#fde047';
+      ctx.shadowColor = '#f97316';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(10, 0, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  } else {
+    // frag grenade: an olive body with grooves, lever and pin ring
+    ctx.fillStyle = '#4f6038';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 7.5, 6.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = '#26321a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-6, 0);
+    ctx.lineTo(6, 0);
+    ctx.moveTo(0, -6);
+    ctx.lineTo(0, 6);
+    ctx.moveTo(-4, -4.5);
+    ctx.lineTo(-4, 4.5);
+    ctx.moveTo(4, -4.5);
+    ctx.lineTo(4, 4.5);
+    ctx.stroke();
+    ctx.fillStyle = '#9aa0a8'; // fuze, lever and ring
+    ctx.fillRect(6, -2.2, 4, 4.4);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(7, -2.5);
+    ctx.quadraticCurveTo(2, -9, -3, -5.5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(10.5, 3.2, 2.2, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawTower(ctx: CanvasRenderingContext2D, red: boolean, taken: boolean, prog: number, sx: number, sy: number) {
   const w = 96;
   const h = 96;
@@ -1109,16 +1218,17 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         ctx.beginPath();
         ctx.ellipse(gx - camX, gy - camY, 6, 3.5, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = kind === 1 ? '#9ca3af' : kind === 2 ? '#fde68a' : kind === 3 ? '#ef4444' : '#3f4a36'; // frag, smoke, flash, flare
-        ctx.beginPath();
-        ctx.arc(gx - camX, gy - camY - lift, 5 + lift / 14, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#111';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        // it tumbles in the air (each one at its own angle), then lies still where it landed
+        const rot = f > 0 ? Date.now() / 90 + gx * 0.05 : gx * 0.37 + gy * 0.21;
+        const sc = 1 + lift / 70;
+        ctx.save();
+        ctx.translate(gx - camX, gy - camY - lift);
+        ctx.scale(sc, sc);
+        drawThrown(ctx, kind ?? 0, 0, 0, rot, f <= 0 || kind === 2);
+        ctx.restore();
         if (f <= 0 && (!kind || kind === 0) && Math.floor(Date.now() / 120) % 2 === 0) {
           ctx.fillStyle = '#f87171'; // sizzling fuse once it has landed
-          ctx.fillRect(gx - camX - 1, gy - camY - 8, 2, 3);
+          ctx.fillRect(gx - camX - 1, gy - camY - 10, 2, 3);
         }
       }
       // Smoke: the enemy's cloud is nearly solid; your own side's is see-through
@@ -1197,6 +1307,50 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
           ctx.beginPath();
           ctx.moveTo(you.x - camX + Math.cos(input.current.aim + sgn * sp) * 40, you.y - camY + Math.sin(input.current.aim + sgn * sp) * 40);
           ctx.lineTo(you.x - camX + Math.cos(input.current.aim + sgn * sp) * 150, you.y - camY + Math.sin(input.current.aim + sgn * sp) * 150);
+          ctx.stroke();
+        }
+      }
+      // Canister effects: a flashbang's burst, a flare's sparks, a broken shield's flash
+      const pNow = Date.now();
+      w.pops = w.pops.filter((q) => pNow - q.at < 600);
+      for (const q of w.pops) {
+        const a2 = (pNow - q.at) / 600;
+        const sx = q.x - camX;
+        const sy = q.y - camY;
+        if (q.kind === 'flash') {
+          ctx.fillStyle = `rgba(186,230,253,${0.7 * (1 - a2)})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 20 + a2 * 110, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = `rgba(255,255,255,${1 - a2})`;
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 12; i++) {
+            const an = (i / 12) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(sx + Math.cos(an) * 14, sy + Math.sin(an) * 14);
+            ctx.lineTo(sx + Math.cos(an) * (30 + a2 * 90), sy + Math.sin(an) * (30 + a2 * 90));
+            ctx.stroke();
+          }
+        } else if (q.kind === 'smoke') {
+          ctx.fillStyle = `rgba(190,200,186,${0.5 * (1 - a2)})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 14 + a2 * 60, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (q.kind === 'flare') {
+          ctx.fillStyle = `rgba(253,224,71,${0.8 * (1 - a2)})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 6 + a2 * 22, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = `rgba(248,113,113,${1 - a2})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 10 + a2 * 40, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          ctx.strokeStyle = `rgba(147,197,253,${1 - a2})`; // a riot shield giving way
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 16 + a2 * 34, 0, Math.PI * 2);
           ctx.stroke();
         }
       }

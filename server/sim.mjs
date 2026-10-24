@@ -666,7 +666,7 @@ function useSpecial(w, p, now) {
 
 /** A smoke / flash / flare canister has landed. */
 function land(w, n, now) {
-  w.events.push({ t: 'pop', x: Math.round(n.x), y: Math.round(n.y) });
+  w.events.push({ t: 'pop', x: Math.round(n.x), y: Math.round(n.y), kind: n.kind });
   if (n.kind === 'smoke') w.clouds.push({ x: n.x, y: n.y, r: CFG.SMOKE_R, left: CFG.SMOKE_S, team: n.team });
   else if (n.kind === 'flare') w.drops.push({ x: n.x, y: n.y, team: n.team, delay: CFG.DROP_DELAY_S, left: CFG.DROP_S });
   else if (n.kind === 'flash') {
@@ -862,7 +862,7 @@ export function step(w, dt, now = Date.now()) {
               if (t.shieldHp <= 0) {
                 t.shieldUntil = 0; // broken: the recharge starts now
                 t.specReadyAt = now + (cls(t).special?.rechargeS ?? 30) * 1000;
-                w.events.push({ t: 'pop', x: Math.round(t.x), y: Math.round(t.y) });
+                w.events.push({ t: 'pop', x: Math.round(t.x), y: Math.round(t.y), kind: 'break' });
               }
               break;
             }
