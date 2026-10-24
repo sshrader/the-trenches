@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WALLET_LOGIN } from '../config';
 import { useVoice } from './useVoice';
-import { playBoom, playCannon, playPickup, playReload, playShot, playWhistle } from './audio';
+import { playBoom, playCannon, playPickup, playPop, playReload, playShot, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
 export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean; blind: number; spec: number; specCd: number; shield: number; heat: number };
@@ -218,7 +218,7 @@ export function useGame() {
               u.ammo = ammo;
               if (u.reload === 0 && reload > 0 && u.hp > 0) {
                 const me2 = w.units.get(w.me);
-                playReload(me2 ? Math.hypot(u.tx - me2.tx, u.ty - me2.ty) : 400, ci === 0 || ci === 3 || ci === 4 ? 0 : 1);
+                playReload(me2 ? Math.hypot(u.tx - me2.tx, u.ty - me2.ty) : 400, ci === 0 || ci === 3 || ci === 4 || ci === 5 ? 0 : 1, ci === 4 && weap !== 2);
               }
               u.reload = reload;
               u.arty = arty;
@@ -257,7 +257,7 @@ export function useGame() {
             for (const [sx, sy, sid] of (m.f ?? []) as [number, number, number][]) {
               const shooter = w.units.get(sid);
               if (shooter) shooter.flash = Date.now() + 90;
-              playShot(me ? Math.hypot(sx - me.tx, sy - me.ty) : 600, shooter?.cls ?? 0);
+              playShot(me ? Math.hypot(sx - me.tx, sy - me.ty) : 600, shooter?.cls ?? 0, shooter?.sidearm ?? false);
             }
             w.bullets = m.b;
             w.nades = m.g ?? [];
@@ -273,6 +273,9 @@ export function useGame() {
             w.booms.push({ x: m.x, y: m.y, at: Date.now(), big: !!m.big });
             const me = w.units.get(w.me);
             playBoom(me ? Math.hypot(m.x - me.tx, m.y - me.ty) : 600, !!m.big);
+          } else if (m.t === 'pop') {
+            const me = w.units.get(w.me);
+            playPop(me ? Math.hypot(m.x - me.tx, m.y - me.ty) : 600);
           } else if (m.t === 'arty') {
             // the gun fires now; the shell whistles in over the last second and a half
             const me = w.units.get(w.me);

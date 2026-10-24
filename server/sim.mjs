@@ -626,6 +626,7 @@ function useSpecial(w, p, now) {
 
 /** A smoke / flash / flare canister has landed. */
 function land(w, n, now) {
+  w.events.push({ t: 'pop', x: Math.round(n.x), y: Math.round(n.y) });
   if (n.kind === 'smoke') w.clouds.push({ x: n.x, y: n.y, r: CFG.SMOKE_R, left: CFG.SMOKE_S, team: n.team });
   else if (n.kind === 'flare') w.drops.push({ x: n.x, y: n.y, team: n.team, delay: CFG.DROP_DELAY_S, left: CFG.DROP_S });
   else if (n.kind === 'flash') {

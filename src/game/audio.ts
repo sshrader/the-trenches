@@ -1,4 +1,5 @@
-// Quiet, synthesized rifle shots. Nothing is downloaded: the sound is built in the browser from noise and a low thump,
+// Gun and grenade sounds are real recordings (src/assets/sfx). They load after the first click; until then, or if a file fails,
+// the synthesized versions below play instead. Quiet, synthesized rifle shots. Nothing is downloaded: the sound is built in the browser from noise and a low thump,
 // so there are no files or licences to worry about. Only gunfire plays, kept low, and fainter the farther away it is.
 
 let ctx: AudioContext | null = null;
@@ -6,6 +7,49 @@ let noise: AudioBuffer | null = null;
 let muted = false;
 let volume = 0.22; // master level: deliberately low
 let recent: number[] = [];
+
+const SFX_URLS: Record<string, string> = {
+  ar: new URL('../assets/sfx/ar.mp3', import.meta.url).href,
+  smg: new URL('../assets/sfx/smg.mp3', import.meta.url).href,
+  pistol: new URL('../assets/sfx/pistol.mp3', import.meta.url).href,
+  shotgun: new URL('../assets/sfx/shotgun.mp3', import.meta.url).href,
+  reload: new URL('../assets/sfx/reload.mp3', import.meta.url).href,
+  shotgun_reload: new URL('../assets/sfx/shotgun_reload.mp3', import.meta.url).href,
+  grenade: new URL('../assets/sfx/grenade.mp3', import.meta.url).href,
+};
+const samples: Record<string, AudioBuffer> = {};
+
+async function loadSamples(c: AudioContext) {
+  await Promise.all(
+    Object.entries(SFX_URLS).map(async ([name, url]) => {
+      try {
+        const res = await fetch(url);
+        samples[name] = await c.decodeAudioData(await res.arrayBuffer());
+      } catch {
+        /* that sound stays synthesized */
+      }
+    }),
+  );
+}
+
+/** Play a recording `dist` px away: quieter and duller with distance. Returns false if the file is not loaded (so the caller can synthesize). */
+function sample(name: string, dist: number, level: number, rate = 1, falloff = 260): boolean {
+  const b = samples[name];
+  if (!ctx || !b) return false;
+  const v = (volume * level) / (1 + dist / falloff);
+  if (v < 0.01) return true; // too far to hear: nothing to synthesize either
+  const src = ctx.createBufferSource();
+  src.buffer = b;
+  src.playbackRate.value = rate * (0.97 + Math.random() * 0.06);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 1400 + 14000 / (1 + dist / 180);
+  const g = ctx.createGain();
+  g.gain.value = Math.min(1, v * 1.6);
+  src.connect(lp).connect(g).connect(ctx.destination);
+  src.start();
+  return true;
+}
 
 try {
   muted = localStorage.getItem('trenches-muted') === '1';
@@ -24,6 +68,7 @@ export function unlockAudio() {
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
     if (ctx.state === 'suspended') void ctx.resume();
+    if (!Object.keys(samples).length) void loadSamples(ctx);
   } catch {
     ctx = null; // no sound, the game still works
   }
@@ -42,6 +87,7 @@ export function setMuted(m: boolean) {
 /** A grenade going off, `dist` pixels away. Deeper and a little longer than a rifle shot, still quiet. */
 export function playBoom(dist: number, big = false) {
   if (muted || !ctx || !noise || ctx.state !== 'running') return;
+  if (sample('grenade', dist, big ? 2.4 : 1.5, big ? 0.55 : 1, big ? 900 : 420)) return;
   const m = big ? 2.2 : 1; // an artillery shell is much bigger and longer
   const v = (volume * 1.2 * m) / (1 + dist / (big ? 900 : 420));
   if (v < 0.012) return;
@@ -142,13 +188,16 @@ export function playPickup() {
 }
 
 /** One rifle shot, `dist` pixels away from you. Far shots are quieter and duller. */
-/** `kind`: 0 rifle, 1 SMG (lighter and snappier), 2 pistol (thin). */
-export function playShot(dist: number, kind = 0) {
+/** `kind` is the class index (0 Assault, 1 SMG, 2 Medic, 3 Sniper, 4 Shotgunner, 5 Squad Leader); `sidearm` means he fired his pistol. */
+export function playShot(dist: number, cls = 0, sidearm = false) {
   if (muted || !ctx || !noise || ctx.state !== 'running') return;
   const now = performance.now();
   recent = recent.filter((t) => now - t < 150);
   if (recent.length >= 8) return; // a crowd firing at once must not turn into a wall of noise
   recent.push(now);
+  const gun = sidearm || cls === 2 ? 'pistol' : cls === 1 ? 'smg' : cls === 4 ? 'shotgun' : 'ar';
+  if (sample(gun, dist, { pistol: 0.8, smg: 0.75, shotgun: 1.1, ar: cls === 3 ? 1.3 : 1 }[gun], cls === 3 && !sidearm ? 0.85 : 1)) return;
+  const kind = sidearm ? 2 : cls > 4 ? 0 : cls;
 
   const v = (volume * [1, 0.7, 0.75, 1.3, 1.15][kind]) / (1 + dist / 260);
   if (v < 0.01) return;
@@ -206,8 +255,9 @@ function click(when: number, hz: number, v: number, len = 0.035) {
 }
 
 /** Reloading, heard from `dist` px away. Rifle: bolt open, rounds loaded, bolt shut. SMG/pistol: magazine out, slap in. */
-export function playReload(dist: number, kind = 0) {
+export function playReload(dist: number, kind = 0, shotgun = false) {
   if (muted || !ctx || !noise || ctx.state !== 'running') return;
+  if (sample(shotgun ? 'shotgun_reload' : 'reload', dist, 0.9, 1, 220)) return;
   const v = (volume * 0.9) / (1 + dist / 220);
   if (v < 0.01) return;
   if (kind === 0) {
@@ -223,4 +273,10 @@ export function playReload(dist: number, kind = 0) {
     click(1.35, 1900, v, 0.045); // seated
     click(1.8, 1500, v * 0.8, 0.04); // slide / cocking
   }
+}
+
+/** A smoke or flash canister going off: the grenade recording, a little softer and higher than a blast. */
+export function playPop(dist: number) {
+  if (muted || !ctx || ctx.state !== 'running') return;
+  sample('grenade', dist, 0.9, 1.25, 380);
 }
