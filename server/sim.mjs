@@ -91,8 +91,8 @@ export const CFG = {
   ARTY_COOLDOWN_MS: 1000,
   CRATE_R: 24, // walk this close to your own crate to resupply
   CRATE_COOLDOWN_S: 30,
-  FRIENDLY_FIRE: false, // TEST SETTING: bullets and rockets hurt your own side too (not yourself). Keep false for normal play.
-  FRIENDLY_FLASH: false, // TEST SETTING: flashbangs blind your own side and you. Keep false for normal play.
+  FRIENDLY_FIRE: true, // TEST SETTING: bullets and rockets hurt your own side too (not yourself). Keep false for normal play.
+  FRIENDLY_FLASH: true, // TEST SETTING: flashbangs blind your own side and you. Keep false for normal play.
   FRIENDLY_BLASTS: true, // grenades, rockets and artillery hurt your own side and yourself (bullets still do not)
   GRENADES: 2, // per life
   NADE_FLIGHT_S: 0.7, // in the air (flies over cover)
