@@ -4,6 +4,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import HudBar from '../game/HudBar';
 import GameCanvas from '../game/GameCanvas';
 import { CLASSES, useGame } from '../game/useGame';
+const ruinsLogo = new URL('../assets/ruins-logo.svg', import.meta.url).href;
 import type { ClassId, Team } from '../game/useGame';
 import { WALLET_LOGIN } from '../config';
 import Leaderboard from './Leaderboard';
@@ -197,8 +198,13 @@ export default function Play() {
     <div className={`wrap${game.status === 'playing' ? ' wide' : ''}`}>
       {game.status !== 'playing' && (
         <section className="hero">
-          <p className="eyebrow">Multiplayer · Green vs Red</p>
-          <h1>The Ruins</h1>
+          <div className="brand">
+            <img className="brand-logo" src={ruinsLogo} alt="" width={132} height={158} />
+            <div>
+              <p className="eyebrow">Multiplayer · Green vs Red</p>
+              <h1>The Ruins</h1>
+            </div>
+          </div>
           <p className="lede">Two crews hold opposite ends of a ruined city. Use the buildings and wrecks for cover, hold the plaza in the middle, and stay out of the open.</p>
 
           <div className="field">

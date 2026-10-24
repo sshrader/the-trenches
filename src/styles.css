@@ -231,3 +231,9 @@ b.red { color: var(--red); }
 .class-row .wide-field { flex: 1 1 560px; max-width: none; width: auto; }
 .class-row .roster { flex: 0 1 240px; display: grid; grid-template-columns: 1fr; margin: 22px 0 0; }
 .class-row .roster-col ul { max-height: 130px; }
+
+.brand { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.brand-logo { width: 132px; height: auto; filter: drop-shadow(0 6px 14px rgba(0,0,0,.6)); }
+.brand h1 { margin: 0; }
+.brand .eyebrow { margin: 0 0 4px; }
+@media (max-width: 520px) { .brand-logo { width: 96px; } }
