@@ -60,7 +60,7 @@ const SPECIALS: Record<string, { icon: string; sub: string; title: string; charg
   rifleman: { icon: 'smoke', sub: 'smoke', charges: true, title: 'Smoke grenade (C): enemies cannot see into or through the cloud; your side can. Resupply refills it.' },
   smg: { icon: 'flash', sub: 'flashbang', charges: true, title: 'Flashbang (C): blinds enemies it reaches for 3 seconds. Resupply refills it.' },
   medic: { icon: 'flare', sub: 'air drop', charges: true, title: 'Air drop flare (C): a medical crate lands and heals your side near it for 10 seconds. Resupply refills it.' },
-  shotgunner: { icon: 'shield', sub: 'riot shield', dur: 5, recharge: 30, title: 'Riot shield (C): 5 seconds of cover from the front, slower walking. 30 second recharge.' },
+  shotgunner: { icon: 'shield', sub: 'riot shield', dur: 5, recharge: 30, title: 'Riot shield (C): 5 seconds of cover from the front (soaks 200 damage, then breaks), slower walking. 30 second recharge.' },
   squad: { icon: 'uav', sub: 'UAV', dur: 10, recharge: 60, title: 'UAV (C): 10 seconds of every enemy shown to your whole side. 60 second recharge; resupply does not refresh it.' },
 };
 
@@ -72,7 +72,7 @@ function SpecialSlot({ h }: { h: Hud }) {
   const activeS = h.myClassId === 'squad' ? Math.ceil(h.uavMine / 10) : Math.ceil(h.myShield / 10);
   const total = (sp.dur ?? 0) + (sp.recharge ?? 0);
   const cd = h.mySpecCd;
-  const value = activeS > 0 ? `${activeS}s` : cd > 0 ? `${cd}s` : 'ready';
+  const value = h.myClassId === 'shotgunner' && h.myShieldHp > 0 ? `${h.myShieldHp}` : activeS > 0 ? `${activeS}s` : cd > 0 ? `${cd}s` : 'ready';
   return <Slot icon={sp.icon} value={value} sub={sp.sub} keyHint="C" active={activeS > 0} dim={activeS === 0 && cd > 0} fill={activeS === 0 && cd > 0 ? 1 - cd / total : undefined} title={sp.title} />;
 }
 

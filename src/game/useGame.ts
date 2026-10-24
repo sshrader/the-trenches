@@ -5,14 +5,14 @@ import { useVoice } from './useVoice';
 import { playBoom, playCannon, playPickup, playPop, playReload, playShot, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
-export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean; blind: number; spec: number; specCd: number; shield: number; heat: number };
+export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean; blind: number; spec: number; specCd: number; shield: number; heat: number; shieldHp: number };
 export type ClassId = 'rifleman' | 'smg' | 'medic' | 'sniper' | 'shotgunner' | 'squad';
 export const CLASSES: { id: ClassId; label: string; mag: number; hp: number; sideMag?: number; special?: string; blurb: string }[] = [
   { id: 'rifleman', label: 'Assault', mag: 15, hp: 100, special: 'Smoke grenade (C)', blurb: 'Modern AR, 15 rounds. Three hits kill. Held on full auto it kicks and the shots spread, so tap or burst to stay accurate. Carries one smoke grenade (C): enemies cannot see into or through the cloud, your side can. Resupply refills it.' },
   { id: 'smg', label: 'SMG', mag: 20, hp: 100, special: 'Flashbang (C)', blurb: 'Fast fire, 20 rounds. About five hits to kill, shorter reach. Carries one flashbang (C): enemies it reaches are blinded for 3 seconds. Resupply refills it.' },
   { id: 'medic', label: 'Medic', mag: 10, hp: 100, special: 'Air drop flare (C)', blurb: 'Pistol, 10 rounds. Heals teammates standing next to you. Throw a flare (C) to call an air drop: a medical crate lands and heals your side near it for 10 seconds. Resupply gives you another.' },
   { id: 'sniper', label: 'Sniper', mag: 5, sideMag: 8, hp: 100, special: 'E: tower', blurb: 'One hit kills. Hold the right mouse button to scope: your view slides toward where you aim and you spot enemies for your team far down that line (a narrow beam), but you crawl, and each shot gives you away. Rounds punch through barricades and rubble. 5 rounds, plus an 8-round pistol (mouse wheel or Q swaps; you cannot scope with it), no artillery strike, 2 per side.' },
-  { id: 'shotgunner', label: 'Shotgunner', mag: 5, hp: 140, sideMag: 12, special: 'Riot shield (C)', blurb: 'Tough: 140 HP. Shotgun with 5 shells, fires faster than the rifle but slower than the SMG, one blast kills up close, but damage drops off quickly with distance. Sprints 1.5x as long. Mouse wheel or Q swaps to your 12-round pistol. Riot shield (C): for 5 seconds bullets from the front are stopped, but you walk slower; 30 second recharge.' },
+  { id: 'shotgunner', label: 'Shotgunner', mag: 5, hp: 140, sideMag: 12, special: 'Riot shield (C)', blurb: 'Tough: 140 HP. Shotgun with 5 shells, fires faster than the rifle but slower than the SMG, one blast kills up close, but damage drops off quickly with distance. Sprints 1.5x as long. Mouse wheel or Q swaps to your 12-round pistol. Riot shield (C): for 5 seconds bullets from the front are stopped (it soaks 200 damage, then breaks), but you walk slower; 30 second recharge.' },
   { id: 'squad', label: 'Squad Leader', mag: 15, hp: 100, sideMag: 10, special: 'UAV (C)', blurb: 'The Assault\'s AR, plus a 10-round pistol, 2 grenades and an artillery strike. Call a UAV (C): for 10 seconds your whole side sees every enemy. 60 second recharge, and resupply does not refresh it.' },
 ];
 export type RoundInfo = { n: number; s: 'live' | 'ended'; l: number; w: string | null };
@@ -44,9 +44,9 @@ export type World = {
 export type Input = { special: number; sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number; nest: number; dismantle: boolean }; // `nest` is the E key counter: a sniper builds, climbs or leaves his tower
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type ChatLine = { name: string; team: Team; text: string; at: number; mode?: 'all' | 'team' };
-export type Hud = { mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
+export type Hud = { myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
-const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0 });
+const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0 });
 const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0] });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
@@ -136,6 +136,7 @@ export function useGame() {
         mySpec: me?.spec ?? 0,
         mySpecCd: me?.specCd ?? 0,
         myShield: me?.shield ?? 0,
+        myShieldHp: me?.shieldHp ?? 0,
         myHeat: me?.heat ?? 0,
         myBlind: me?.blind ?? 0,
         uavMine: w.uav[0],
@@ -200,7 +201,7 @@ export function useGame() {
             w.units.delete(m.id);
           } else if (m.t === 's') {
             const inSight = new Set<number>();
-            for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next, kit, kills, deaths, stamina, winded, scoped, rockets, weap, elev, blind, spec, specCd, shield, heat] of m.p as number[][]) {
+            for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next, kit, kills, deaths, stamina, winded, scoped, rockets, weap, elev, blind, spec, specCd, shield, heat, shieldHp] of m.p as number[][]) {
               const u = w.units.get(id);
               if (!u) continue;
               inSight.add(id);
@@ -238,6 +239,7 @@ export function useGame() {
               u.specCd = specCd ?? 0;
               u.shield = shield ?? 0;
               u.heat = heat ?? 0;
+              u.shieldHp = shieldHp ?? 0;
               u.rockets = rockets;
               u.bazooka = weap === 1;
               u.sidearm = weap === 2;

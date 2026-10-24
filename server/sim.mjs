@@ -39,6 +39,7 @@ export const CFG = {
   DROP_R: 75,
   DROP_RATE: 22, // HP per second
   SHIELD_ARC: 1.15, // riot shield: stops bullets arriving within this many radians of where he faces
+  SHIELD_HP: 200, // damage the shield can soak before it breaks (then the recharge starts)
   SHIELD_SPEED: 0.7, // ... and slows him
   HEAL_RADIUS: 60, // a medic heals teammates this close ...
   HEAL_RATE: 18, // ... at this many HP per second
@@ -259,6 +260,7 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' 
     wantSpecial: false,
     specReadyAt: 0,
     shieldUntil: 0,
+    shieldHp: 0,
     heat: 0,
     blindUntil: 0,
     cls: CLASS_IDS.includes(wantCls) ? wantCls : 'rifleman',
@@ -617,7 +619,10 @@ function useSpecial(w, p, now) {
   }
   if (now < p.specReadyAt) return;
   p.specReadyAt = now + (sp.durS + sp.rechargeS) * 1000;
-  if (sp.id === 'shield') p.shieldUntil = now + sp.durS * 1000;
+  if (sp.id === 'shield') {
+    p.shieldUntil = now + sp.durS * 1000;
+    p.shieldHp = CFG.SHIELD_HP;
+  }
   else if (sp.id === 'uav') {
     w.uav[p.team] = Math.max(w.uav[p.team], now + sp.durS * 1000);
     w.events.push({ t: 'uav', team: p.team });
@@ -808,7 +813,22 @@ export function step(w, dt, now = Date.now()) {
           if (now < t.shieldUntil) {
             let da = Math.atan2(b.y - b.vy * 0.05 - t.y, b.x - b.vx * 0.05 - t.x) - t.aim; // where the round came from, against where he faces
             da = Math.atan2(Math.sin(da), Math.cos(da));
-            if (Math.abs(da) <= CFG.SHIELD_ARC) break; // stopped by the shield
+            if (Math.abs(da) <= CFG.SHIELD_ARC) {
+              // stopped by the shield, which soaks the damage and breaks when it is used up
+              let soak = b.damage;
+              if (b.falloff) {
+                const [near, far, minF] = b.falloff;
+                const d = Math.hypot(b.x - b.sx, b.y - b.sy);
+                soak *= d <= near ? 1 : Math.max(minF, 1 - ((1 - minF) * (d - near)) / (far - near));
+              }
+              t.shieldHp -= soak;
+              if (t.shieldHp <= 0) {
+                t.shieldUntil = 0; // broken: the recharge starts now
+                t.specReadyAt = now + (cls(t).special?.rechargeS ?? 30) * 1000;
+                w.events.push({ t: 'pop', x: Math.round(t.x), y: Math.round(t.y) });
+              }
+              break;
+            }
           }
           let dmg = b.damage;
           if (b.falloff) {
@@ -1026,7 +1046,7 @@ export function snapshot(w, now = Date.now(), team = null) {
   const p = [];
   for (const q of w.players.values()) {
     if (team && q.team !== team && !uav && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
-    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0, Math.max(0, Math.ceil((q.blindUntil - now) / 100)), q.spec, Math.max(0, Math.ceil((q.specReadyAt - now) / 1000)), Math.max(0, Math.ceil((q.shieldUntil - now) / 100)), Math.round(q.heat * 100)]);
+    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0, Math.max(0, Math.ceil((q.blindUntil - now) / 100)), q.spec, Math.max(0, Math.ceil((q.specReadyAt - now) / 1000)), Math.max(0, Math.ceil((q.shieldUntil - now) / 100)), Math.round(q.heat * 100), now < q.shieldUntil ? Math.max(0, Math.round(q.shieldHp)) : 0]);
   }
   const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
   const owner = (id) => w.players.get(id);

@@ -1187,6 +1187,33 @@ test('riot shield: stops shots from the front for 5 s, then a 30 s recharge', ()
   void hp;
 });
 
+test('riot shield soaks 200 damage, then breaks and starts its recharge', () => {
+  const w = fresh();
+  const s = mk(w, 's', 'green', 'shotgunner', 520, Math.PI);
+  const r = mk(w, 'r', 'red', 'sniper', 400, 0);
+  setInput(w, s.id, { dx: 0, dy: 0, aim: Math.PI, special: 0 });
+  let now = run(w, 0.1);
+  special(w, s, 1);
+  now = run(w, 0.1, now);
+  assert.equal(s.shieldHp, CFG.SHIELD_HP);
+  for (let i = 0; i < 2; i++) {
+    r.lastFire = -1e6;
+    r.ammo = 5;
+    setInput(w, r.id, { dx: 0, dy: 0, aim: 0, fire: true });
+    now = run(w, 0.1, now);
+    setInput(w, r.id, { dx: 0, dy: 0, aim: 0, fire: false });
+    now = run(w, 0.4, now);
+  }
+  assert.equal(s.hp, 140, 'two sniper rounds are soaked');
+  assert.ok(now >= s.shieldUntil || s.shieldUntil === 0, 'the shield broke');
+  assert.equal(s.shieldUntil, 0);
+  assert.ok(s.specReadyAt > now + 25000, 'recharge started at the break');
+  r.lastFire = -1e6;
+  setInput(w, r.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  now = run(w, 0.5, now);
+  assert.ok(s.hp < 140, 'now a round gets through');
+});
+
 test('medic flare: an air drop lands, heals friendlies for 10 s, then goes', () => {
   const w = fresh();
   const m = mk(w, 'm', 'medic', 'medic', 400);

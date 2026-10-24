@@ -1179,8 +1179,9 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       // Riot shield: a bright arc in front of the soldier
       for (const u of alive) {
         if (!u.shield) continue;
-        ctx.strokeStyle = 'rgba(147,197,253,0.9)';
-        ctx.lineWidth = 5;
+        const hpF = Math.max(0.1, Math.min(1, u.shieldHp / 200));
+        ctx.strokeStyle = hpF > 0.5 ? 'rgba(147,197,253,0.9)' : hpF > 0.25 ? 'rgba(253,224,71,0.9)' : 'rgba(248,113,113,0.9)'; // cracks toward red as it wears down
+        ctx.lineWidth = 2 + 4 * hpF;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.arc(u.x - camX, u.y - camY, 24, (u.id === w.me ? input.current.aim : u.aim) - 1.15, (u.id === w.me ? input.current.aim : u.aim) + 1.15);
