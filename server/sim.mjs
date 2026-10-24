@@ -559,8 +559,14 @@ function newRound(w, now) {
     w.mapRound = 1;
     w.events.push({ t: 'map', id });
   } else w.mapRound++;
+  startRound(w, now, w.round.n + 1);
+}
+
+/** Clear the field and put everyone back in their base for round number `n`. */
+function startRound(w, now, n) {
+  w.epoch = (w.epoch ?? 0) + 1; // clients clear what they were remembering (bodies) when this changes
   w.teamKills = { green: 0, red: 0 };
-  w.round = { n: w.round.n + 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
+  w.round = { n, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
   w.points = { green: 0, red: 0 };
   w.towers = [];
@@ -578,6 +584,19 @@ function newRound(w, now) {
   for (const c of w.crates) c.readyAt = 0;
   rebalance(w, now, true);
   for (const p of w.players.values()) respawn(w, p, now);
+}
+
+/** An admin restart: round wins back to 0:0, round 1 of the series with a fresh timer, optionally on another map. Returns false for an unknown map. */
+export function restartSeries(w, now = Date.now(), mapId = null) {
+  if (mapId && !w.maps[mapId]) return false;
+  if (mapId && mapId !== w.mapId) {
+    applyMap(w, w.maps[mapId], mapId);
+    w.events.push({ t: 'map', id: mapId });
+  }
+  w.wins = { green: 0, red: 0 };
+  w.mapRound = 1;
+  startRound(w, now, 1);
+  return true;
 }
 
 function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
@@ -1154,7 +1173,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,
     pt: [Math.floor(w.points.green), Math.floor(w.points.red)],
-    r: { n: w.round.n, mp: w.mapId, mr: w.mapRound, mt: CFG.ROUNDS_PER_MAP, nx: w.round.state === 'ended' && seriesOver(w) ? nextMapId(w) : '', s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
+    r: { n: w.round.n, e: w.epoch ?? 0, mp: w.mapId, mr: w.mapRound, mt: CFG.ROUNDS_PER_MAP, nx: w.round.state === 'ended' && seriesOver(w) ? nextMapId(w) : '', s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
   };
 }
 

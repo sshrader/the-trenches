@@ -223,6 +223,7 @@ export function attachGame(server) {
         if (text.startsWith('/')) {
           // chat commands (never shown to anyone else, so a typed password cannot leak into the chat log)
           const reply = (msg) => send(ws, { t: 'chat', id: 0, name: 'Server', team: me.team, text: msg, mode: 'all' });
+          const announce = (msg) => broadcast({ t: 'chat', id: 0, name: 'Server', team: me.team, text: msg, mode: 'all' }); // everyone sees what an admin changed
           const [cmd, ...rest] = text.slice(1).split(/\s+/);
           const arg = rest.join(' ').trim();
           if (cmd.toLowerCase() === 'admin') {
@@ -240,7 +241,7 @@ export function attachGame(server) {
             adminTries.delete(key);
             me.admin = true;
             console.log(`[admin] ${me.name} unlocked admin commands`);
-            return reply('Admin unlocked. /bots 5 = fill each side to 5, /bots 0 = no bots, /bots = show the setting.');
+            return reply('Admin unlocked. /bots 5 (fill each side to 5), /bots 0 (no bots), /map forest or /map city, /restart (round wins 0:0, new timer).');
           }
           if (cmd.toLowerCase() === 'bots' && me.admin) {
             if (arg !== '') {
@@ -251,6 +252,18 @@ export function attachGame(server) {
             }
             const st = getBotSettings();
             return reply(st.enabled ? `Bots on: each side is filled to ${st.size} soldiers (${st.bots} bots in play now).` : 'Bots off.');
+          }
+          if (cmd.toLowerCase() === 'map' && me.admin) {
+            const id = arg.toLowerCase();
+            if (!MAPS[id]) return reply(`Maps: ${Object.keys(MAPS).join(', ')}. Use /map followed by one of them.`);
+            sim.restartSeries(world, Date.now(), id);
+            console.log(`[admin] ${me.name} changed the map to ${id}`);
+            return announce(`${me.name} changed the map to ${MAPS[id].name ?? (id === 'city' ? 'The Ruins' : id)}. Round wins reset to 0:0.`);
+          }
+          if (cmd.toLowerCase() === 'restart' && me.admin) {
+            sim.restartSeries(world, Date.now());
+            console.log(`[admin] ${me.name} restarted the match`);
+            return announce(`${me.name} restarted the match: round wins 0:0, new timer.`);
           }
           return reply('Unknown command.');
         }

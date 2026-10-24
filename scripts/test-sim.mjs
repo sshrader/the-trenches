@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as bots from '../server/bots.mjs';
-import { CFG, applyMap, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount } from '../server/sim.mjs';
+import { CFG, applyMap, restartSeries, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount } from '../server/sim.mjs';
 
 CFG.FRIENDLY_FIRE = false; // the server ships with these on for testing; the checks below are about normal play
 CFG.FRIENDLY_FLASH = false;
@@ -1454,6 +1454,26 @@ test('fill-in bots top each side up to the set size, make way for people, and pl
   assert.equal(bots.sync(w, { enabled: false, size: 5 }, now).removed.length, 8, 'switching the setting off clears every bot');
   assert.equal(count('green') + count('red'), 2);
   void human;
+});
+
+test('an admin restart puts the wins back to 0:0 with a fresh timer, on the same or another map', () => {
+  const w = series();
+  let now = finishRound(w, 1000, 'green');
+  assert.equal(w.wins.green, 1);
+  w.round.left = 100;
+  assert.ok(restartSeries(w, now));
+  assert.deepEqual([w.wins.green, w.wins.red], [0, 0]);
+  assert.equal(w.mapRound, 1);
+  assert.equal(w.round.n, 1);
+  assert.equal(w.round.left, CFG.ROUND_S);
+  assert.equal(w.mapId, 'city');
+  w.wins.red = 1;
+  assert.ok(restartSeries(w, now, 'forest'));
+  assert.equal(w.mapId, 'forest');
+  assert.equal(w.rows, forest.rows);
+  assert.deepEqual([w.wins.green, w.wins.red], [0, 0]);
+  assert.equal(restartSeries(w, now, 'nowhere'), false, 'an unknown map is refused');
+  assert.equal(w.mapId, 'forest');
 });
 
 console.log(`\n${n} checks passed`);
