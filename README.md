@@ -146,7 +146,15 @@ The change lasts until the server restarts (then `BOTS` / `BOT_TEAM_SIZE` apply 
 
 ## Kill streaks and the idle kick
 
-**Kill streaks:** every soldier (bots too) keeps a count of kills since he last died. At 3, 5 and 7 the server announces it to everyone (`CFG.STREAK_CALLOUTS`): a banner at the top of the screen ("Wolf is on a 5 kill streak!", yellow, orange, red) and a short rising sting, louder when it is you. Dying ends the streak, and a new round starts everyone at zero. There are no rewards yet.
+**Kill streaks:** every soldier (bots too) keeps a count of kills since he last died. At 3, 5 and 7 the server announces it to everyone (`CFG.STREAK_CALLOUTS`): a banner at the top of the screen ("Wolf is on a 5 kill streak!", yellow, orange, red) and a short rising sting, louder when it is you. Dying ends the streak, and a new round starts everyone at zero. 
+
+**Rewards (Z key):** people (not bots) who reach 3, 5 or 7 kills in a row earn a reward, shown as a slot on the hotkey bar. Z spends the best one held; an unused reward is lost when you die or a round restarts. While you fly a missile or helicopter your soldier stands still and can be shot.
+
+| Kills | Reward | What it does |
+|---|---|---|
+| 3 | UAV | 8 s: the whole map's fog lifts and every enemy shows on screen and the minimap (`CFG.BIGUAV_S`) |
+| 5 | Predator | the camera rides the missile; the mouse steers it (turn rate `CFG.MISSILE_TURN`); click or Z detonates. The enemy sees no missile, marker or warning, only the blast |
+| 7 | Attack helicopter | 5 s (`CFG.HELI_S`): WASD to fly over everything, mouse to aim, hold click for the minigun, G for rockets. Enemies who can see it see it |
 
 **Idle kick:** a person who has not moved, fired, scoped, pressed an action key or moved the mouse for 60 s is removed (15 s before that, a "Move or you will be removed" warning appears in chat). They land back in the lobby with a message saying why. `IDLE_KICK_S` changes the time (0 turns it off). Bots are never kicked.
 

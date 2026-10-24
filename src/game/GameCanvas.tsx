@@ -1162,6 +1162,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         if (world.current.units.get(world.current.me)?.cls === 3) input.current.nest += 1;
         else input.current.special += 1;
       }
+      if (k === 'z' && !e.repeat) input.current.streak += 1; // kill-streak reward: UAV, Predator or helicopter
       if (k === 'g' && !e.repeat) input.current.nade += 1; // the server counts presses, so a lost packet cannot eat a throw
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) return;
       e.preventDefault();
@@ -1237,6 +1238,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     let raf = 0;
     let lastT = performance.now();
     let zoom = 1;
+    const ctlPos = { x: 0, y: 0, on: false }; // where the missile / helicopter we are flying is, eased between server updates
     const frame = () => {
       const w = world.current;
       applyMap(w.mapId);
@@ -1246,7 +1248,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       for (const u of w.units.values()) {
         const px = u.x;
         const py = u.y;
-        if (u.id === w.me && u.hp > 0 && !u.elev && Math.hypot(u.tx - u.x, u.ty - u.y) < 80) {
+        if (u.id === w.me && u.hp > 0 && !u.elev && !u.ctl && Math.hypot(u.tx - u.x, u.ty - u.y) < 80) {
           // Client-side prediction: move our own soldier right away with the same rules as the server, then ease toward the
           // server's answer. The server still decides where we really are.
           const { dx, dy, sprint } = input.current;
@@ -1279,13 +1281,22 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       const blend = (1 - zoom) / (1 - SCOPE_ZOOM); // 0 = normal view, 1 = fully scoped
       const panX = Math.cos(input.current.aim) * SCOPE_PAN * blend;
       const panY = Math.sin(input.current.aim) * SCOPE_PAN * blend;
-      const camX = Math.max(0, Math.min(MAP_W - VW, (you?.x ?? CAP.x) + panX - VW / 2));
-      const camY = Math.max(0, Math.min(MAP_H - VH, (you?.y ?? CAP.y) + panY - VH / 2));
+      // Flying a missile or helicopter: the camera rides it, and the mouse steers it.
+      const flying = you && you.hp > 0 ? w.ms.find((m) => m[4] === w.me) : undefined;
+      if (flying) {
+        if (!ctlPos.on) { ctlPos.x = flying[1]; ctlPos.y = flying[2]; ctlPos.on = true; }
+        ctlPos.x += (flying[1] - ctlPos.x) * 0.5;
+        ctlPos.y += (flying[2] - ctlPos.y) * 0.5;
+      } else ctlPos.on = false;
+      const focusX = flying ? ctlPos.x : (you?.x ?? CAP.x);
+      const focusY = flying ? ctlPos.y : (you?.y ?? CAP.y);
+      const camX = Math.max(0, Math.min(MAP_W - VW, focusX + panX - VW / 2));
+      const camY = Math.max(0, Math.min(MAP_H - VH, focusY + panY - VH / 2));
       w.cam.x = camX;
       w.cam.y = camY;
       if (you) {
-        const mdx = mouse.current.x / zoom - (you.x - camX);
-        const mdy = mouse.current.y / zoom - (you.y - camY);
+        const mdx = mouse.current.x / zoom - (focusX - camX);
+        const mdy = mouse.current.y / zoom - (focusY - camY);
         input.current.aim = Math.atan2(mdy, mdx);
         input.current.range = Math.hypot(mdx, mdy); // grenades land where the cursor is
       }
@@ -1749,6 +1760,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
             }
           }
           for (const [ux, uy, ur] of w.uavAreas) {
+            if (ur === 0) { fc.fillStyle = 'rgba(0,0,0,1)'; fc.fillRect(0, 0, VW, VH); continue; } // the streak UAV: the whole map
             // UAV: the fog lifts over a big circle
             const ex = ux - camX;
             const ey = uy - camY;
@@ -1760,8 +1772,28 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
             fc.arc(ex, ey, ur, 0, Math.PI * 2);
             fc.fill();
           }
+          for (const m of w.ms) {
+            if (m[5] !== (myTeam === 'green' ? 0 : 1)) continue; // what our side's missile / helicopter sees
+            const rr = m[0] === 1 ? 340 : 260;
+            const ex = m[1] - camX;
+            const ey = m[2] - camY;
+            const g = fc.createRadialGradient(ex, ey, rr * 0.7, ex, ey, rr);
+            g.addColorStop(0, 'rgba(0,0,0,1)');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            fc.fillStyle = g;
+            fc.beginPath();
+            fc.arc(ex, ey, rr, 0, Math.PI * 2);
+            fc.fill();
+          }
           ctx.drawImage(fogCv, 0, 0);
           for (const [ux, uy, ur, left] of w.uavAreas) {
+            if (ur === 0) {
+              ctx.fillStyle = '#86efac';
+              ctx.font = 'bold 14px system-ui, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(`UAV ONLINE  ${(left * 8).toFixed(0)}s`, VW / 2, 56);
+              continue;
+            }
             ctx.strokeStyle = `rgba(134,239,172,${0.35 + 0.25 * Math.sin(Date.now() / 220)})`;
             ctx.lineWidth = 2;
             ctx.setLineDash([10, 8]);
@@ -1773,6 +1805,66 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
             ctx.font = '12px system-ui, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(`UAV ${(left * 10).toFixed(0)}s`, ux - camX, uy - camY - ur + 16);
+          }
+          // Missiles and helicopters (above the fog)
+          const tnow = Date.now();
+          for (const [kind, mx0, my0, ma, pid] of w.ms) {
+            const sx = mx0 - camX;
+            const sy = my0 - camY;
+            ctx.save();
+            ctx.translate(sx, sy);
+            if (kind === 0) {
+              ctx.rotate(ma);
+              const fl = 14 + 6 * Math.sin(tnow / 40);
+              const gr = ctx.createLinearGradient(-fl - 8, 0, -6, 0);
+              gr.addColorStop(0, 'rgba(251,146,60,0)');
+              gr.addColorStop(1, 'rgba(253,224,71,0.95)');
+              ctx.fillStyle = gr;
+              ctx.beginPath();
+              ctx.moveTo(-6, -3);
+              ctx.lineTo(-fl - 8, 0);
+              ctx.lineTo(-6, 3);
+              ctx.fill();
+              ctx.fillStyle = '#e2e8f0';
+              ctx.fillRect(-6, -3, 16, 6);
+              ctx.fillStyle = '#ef4444';
+              ctx.beginPath();
+              ctx.moveTo(10, -3);
+              ctx.lineTo(17, 0);
+              ctx.lineTo(10, 3);
+              ctx.fill();
+              ctx.fillStyle = '#64748b';
+              ctx.fillRect(-6, -7, 5, 4);
+              ctx.fillRect(-6, 3, 5, 4);
+            } else {
+              ctx.fillStyle = 'rgba(0,0,0,0.25)';
+              ctx.beginPath();
+              ctx.ellipse(10, 14, 22, 10, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.rotate(ma);
+              ctx.fillStyle = pid === w.me ? '#3f4f3a' : '#334155';
+              ctx.beginPath();
+              ctx.ellipse(0, 0, 20, 9, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillRect(-34, -2, 16, 4); // tail boom
+              ctx.fillStyle = '#7dd3fc';
+              ctx.beginPath();
+              ctx.ellipse(10, 0, 8, 5, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#94a3b8';
+              ctx.fillRect(16, -1.5, 16, 3); // the minigun
+              ctx.rotate(-ma);
+              ctx.rotate((tnow / 40) % (Math.PI * 2));
+              ctx.strokeStyle = 'rgba(226,232,240,0.7)'; // spinning rotor
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.moveTo(-38, 0);
+              ctx.lineTo(38, 0);
+              ctx.moveTo(0, -38);
+              ctx.lineTo(0, 38);
+              ctx.stroke();
+            }
+            ctx.restore();
           }
           if (w.uavAreas.length) {
             ctx.strokeStyle = 'rgba(248,113,113,0.85)';
@@ -1792,6 +1884,36 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (you && you.blind > 0) {
         ctx.fillStyle = `rgba(255,255,255,${Math.min(1, you.blind / 12)})`;
         ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      }
+      // Flying a Predator or helicopter: a screen frame and the controls
+      if (you && you.hp > 0 && you.ctl) {
+        const heli = you.ctl === 2;
+        const vg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.35, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.85);
+        vg.addColorStop(0, 'rgba(0,0,0,0)');
+        vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        ctx.strokeStyle = 'rgba(134,239,172,0.75)';
+        ctx.lineWidth = 1.5;
+        const cx0 = mouse.current.x;
+        const cy0 = mouse.current.y;
+        ctx.beginPath();
+        ctx.arc(cx0, cy0, 14, 0, Math.PI * 2);
+        ctx.moveTo(cx0 - 22, cy0);
+        ctx.lineTo(cx0 - 8, cy0);
+        ctx.moveTo(cx0 + 8, cy0);
+        ctx.lineTo(cx0 + 22, cy0);
+        ctx.moveTo(cx0, cy0 - 22);
+        ctx.lineTo(cx0, cy0 - 8);
+        ctx.moveTo(cx0, cy0 + 8);
+        ctx.lineTo(cx0, cy0 + 22);
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#86efac';
+        ctx.font = 'bold 18px system-ui, sans-serif';
+        ctx.fillText(heli ? `ATTACK HELICOPTER  ${(you.ctlLeft / 10).toFixed(1)}s` : `PREDATOR  ${(you.ctlLeft / 10).toFixed(1)}s`, VIEW_W / 2, 84);
+        ctx.font = '13px system-ui, sans-serif';
+        ctx.fillText(heli ? 'WASD fly · hold click: minigun · G: rocket · your soldier is standing still, so stay hidden' : 'Move the mouse to steer · click or Z to detonate · your soldier is standing still', VIEW_W / 2, 104);
       }
       // UAV status
       if (w.uav[0] > 0 || w.uav[1] > 0) {
@@ -1880,6 +2002,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       const scopers = alive.filter((q) => q.team === myTeam && q.scoped);
       const uavOn = w.uav[0] > 0;
       for (const [ux, uy, ur] of w.uavAreas) {
+        if (ur === 0) continue; // (the whole-map UAV has no ring)
         ctx.strokeStyle = 'rgba(134,239,172,0.8)';
         ctx.lineWidth = 1;
         ctx.beginPath();

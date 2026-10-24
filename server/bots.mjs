@@ -55,7 +55,7 @@ function viewFor(w, team, now) {
   const watchers = [...w.players.values()].filter((q) => q.team === team && q.hp > 0);
   return (q) => {
     if (now < q.revealUntil) return true;
-    if (areas.some((a) => Math.hypot(a.x - q.x, a.y - q.y) <= CFG.UAV_R)) return true;
+    if (areas.some((a) => Math.hypot(a.x - q.x, a.y - q.y) <= (a.r ?? CFG.UAV_R))) return true;
     if (!sim.canSee(eyes, q.x, q.y, 0, walls)) return false;
     if (sim.inBush(w, q.x, q.y) && !watchers.some((m) => Math.hypot(m.x - q.x, m.y - q.y) <= CFG.BUSH_REVEAL)) return false;
     return true;

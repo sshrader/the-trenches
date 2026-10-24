@@ -82,6 +82,21 @@ export const CFG = {
   ROUND_S: 360,
   END_S: 10,
   AUTO_BALANCE_S: 15, // sides that stay two or more people apart this long are evened out by moving someone over (0 = off)
+  STREAK_REWARDS: { 3: 'uav', 5: 'missile', 7: 'heli' }, // kills in a row that earn a reward, used with Z (lost on death)
+  BIGUAV_S: 8, // the streak UAV: the whole map's fog lifts and every enemy shows, for this long
+  MISSILE_SPEED: 330, // Predator missile: steered with the mouse, invisible to the enemy until it lands
+  MISSILE_TURN: 2.4, // radians per second it can turn
+  MISSILE_LIFE: 9,
+  MISSILE_RADIUS: 170,
+  MISSILE_LETHAL: 90,
+  MISSILE_VISION: 260, // the owner's side sees this far around the missile
+  HELI_S: 5, // attack helicopter flight time
+  HELI_SPEED: 210,
+  HELI_VISION: 340,
+  HELI_FIRE_MS: 55, // minigun
+  HELI_DAMAGE: 14,
+  HELI_SPREAD: 0.09,
+  HELI_ROCKET_MS: 900,
   STREAK_CALLOUTS: [3, 5, 7], // kills in a row (without dying) that are announced to everyone
   ROUNDS_PER_MAP: 3, // a map is played as a best-of series, then the server moves to the next map and the round wins start again
   MAP_EARLY_END: true, // a side that has won more than half of the series (2 of 3) ends the map without playing the rest
@@ -300,6 +315,10 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman',
     spec: 0,
     specSeq: null,
     wantSpecial: false,
+    wantStreak: false,
+    streakSeq: null,
+    rewards: [],
+    control: null,
     specReadyAt: 0,
     shieldUntil: 0,
     shieldHp: 0,
@@ -389,12 +408,12 @@ export const removePlayer = (w, id) => {
   return w.players.delete(id);
 };
 
-export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope, swap, nest, dismantle, special }) {
+export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope, swap, nest, dismantle, special, streak }) {
   const p = w.players.get(id);
   if (!p) return;
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const oldAim = p.aim;
-  const wasWanting = p.wantNade || p.wantReload || p.wantArty || p.wantSwap || p.wantNest || p.wantSpecial;
+  const wasWanting = p.wantNade || p.wantReload || p.wantArty || p.wantSwap || p.wantNest || p.wantSpecial || p.wantStreak;
   p.dx = clamp(n(dx), -1, 1);
   p.dy = clamp(n(dy), -1, 1);
   if (Number.isFinite(Number(aim))) p.aim = Number(aim) % (Math.PI * 2);
@@ -420,13 +439,17 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, 
     if (p.nestSeq !== null && p.nestSeq !== undefined) p.wantNest = true;
     p.nestSeq = nest;
   }
+  if (streak !== undefined && streak !== p.streakSeq) {
+    if (p.streakSeq !== undefined && p.streakSeq !== null) p.wantStreak = true;
+    p.streakSeq = streak;
+  }
   if (special !== undefined && special !== p.specSeq) {
     if (p.specSeq !== null) p.wantSpecial = true;
     p.specSeq = special;
   }
   // Is a person really there? Moving, firing, scoping, a key press or any change of aim (the mouse) counts. (A bot decides for itself.)
   const aimMoved = Math.abs(Math.atan2(Math.sin(p.aim - oldAim), Math.cos(p.aim - oldAim))) > 0.01;
-  const pressed = !wasWanting && (p.wantNade || p.wantReload || p.wantArty || p.wantSwap || p.wantNest || p.wantSpecial);
+  const pressed = !wasWanting && (p.wantNade || p.wantReload || p.wantArty || p.wantSwap || p.wantNest || p.wantSpecial || p.wantStreak);
   if (p.dx || p.dy || p.fire || p.scope || p.sprint || p.dismantle || aimMoved || pressed) p.lastActive = Date.now();
   if (arty !== undefined && arty !== p.artySeq) {
     if (p.artySeq !== null) p.wantArty = true;
@@ -607,7 +630,7 @@ function newRound(w, now) {
 /** Clear the field and put everyone back in their base for round number `n`. */
 function startRound(w, now, n) {
   w.epoch = (w.epoch ?? 0) + 1; // clients clear what they were remembering (bodies) when this changes
-  for (const q of w.players.values()) q.streak = 0;
+  for (const q of w.players.values()) { q.streak = 0; q.rewards = []; q.control = null; }
   w.teamKills = { green: 0, red: 0 };
   w.round = { n, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
@@ -650,7 +673,9 @@ export function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   t.respawnAt = now + CFG.RESPAWN_S * 1000;
   t.dx = t.dy = 0;
   t.fire = false;
-  t.wantNade = t.wantReload = t.wantArty = t.wantNest = t.wantSpecial = false;
+  t.wantNade = t.wantReload = t.wantArty = t.wantNest = t.wantSpecial = t.wantStreak = false;
+  t.rewards = []; // an unused reward is lost with the life
+  t.control = null;
   t.shieldUntil = 0;
   const k = w.players.get(ownerId);
   const own = !!k && k.team === t.team; // killed himself or a teammate: no credit
@@ -659,6 +684,8 @@ export function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
     k.kills++;
     w.teamKills[k.team]++;
     k.streak = (k.streak ?? 0) + 1;
+    const rw = CFG.STREAK_REWARDS[k.streak];
+    if (rw && !k.isBot) k.rewards.push(rw);
     if (CFG.STREAK_CALLOUTS.includes(k.streak)) w.events.push({ t: 'streak', id: k.id, name: k.name, team: k.team, n: k.streak });
   }
   w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon, self: k === t, tk: own && k !== t, kid: k ? k.id : 0, vid: t.id });
@@ -689,7 +716,7 @@ function bulletDamage(b) {
 }
 
 function explode(w, n, now, spec = NADE_SPEC(), weapon = 'grenade') {
-  w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y), big: weapon === 'rocket' || weapon === 'artillery' });
+  w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y), big: weapon === 'rocket' || weapon === 'artillery' || weapon === 'predator' });
   for (const t of w.players.values()) {
     if ((!CFG.FRIENDLY_BLASTS && t.team === n.team) || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
     const d = Math.hypot(t.x - n.x, t.y - n.y);
@@ -776,6 +803,88 @@ function useSpecial(w, p, now) {
   }
 }
 
+const REWARD_RANK = { uav: 1, missile: 2, heli: 3 };
+/** The best reward he holds (3 heli, 2 missile, 1 UAV, 0 none). */
+export const rewardCode = (p) => p.rewards.reduce((m, r) => Math.max(m, REWARD_RANK[r]), 0);
+
+/** The Z key: spend the best streak reward, or (while flying one) end it early. */
+function useStreak(w, p, now) {
+  if (p.hp <= 0) return;
+  if (p.control) {
+    if (p.control.kind === 'missile') p.control.detonate = true; // Z again: blow it where it is
+    return;
+  }
+  const code = rewardCode(p);
+  if (!code) return;
+  const kind = Object.keys(REWARD_RANK).find((k) => REWARD_RANK[k] === code);
+  p.rewards.splice(p.rewards.indexOf(kind), 1);
+  if (kind === 'uav') {
+    const until = now + CFG.BIGUAV_S * 1000;
+    w.uavAreas.push({ team: p.team, x: (w.W * w.tile) / 2, y: (w.H * w.tile) / 2, r: 1e5, until, big: true });
+    w.uav[p.team] = Math.max(w.uav[p.team], until);
+    w.events.push({ t: 'uav', team: p.team, big: true });
+  } else if (kind === 'missile') {
+    p.dx = p.dy = 0;
+    p.fire = false;
+    p.control = { kind: 'missile', x: p.x + Math.cos(p.aim) * 20, y: p.y + Math.sin(p.aim) * 20, aim: p.aim, left: CFG.MISSILE_LIFE };
+  } else {
+    p.dx = p.dy = 0;
+    p.fire = false;
+    p.control = { kind: 'heli', x: p.x, y: p.y, aim: p.aim, left: CFG.HELI_S, lastFire: 0, lastRocket: 0 };
+    w.events.push({ t: 'heli', team: p.team });
+  }
+}
+
+/** Fly the missile or helicopter a player is controlling for one tick (he stands still and is open to fire meanwhile). */
+function controlStep(w, p, now, dt) {
+  const c = p.control;
+  p.wantNade = p.wantReload = p.wantArty = p.wantSwap = p.wantNest = p.wantSpecial = false;
+  c.left -= dt;
+  if (c.kind === 'missile') {
+    let da = p.aim - c.aim;
+    da = Math.atan2(Math.sin(da), Math.cos(da));
+    c.aim += clamp(da, -CFG.MISSILE_TURN * dt, CFG.MISSILE_TURN * dt);
+    const steps = Math.max(1, Math.ceil((CFG.MISSILE_SPEED * dt) / 6));
+    let boom = !!c.detonate || c.left <= 0 || (p.fire && c.left < CFG.MISSILE_LIFE - 0.5); // click (or Z again) to blow it early
+    for (let i = 0; i < steps && !boom; i++) {
+      c.x += (Math.cos(c.aim) * CFG.MISSILE_SPEED * dt) / steps;
+      c.y += (Math.sin(c.aim) * CFG.MISSILE_SPEED * dt) / steps;
+      if (solidAt(w, c.x, c.y)) boom = true;
+      else for (const t of w.players.values()) {
+        if (t.team === p.team || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
+        if (Math.hypot(t.x - c.x, t.y - c.y) <= CFG.RADIUS + 6) { boom = true; break; }
+      }
+    }
+    if (boom) {
+      explode(w, { x: c.x, y: c.y, owner: p.id, team: p.team }, now, { r: CFG.MISSILE_RADIUS, lethal: CFG.MISSILE_LETHAL, hi: CFG.ROCKET_OUTER_MAX, lo: CFG.ROCKET_OUTER_MIN }, 'predator');
+      p.control = null;
+    }
+    return;
+  }
+  // helicopter: flies over everything, steered with WASD, the mouse aims; fire = minigun, G = rocket
+  const len = Math.hypot(p.dx, p.dy);
+  if (len > 0) {
+    c.x = clamp(c.x + (p.dx / Math.max(1, len)) * CFG.HELI_SPEED * dt, 0, w.W * w.tile);
+    c.y = clamp(c.y + (p.dy / Math.max(1, len)) * CFG.HELI_SPEED * dt, 0, w.H * w.tile);
+  }
+  c.aim = p.aim;
+  const ca = Math.cos(c.aim), sa = Math.sin(c.aim);
+  if (p.fire && now - c.lastFire >= CFG.HELI_FIRE_MS) {
+    c.lastFire = now;
+    const a = c.aim + (w.rng() * 2 - 1) * CFG.HELI_SPREAD;
+    const sp = 800;
+    w.bullets.push({ x: c.x + ca * 18, y: c.y + sa * 18, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, speed: sp, damage: CFG.HELI_DAMAGE, weapon: 'heli', life: 0.8, owner: p.id, team: p.team, pierce: 0, air: true, sx: c.x, sy: c.y });
+    w.shots.push([Math.round(c.x), Math.round(c.y), p.id]);
+  }
+  if (p.wantNadeHeli && now - c.lastRocket >= CFG.HELI_ROCKET_MS) {
+    c.lastRocket = now;
+    w.rockets.push({ x: c.x + ca * 18, y: c.y + sa * 18, vx: ca * CFG.ROCKET_SPEED, vy: sa * CFG.ROCKET_SPEED, aim: c.aim, life: CFG.ROCKET_LIFE, owner: p.id, team: p.team, heli: true });
+    w.events.push({ t: 'rocket', x: Math.round(c.x), y: Math.round(c.y) });
+  }
+  p.wantNadeHeli = false;
+  if (c.left <= 0) p.control = null;
+}
+
 /** A smoke / flash / flare canister has landed. */
 function land(w, n, now) {
   w.events.push({ t: 'pop', x: Math.round(n.x), y: Math.round(n.y), kind: n.kind });
@@ -823,6 +932,15 @@ export function step(w, dt, now = Date.now()) {
       if (p.elevated) leaveTower(w, p);
       if (p.respawnAt && now >= p.respawnAt) respawn(w, p, now);
       continue;
+    }
+    if (p.wantStreak) {
+      p.wantStreak = false;
+      useStreak(w, p, now);
+    }
+    if (p.control) {
+      if (p.control.kind === 'heli' && p.wantNade) p.wantNadeHeli = true; // G fires a rocket from the helicopter
+      controlStep(w, p, now, dt);
+      if (p.control) continue; // while flying he stands still: no moving, shooting or throwing
     }
     p.heat = Math.max(0, p.heat - CFG.RECOIL_DECAY * dt);
     p.scoped = p.cls === 'sniper' && p.scope && p.weapon === 'main'; // holding the scope: sees farther, moves slowly, no sprint
@@ -950,7 +1068,7 @@ export function step(w, dt, now = Date.now()) {
         dead = true; // spent: it has lost all its power out in the fog
         break;
       }
-      if (solidAt(w, b.x, b.y)) {
+      if (!b.air && solidAt(w, b.x, b.y)) {
         // Sniper rounds punch through light cover (barricades, rubble) but not buildings, wrecks or the map edge.
         const tx = Math.floor(b.x / w.tile), ty = Math.floor(b.y / w.tile);
         const ch = w.rows[ty]?.[tx];
@@ -999,7 +1117,7 @@ export function step(w, dt, now = Date.now()) {
     for (let i = 0; i < steps && !boom; i++) {
       r.x += (r.vx * dt) / steps;
       r.y += (r.vy * dt) / steps;
-      if (solidAt(w, r.x, r.y)) boom = true;
+      if (solidAt(w, r.x, r.y) && !(r.heli && r.life > CFG.ROCKET_LIFE - 0.12)) boom = true; // a helicopter's rocket clears the roof it left from
       else for (const t of w.players.values()) {
         if ((t.team === r.team && !CFG.FRIENDLY_FIRE) || t.id === r.owner || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
         if (Math.hypot(t.x - r.x, t.y - r.y) <= CFG.RADIUS + 5) {
@@ -1157,7 +1275,8 @@ export function eyesFor(w, team, now = Date.now()) {
   const mates = [...w.players.values()].filter((q) => q.team === team);
   const live = mates.filter((q) => q.hp > 0);
   // Everyone sees a circle around them; a scoped sniper also sees a long, narrow beam along his aim: [x, y, radius, aim, halfWidth, range].
-  return (live.length ? live : mates).flatMap((q) => (now < q.blindUntil ? [[q.x, q.y, CFG.BLIND_VISION]] : q.scoped ? [[q.x, q.y, CFG.VISION], [q.x, q.y, 0, q.aim, CFG.SCOPE_HALF, CFG.SCOPE_VISION]] : [[q.x, q.y, CFG.VISION]]));
+  const flying = live.filter((q) => q.control).map((q) => [q.control.x, q.control.y, q.control.kind === 'heli' ? CFG.HELI_VISION : CFG.MISSILE_VISION]);
+  return flying.concat((live.length ? live : mates).flatMap((q) => (now < q.blindUntil ? [[q.x, q.y, CFG.BLIND_VISION]] : q.scoped ? [[q.x, q.y, CFG.VISION], [q.x, q.y, 0, q.aim, CFG.SCOPE_HALF, CFG.SCOPE_VISION]] : [[q.x, q.y, CFG.VISION]])));
 }
 /** Does a smoke cloud sit between (ex,ey) and (x,y)? A target at point-blank range is still seen. */
 const smoked = (ex, ey, x, y, clouds) => {
@@ -1185,17 +1304,17 @@ export const canSee = (eyes, x, y, extra = 0, clouds = []) =>
 export function snapshot(w, now = Date.now(), team = null) {
   const eyes = team ? eyesFor(w, team, now) : null;
   const walls = team ? w.clouds.filter((c) => c.team !== team) : []; // the other side's smoke blocks our view
-  const vis = (x, y) => !eyes || areas.some((a) => Math.hypot(a.x - x, a.y - y) <= CFG.UAV_R) || canSee(eyes, x, y, 0, walls);
+  const vis = (x, y) => !eyes || areas.some((a) => Math.hypot(a.x - x, a.y - y) <= (a.r ?? CFG.UAV_R)) || canSee(eyes, x, y, 0, walls);
   w.uavAreas = w.uavAreas.filter((a) => now < a.until);
   const areas = team ? w.uavAreas.filter((a) => a.team === team) : []; // where our UAV has lifted the fog
   // enemies in a bush stay hidden unless one of ours is close, a UAV covers them, or they just fired
   const watchers = team ? [...w.players.values()].filter((q) => q.team === team && q.hp > 0) : [];
-  const bushHidden = (q) => team && q.team !== team && inBush(w, q.x, q.y) && now >= q.revealUntil && !areas.some((a) => Math.hypot(a.x - q.x, a.y - q.y) <= CFG.UAV_R) && !watchers.some((m) => Math.hypot(m.x - q.x, m.y - q.y) <= CFG.BUSH_REVEAL);
+  const bushHidden = (q) => team && q.team !== team && inBush(w, q.x, q.y) && now >= q.revealUntil && !areas.some((a) => Math.hypot(a.x - q.x, a.y - q.y) <= (a.r ?? CFG.UAV_R)) && !watchers.some((m) => Math.hypot(m.x - q.x, m.y - q.y) <= CFG.BUSH_REVEAL);
   const p = [];
   for (const q of w.players.values()) {
     if (team && q.team !== team && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
     if (bushHidden(q)) continue;
-    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0, Math.max(0, Math.ceil((q.blindUntil - now) / 100)), q.spec, Math.max(0, Math.ceil((q.specReadyAt - now) / 1000)), Math.max(0, Math.ceil((q.shieldUntil - now) / 100)), Math.round(q.heat * 100), now < q.shieldUntil ? Math.max(0, Math.round(q.shieldHp)) : 0]);
+    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0, Math.max(0, Math.ceil((q.blindUntil - now) / 100)), q.spec, Math.max(0, Math.ceil((q.specReadyAt - now) / 1000)), Math.max(0, Math.ceil((q.shieldUntil - now) / 100)), Math.round(q.heat * 100), now < q.shieldUntil ? Math.max(0, Math.round(q.shieldHp)) : 0, !team || q.team === team ? rewardCode(q) : 0, !team || q.team === team ? q.rewards.length : 0, q.control ? (q.control.kind === 'heli' ? 2 : 1) : 0, q.control ? Math.max(0, Math.ceil(q.control.left * 10)) : 0, q.streak ?? 0]);
   }
   const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
   const owner = (id) => w.players.get(id);
@@ -1213,7 +1332,8 @@ export function snapshot(w, now = Date.now(), team = null) {
     u: w.pickups.filter((q) => !team || q.team === team).map((q) => [q.x, q.y, team && holdsBazooka(w, team) ? 1 : 0]), // your side's crate only; 1 = your side already holds a bazooka, so it cannot be taken yet
     cl: w.clouds.filter((c) => !eyes || c.team === team || canSee(eyes, c.x, c.y, c.r)).map((c) => [Math.round(c.x), Math.round(c.y), c.r, Math.round((c.left / CFG.SMOKE_S) * 100) / 100, c.team === 'green' ? 0 : 1]),
     dr: w.drops.filter((d) => !eyes || d.team === team || canSee(eyes, d.x, d.y)).map((d) => [Math.round(d.x), Math.round(d.y), d.delay > 0 ? 0 : 1, Math.round((d.left / CFG.DROP_S) * 100) / 100, d.delay > 0 ? Math.round((d.delay / CFG.DROP_DELAY_S) * 100) / 100 : 0]),
-    ua: areas.map((a) => [Math.round(a.x), Math.round(a.y), CFG.UAV_R, Math.round(((a.until - now) / 10000) * 100) / 100]),
+    ua: areas.map((a) => [Math.round(a.x), Math.round(a.y), a.big ? 0 : CFG.UAV_R, Math.round(((a.until - now) / 10000) * 100) / 100]), // radius 0 = the whole map
+    ms: w.players.size ? [...w.players.values()].filter((q) => q.control && q.hp > 0 && (!team || q.team === team || (q.control.kind === 'heli' && vis(q.control.x, q.control.y)))).map((q) => [q.control.kind === 'heli' ? 1 : 0, Math.round(q.control.x), Math.round(q.control.y), Math.round(q.control.aim * 100) / 100, q.id, q.team === 'green' ? 0 : 1]) : [],
     uv: team ? [Math.max(0, Math.ceil((w.uav[team] - now) / 100)), Math.max(0, Math.ceil((w.uav[otherTeam(team)] - now) / 100))] : [0, 0], // tenths of a second left: ours, the enemy's
     tw: w.towers.filter((t) => !team || t.team === team || vis(t.x, t.y)).map((t) => [t.team === 'green' ? 0 : 1, t.owner, Math.round(t.x), Math.round(t.y), t.by === null ? 0 : 1, Math.round(t.prog * 100) / 100]),
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],
