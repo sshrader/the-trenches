@@ -265,14 +265,18 @@ export default function Play() {
             <span className="voice-ctl">
               {game.voice.on ? (
                 <>
-                  <button className="btn" onClick={() => game.voice.leave()} title="Leave your team's voice channel">Leave voice</button>
+                  <span className="pill" title={game.voice.chan === 'all' ? 'Everyone in the all-player channel can hear you, including the enemy' : 'Only your teammates in the team channel can hear you'}>{game.voice.chan === 'all' ? 'All-player voice' : 'Team voice'}</span>
+                  <button className="btn" onClick={() => game.voice.leave()} title="Leave voice">Leave voice</button>
                   <label className="check small" title="Off: hold V to talk. On: your mic stays open.">
                     <input type="checkbox" checked={game.voice.openMic} onChange={(e) => game.voice.setOpenMic(e.target.checked)} /> Open mic
                   </label>
                   <span className={`pill mic ${game.voice.talking ? 'live' : ''}`}>{game.voice.talking ? 'Mic live' : 'Hold V to talk'}</span>
                 </>
               ) : (
-                <button className="btn" onClick={() => void game.voice.join()} title="Opt in to your team's voice channel (asks for your microphone)">Join voice</button>
+                <>
+                  <button className="btn" onClick={() => void game.voice.join('team')} title="Opt in to your team's voice channel: only teammates hear you (asks for your microphone)">Join team voice</button>
+                  <button className="btn" onClick={() => void game.voice.join('all')} title="Opt in to the all-player channel: everyone who joined it hears you, including the enemy (asks for your microphone)">Join all-player voice</button>
+                </>
               )}
             </span>
             <span className="pill score" title={`Kills this round. Rounds won: Green ${h.score[2]}, Red ${h.score[3]}`}>

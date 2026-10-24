@@ -7,10 +7,12 @@ const ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.goo
 type Send = (msg: object) => void;
 type Peer = { pc: RTCPeerConnection; queue: RTCIceCandidateInit[]; audio: HTMLAudioElement; stop?: () => void };
 
+export type VoiceChan = 'team' | 'all';
 export type VoiceState = { on: boolean; error: string; openMic: boolean; talking: boolean; speaking: number[]; peers: number };
 
 export function useVoice(send: Send) {
   const [on, setOn] = useState(false);
+  const [chan, setChan] = useState<VoiceChan>('team');
   const [error, setError] = useState('');
   const [openMic, setOpenMicState] = useState(false);
   const [talking, setTalking] = useState(false);
@@ -126,7 +128,7 @@ export function useVoice(send: Send) {
     [closePeer],
   );
 
-  const join = useCallback(async () => {
+  const join = useCallback(async (which: VoiceChan = 'team') => {
     if (onRef.current) return;
     setError('');
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -147,10 +149,11 @@ export function useVoice(send: Send) {
       return;
     }
     onRef.current = true;
+    setChan(which);
     setOn(true);
     applyMic();
     watch('me', stream.current);
-    sendRef.current({ t: 'vjoin' });
+    sendRef.current({ t: 'vjoin', chan: which });
   }, [applyMic, watch]);
 
   /** Setup messages from the server. Returns true when it was a voice message. */
@@ -237,7 +240,7 @@ export function useVoice(send: Send) {
   useEffect(() => () => leave(false), [leave]);
 
   return useMemo(
-    () => ({ on, error, openMic, talking, speaking, peers: peerCount, join, leave, handle, setOpenMic, push, mutedIds, toggleMute, isMuted }),
-    [on, error, openMic, talking, speaking, peerCount, join, leave, handle, setOpenMic, push, mutedIds, toggleMute, isMuted],
+    () => ({ on, chan, error, openMic, talking, speaking, peers: peerCount, join, leave, handle, setOpenMic, push, mutedIds, toggleMute, isMuted }),
+    [on, chan, error, openMic, talking, speaking, peerCount, join, leave, handle, setOpenMic, push, mutedIds, toggleMute, isMuted],
   );
 }

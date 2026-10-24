@@ -61,16 +61,20 @@ const broadcast = (msg) => {
   const raw = JSON.stringify(msg);
   for (const ws of sockets.values()) if (ws.readyState === 1) ws.send(raw);
 };
-// Team voice chat: the server only passes the setup messages between teammates; the audio itself flows browser to browser.
+// Voice chat: opt in to your team's channel ('team') or the all-player channel ('all'). The server only passes the setup messages between
+// people in the same channel; the audio itself flows browser to browser.
 const sendTo = (id, msg) => {
   const sock = sockets.get(id);
   if (sock) send(sock, msg);
 };
-const voiceMates = (p, team = p.team) => [...world.players.values()].filter((q) => q.voice && q.id !== p.id && q.team === team && !q.isBot);
+const voiceMates = (p, team = p.team, chan = p.voice) =>
+  [...world.players.values()].filter((q) => q.voice && q.voice === chan && q.id !== p.id && (chan === 'all' || q.team === team) && !q.isBot);
 const dropVoice = (p, kick = true, team = p?.team) => {
   if (!p?.voice) return;
+  const chan = p.voice;
+  const mates = voiceMates(p, team, chan);
   p.voice = false;
-  for (const q of voiceMates(p, team)) sendTo(q.id, { t: 'vleft', id: p.id });
+  for (const q of mates) sendTo(q.id, { t: 'vleft', id: p.id });
   if (kick) sendTo(p.id, { t: 'vkick' });
 };
 
@@ -173,7 +177,7 @@ export function attachGame(server) {
 
       if (m.t === 'vjoin') {
         if (me.voice) return;
-        me.voice = true;
+        me.voice = m.chan === 'all' ? 'all' : 'team';
         const mates = voiceMates(me);
         send(ws, { t: 'vpeers', ids: mates.map((q) => q.id) });
         for (const q of mates) sendTo(q.id, { t: 'vjoined', id: me.id });
@@ -186,7 +190,7 @@ export function attachGame(server) {
       if (m.t === 'vsig') {
         if (!me.voice || ++vsigs > 80) return;
         const to = world.players.get(Math.floor(Number(m.to)));
-        if (!to || !to.voice || to.team !== me.team || to.id === me.id) return;
+        if (!to || !to.voice || to.voice !== me.voice || (me.voice === 'team' && to.team !== me.team) || to.id === me.id) return;
         const data = JSON.stringify(m.data ?? null);
         if (data.length > 8000) return;
         sendTo(to.id, { t: 'vsig', from: me.id, data: m.data });
@@ -267,7 +271,7 @@ export function attachGame(server) {
         });
         continue;
       }
-      if (e.t === 'team') dropVoice(world.players.get(e.id), true, e.team === 'green' ? 'red' : 'green'); // moved to the other side: leaves that side's voice
+      if (e.t === 'team' && world.players.get(e.id)?.voice === 'team') dropVoice(world.players.get(e.id), true, e.team === 'green' ? 'red' : 'green'); // moved to the other side: leaves that side's voice
       broadcast(e);
     }
     broadcastByTeam((team) => sim.snapshot(world, now, team));
