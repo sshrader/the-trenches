@@ -80,11 +80,12 @@ export default function HudBar({ h }: { h: Hud }) {
         {h.myClassId === 'sniper' ? (
           <Slot
             icon="tower"
-            value={h.myElev ? 'up' : h.myNearTower ? 'climb' : h.myTowerUp ? 'built' : 'build'}
+            value={h.myTowerProg > 0 ? 'taking down' : h.myElev ? 'up' : h.myNearTower ? 'climb' : h.myTowerUp ? 'built' : 'build'}
             sub="tower"
             keyHint="E"
             active={h.myElev}
-            title={h.myElev ? 'On your tower: your rounds fly over low cover. E climbs down.' : h.myNearTower ? 'E: climb the tower beside you' : 'E: build a tower here and climb it. It stays until you die, or for 20 seconds after nobody is on it.'}
+            fill={h.myTowerProg > 0 ? h.myTowerProg : undefined}
+            title={h.myElev ? 'On your tower: your rounds fly over low cover. E climbs down.' : h.myTowerUp ? 'Stand beside your tower and hold B for 5 seconds to dismantle it, then you can build another. E climbs it.' : 'E: build a tower here and climb it. One at a time; it stays until you die, or for 20 seconds after nobody is on it.'}
           />
         ) : h.myClassId === 'medic' ? (
           <Slot icon="medkit" value={`${h.myKit}`} sub="medkit" fill={h.myKit / 100} title="Medkit: healing left for teammates" />

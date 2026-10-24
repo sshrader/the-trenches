@@ -287,7 +287,7 @@ function drawTent(ctx: CanvasRenderingContext2D, p: Prop, sx: number, sy: number
 }
 
 /** A raised sniper platform (96 px square), seen from above: planks, corner posts, a ladder, a rail and a flag in the owning side's colour. */
-function drawTower(ctx: CanvasRenderingContext2D, red: boolean, taken: boolean, sx: number, sy: number) {
+function drawTower(ctx: CanvasRenderingContext2D, red: boolean, taken: boolean, prog: number, sx: number, sy: number) {
   const w = 96;
   const h = 96;
   const col = red ? '#f87171' : '#4ade80';
@@ -321,6 +321,13 @@ function drawTower(ctx: CanvasRenderingContext2D, red: boolean, taken: boolean, 
   ctx.fillRect(sx + w - 18, sy + 2, 12, 8);
   ctx.fillStyle = '#2a2418';
   ctx.fillRect(sx + w - 20, sy, 2, 20);
+  if (prog > 0) {
+    // being dismantled: a bar over the platform
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(sx + 10, sy + h / 2 - 8, w - 20, 14);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(sx + 12, sy + h / 2 - 6, (w - 24) * Math.min(1, prog), 10);
+  }
   if (taken) {
     ctx.strokeStyle = 'rgba(251,191,36,0.9)';
     ctx.lineWidth = 2;
@@ -783,6 +790,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (k === 't' && !e.repeat) input.current.arty += 1;
       if (k === 'q' && !e.repeat) input.current.swap += 1; // swap between the bazooka and your main weapon
       if (k === 'e' && !e.repeat) input.current.nest += 1; // a sniper builds, climbs or leaves his tower
+      if (k === 'b') input.current.dismantle = true; // hold beside your tower to take it down
       if (k === 'g' && !e.repeat) input.current.nade += 1; // the server counts presses, so a lost packet cannot eat a throw
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) return;
       e.preventDefault();
@@ -797,6 +805,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       }
       keys.delete(k);
       if (k === ' ') input.current.fire = false;
+      if (k === 'b') input.current.dismantle = false;
       move();
     };
     const onBlur = () => {
@@ -806,6 +815,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       input.current.scope = false;
       input.current.dx = input.current.dy = 0;
       input.current.fire = false;
+      input.current.dismantle = false;
     };
     const onMouseUp = (e: globalThis.MouseEvent) => {
       if (e.button === 2) {
@@ -951,7 +961,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         const tx0 = t[2] - 48 - camX;
         const ty0 = t[3] - 48 - camY;
         if (tx0 < -120 || ty0 < -120 || tx0 > VW + 40 || ty0 > VH + 40) continue;
-        drawTower(ctx, t[0] === 1, t[4] === 1, tx0, ty0);
+        drawTower(ctx, t[0] === 1, t[4] === 1, t[5] ?? 0, tx0, ty0);
       }
       // Sniper nests: a faint scope reticle on the ground inside each sandbag pocket, in the owning side's colour
       for (const n of NESTS) {

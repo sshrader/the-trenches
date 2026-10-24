@@ -1022,6 +1022,46 @@ test('if the builder dies while a teammate sniper is on the tower, it stays with
   assert.equal(w.towers.length, 0, 'gone 20 s after he stops using it');
 });
 
+test('one tower per sniper until he dismantles it (hold B for 5 s beside it), then he can build again', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green', cls: 'sniper' });
+  a.team = 'green';
+  place(a, 420, LANE, 0);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 0 });
+  let now = run(w, 0.1);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 1 }); // build + climb
+  now = run(w, 0.1, now);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 2 }); // down
+  now = run(w, 0.1, now);
+  assert.equal(w.towers.length, 1);
+  // walk away and try to build a second one: refused while the first stands
+  place(a, 420 + 300, LANE, 0);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 3 });
+  now = run(w, 0.1, now);
+  assert.equal(w.towers.length, 1, 'no second tower');
+  assert.ok(!a.elevated);
+  // holding B far away does nothing
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 3, dismantle: true });
+  now = run(w, 6, now);
+  assert.equal(w.towers.length, 1, 'too far away to dismantle');
+  // beside it: 3 s is not enough, releasing resets, 5 s takes it down
+  place(a, 430, LANE, 0);
+  a.wasSafe = false;
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 3, dismantle: true });
+  now = run(w, 3, now);
+  assert.equal(w.towers.length, 1, 'not yet');
+  assert.ok(w.towers[0].prog > 0.5);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 3, dismantle: false });
+  now = run(w, 0.1, now);
+  assert.equal(w.towers[0].prog, 0, 'releasing B starts over');
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 3, dismantle: true });
+  now = run(w, 5.2, now);
+  assert.equal(w.towers.length, 0, 'dismantled after 5 s');
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 4, dismantle: false });
+  now = run(w, 0.1, now);
+  assert.equal(w.towers.length, 1, 'and he can build a new one at once');
+});
+
 test('another sniper of the side can climb a free tower; enemies cannot', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green', cls: 'sniper' });

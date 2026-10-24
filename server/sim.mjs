@@ -12,7 +12,7 @@ export const CFG = {
   RADIUS: 11, // player body
   TOWER_REACH: 70, // a sniper this close to a free tower of his side can climb it (E)
   TOWER_IDLE_S: 20, // a tower nobody is standing on is taken down after this many seconds
-  TOWER_COOLDOWN_MS: 4000,
+  TOWER_DISMANTLE_S: 5, // hold B this long, standing beside your own tower, to take it down
   TOWER_GAP: 150, // towers are built at least this far apart
   HP: 100,
   BULLET_R: 3,
@@ -313,7 +313,7 @@ export const removePlayer = (w, id) => {
   return w.players.delete(id);
 };
 
-export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope, swap, nest }) {
+export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope, swap, nest, dismantle }) {
   const p = w.players.get(id);
   if (!p) return;
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -323,6 +323,7 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, 
   p.fire = !!fire;
   p.sprint = !!sprint;
   p.scope = !!scope;
+  p.dismantle = !!dismantle;
   if (Number.isFinite(Number(range))) p.nadeRange = clamp(Number(range), CFG.NADE_MIN, CFG.NADE_MAX);
   // A throw is a counter going up (one press = +1), so a repeated message can never throw twice.
   if (nade !== undefined && nade !== p.nadeSeq) {
@@ -434,11 +435,10 @@ function useTower(w, p, now) {
   if (p.elevated) return leaveTower(w, p);
   const near = towerNear(w, p);
   if (near) return climb(w, p, near);
-  if ((CFG.BASE_NO_FIRE && isSafe(w, p)) || inBase(w, 'green', p.x) || inBase(w, 'red', p.x) || now - (p.lastTower || -1e9) < CFG.TOWER_COOLDOWN_MS) return;
+  if ((CFG.BASE_NO_FIRE && isSafe(w, p)) || inBase(w, 'green', p.x) || inBase(w, 'red', p.x)) return;
+  if (w.towers.some((t) => t.owner === p.id)) return; // one at a time: take the first one down (hold B beside it) before building another
   if (w.towers.some((t) => Math.hypot(t.x - p.x, t.y - p.y) < CFG.TOWER_GAP)) return;
-  dropTower(w, p.id); // one of his own at a time
-  p.lastTower = now;
-  const t = { owner: p.id, team: p.team, x: p.x, y: p.y, by: null, awayS: 0 };
+  const t = { owner: p.id, team: p.team, x: p.x, y: p.y, by: null, awayS: 0, prog: 0 };
   w.towers.push(t);
   climb(w, p, t);
 }
@@ -663,6 +663,13 @@ export function step(w, dt, now = Date.now()) {
     const o = w.players.get(t.owner);
     if (!o || o.hp <= 0 || o.cls !== 'sniper') {
       dropTower(w, t.owner);
+      continue;
+    }
+    // Dismantling: the builder stands still on the ground beside it and holds B.
+    const taking = o.dismantle && !o.elevated && t.by === null && Math.hypot(o.dx, o.dy) === 0 && Math.hypot(o.x - t.x, o.y - t.y) <= CFG.TOWER_REACH;
+    t.prog = taking ? t.prog + dt / CFG.TOWER_DISMANTLE_S : 0;
+    if (t.prog >= 1) {
+      w.towers.splice(w.towers.indexOf(t), 1);
       continue;
     }
     t.awayS = t.by === null ? t.awayS + dt : 0; // counts while nobody is on it
@@ -909,7 +916,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), 0, Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100]),
     rk: w.rockets.filter((r) => r.team === team || vis(r.x, r.y)).map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.aim * 100) / 100]),
     u: w.pickups.filter((q) => !team || q.team === team).map((q) => [q.x, q.y, team && holdsBazooka(w, team) ? 1 : 0]), // your side's crate only; 1 = your side already holds a bazooka, so it cannot be taken yet
-    tw: w.towers.filter((t) => !team || t.team === team || vis(t.x, t.y)).map((t) => [t.team === 'green' ? 0 : 1, t.owner, Math.round(t.x), Math.round(t.y), t.by === null ? 0 : 1]),
+    tw: w.towers.filter((t) => !team || t.team === team || vis(t.x, t.y)).map((t) => [t.team === 'green' ? 0 : 1, t.owner, Math.round(t.x), Math.round(t.y), t.by === null ? 0 : 1, Math.round(t.prog * 100) / 100]),
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,

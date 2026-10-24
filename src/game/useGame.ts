@@ -37,10 +37,10 @@ export type World = {
   rockets: [number, number, number][]; // x, y, heading
   pickups: [number, number, number][]; // bazooka crates: x, y, 1 if your side already holds a bazooka (so it cannot take this one)
 };
-export type Input = { sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number; nest: number }; // `nest` is the E key counter: a sniper builds, climbs or leaves his tower
+export type Input = { sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number; nest: number; dismantle: boolean }; // `nest` is the E key counter: a sniper builds, climbs or leaves his tower
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type ChatLine = { name: string; team: Team; text: string; at: number; mode?: 'all' | 'team' };
-export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
+export type Hud = { chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false });
 const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [] });
@@ -54,7 +54,7 @@ export function useGame() {
   const [error, setError] = useState('');
   const [hud, setHud] = useState<Hud | null>(null);
   const world = useRef<World>(emptyWorld());
-  const input = useRef<Input>({ sprint: false, dx: 0, dy: 0, aim: 0, fire: false, nade: 0, range: 200, reload: 0, arty: 0, scope: false, swap: 0, nest: 0 });
+  const input = useRef<Input>({ sprint: false, dx: 0, dy: 0, aim: 0, fire: false, nade: 0, range: 200, reload: 0, arty: 0, scope: false, swap: 0, nest: 0, dismantle: false });
   const ws = useRef<WebSocket | null>(null);
   const sendRaw = useCallback((msg: object) => {
     if (ws.current?.readyState === 1) ws.current.send(JSON.stringify(msg));
@@ -127,6 +127,7 @@ export function useGame() {
         myRockets: me?.rockets ?? 0,
         myBazooka: me?.bazooka ?? false,
         myTowerUp: w.towers.some((t) => t[1] === w.me),
+        myTowerProg: w.towers.find((t) => t[1] === w.me)?.[5] ?? 0,
         myElev: me?.elev ?? false,
         myNearTower: !!me && w.towers.some((t) => t[0] === (me.team === 'green' ? 0 : 1) && (t[4] === 0 || me.elev) && Math.hypot(t[2] - me.x, t[3] - me.y) <= 70),
         myTeam: me?.team ?? null,
