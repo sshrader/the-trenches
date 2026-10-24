@@ -1800,6 +1800,29 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         ctx.fillStyle = w.uav[1] > 0 ? '#fca5a5' : '#86efac';
         ctx.fillText(w.uav[1] > 0 ? `ENEMY UAV OVERHEAD ${Math.ceil(w.uav[1] / 10)}s: they can see you` : `UAV ONLINE ${Math.ceil(w.uav[0] / 10)}s: enemies marked`, VIEW_W / 2, 28);
       }
+      // Kill-streak call-outs, stacked under the top edge for a few seconds
+      {
+        const live = w.callouts.filter((c) => now - c.at < 4500);
+        live.forEach((c, i) => {
+          const age = now - c.at;
+          const a = age < 250 ? age / 250 : age > 3800 ? Math.max(0, (4500 - age) / 700) : 1;
+          const big = c.n >= 7 ? 3 : c.n >= 5 ? 2 : 1;
+          const who = c.id === w.me ? 'You are' : `${c.name} is`;
+          const y = 62 + i * 40;
+          ctx.save();
+          ctx.globalAlpha = a;
+          ctx.textAlign = 'center';
+          ctx.font = `800 ${16 + big * 3}px system-ui, sans-serif`;
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+          const tail = `on a ${c.n} kill streak!`;
+          const full = `${who} ${tail}`;
+          ctx.strokeText(full, VIEW_W / 2, y);
+          ctx.fillStyle = c.n >= 7 ? '#f87171' : c.n >= 5 ? '#fb923c' : '#fde047';
+          ctx.fillText(full, VIEW_W / 2, y);
+          ctx.restore();
+        });
+      }
       // Minimap: the whole field, your side's soldiers and the point. Enemies stay hidden.
       const mw = 168;
       const mh = (mw * MAP_H) / MAP_W;

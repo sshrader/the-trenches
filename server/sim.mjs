@@ -81,6 +81,7 @@ export const CFG = {
   CAP_MAX: 6,
   ROUND_S: 360,
   END_S: 10,
+  STREAK_CALLOUTS: [3, 5, 7], // kills in a row (without dying) that are announced to everyone
   ROUNDS_PER_MAP: 3, // a map is played as a best-of series, then the server moves to the next map and the round wins start again
   MAP_EARLY_END: true, // a side that has won more than half of the series (2 of 3) ends the map without playing the rest
   END_MAP_S: 14, // the pause after the last round on a map is a little longer: the result, then the next map's name
@@ -280,6 +281,7 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman',
   }
   const p = {
     id: w.nextId++,
+    lastActive: now,
     isBot: fill,
     fill,
     name,
@@ -390,6 +392,8 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, 
   const p = w.players.get(id);
   if (!p) return;
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const oldAim = p.aim;
+  const wasWanting = p.wantNade || p.wantReload || p.wantArty || p.wantSwap || p.wantNest || p.wantSpecial;
   p.dx = clamp(n(dx), -1, 1);
   p.dy = clamp(n(dy), -1, 1);
   if (Number.isFinite(Number(aim))) p.aim = Number(aim) % (Math.PI * 2);
@@ -419,6 +423,10 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, 
     if (p.specSeq !== null) p.wantSpecial = true;
     p.specSeq = special;
   }
+  // Is a person really there? Moving, firing, scoping, a key press or any change of aim (the mouse) counts. (A bot decides for itself.)
+  const aimMoved = Math.abs(Math.atan2(Math.sin(p.aim - oldAim), Math.cos(p.aim - oldAim))) > 0.01;
+  const pressed = !wasWanting && (p.wantNade || p.wantReload || p.wantArty || p.wantSwap || p.wantNest || p.wantSpecial);
+  if (p.dx || p.dy || p.fire || p.scope || p.sprint || p.dismantle || aimMoved || pressed) p.lastActive = Date.now();
   if (arty !== undefined && arty !== p.artySeq) {
     if (p.artySeq !== null) p.wantArty = true;
     p.artySeq = arty;
@@ -565,6 +573,7 @@ function newRound(w, now) {
 /** Clear the field and put everyone back in their base for round number `n`. */
 function startRound(w, now, n) {
   w.epoch = (w.epoch ?? 0) + 1; // clients clear what they were remembering (bodies) when this changes
+  for (const q of w.players.values()) q.streak = 0;
   w.teamKills = { green: 0, red: 0 };
   w.round = { n, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
@@ -599,7 +608,7 @@ export function restartSeries(w, now = Date.now(), mapId = null) {
   return true;
 }
 
-function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
+export function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   t.hp -= amount;
   if (t.hp > 0) return;
   t.hp = 0;
@@ -611,9 +620,12 @@ function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   t.shieldUntil = 0;
   const k = w.players.get(ownerId);
   const own = !!k && k.team === t.team; // killed himself or a teammate: no credit
+  t.streak = 0; // dying ends a streak
   if (k && !own) {
     k.kills++;
     w.teamKills[k.team]++;
+    k.streak = (k.streak ?? 0) + 1;
+    if (CFG.STREAK_CALLOUTS.includes(k.streak)) w.events.push({ t: 'streak', id: k.id, name: k.name, team: k.team, n: k.streak });
   }
   w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon, self: k === t, tk: own && k !== t, kid: k ? k.id : 0, vid: t.id });
 }

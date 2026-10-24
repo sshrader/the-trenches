@@ -143,3 +143,9 @@ curl -X POST -H "x-admin-token: $ADMIN_TOKEN" -H "content-type: application/json
 **From the game's chat** (needs the same `ADMIN_TOKEN`): type `/admin your-token` once (only you see the reply, and the line is never shown to other players), then `/bots 5` for 5v5, `/bots 0` for no bots, `/bots` to see the current setting, `/map forest` or `/map city` to switch map (round wins reset to 0:0), and `/restart` to start the match again (round wins 0:0, round 1, fresh timer, same map). The map and restart commands are announced to everyone in chat. Five wrong passwords lock the sender's address out for a minute.
 
 The change lasts until the server restarts (then `BOTS` / `BOT_TEAM_SIZE` apply again). Without `ADMIN_TOKEN` the route does not exist.
+
+## Kill streaks and the idle kick
+
+**Kill streaks:** every soldier (bots too) keeps a count of kills since he last died. At 3, 5 and 7 the server announces it to everyone (`CFG.STREAK_CALLOUTS`): a banner at the top of the screen ("Wolf is on a 5 kill streak!", yellow, orange, red) and a short rising sting, louder when it is you. Dying ends the streak, and a new round starts everyone at zero. There are no rewards yet.
+
+**Idle kick:** a person who has not moved, fired, scoped, pressed an action key or moved the mouse for 60 s is removed (15 s before that, a "Move or you will be removed" warning appears in chat). They land back in the lobby with a message saying why. `IDLE_KICK_S` changes the time (0 turns it off). Bots are never kicked.

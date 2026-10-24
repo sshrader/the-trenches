@@ -280,3 +280,39 @@ export function playPop(dist: number) {
   if (muted || !ctx || ctx.state !== 'running') return;
   sample('grenade', dist, 0.9, 1.25, 380);
 }
+
+/** A kill-streak sting: a short rising run of notes (3 kills, 5 kills, 7 kills = more notes and a deeper hit), a little louder when it is yours. */
+export function playStreak(n: number, mine = false) {
+  if (muted || !ctx || ctx.state !== 'running') return;
+  const t = ctx.currentTime;
+  const notes = n >= 7 ? [392, 523, 659, 784, 1047] : n >= 5 ? [392, 523, 659, 784] : [392, 523, 659];
+  const vol = volume * (mine ? 0.7 : 0.4);
+  notes.forEach((hz, i) => {
+    const o = ctx!.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = hz;
+    const f = ctx!.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 2200;
+    const g = ctx!.createGain();
+    const at = t + i * 0.085;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol * 0.35, at + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + (i === notes.length - 1 ? 0.5 : 0.14));
+    o.connect(f).connect(g).connect(ctx!.destination);
+    o.start(at);
+    o.stop(at + 0.55);
+  });
+  if (n >= 5) {
+    const o = ctx.createOscillator(); // a low thump under it
+    o.type = 'sine';
+    o.frequency.setValueAtTime(n >= 7 ? 90 : 120, t);
+    o.frequency.exponentialRampToValueAtTime(40, t + 0.4);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(vol * 0.9, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+    o.connect(g).connect(ctx.destination);
+    o.start(t);
+    o.stop(t + 0.5);
+  }
+}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WALLET_LOGIN } from '../config';
 import { useVoice } from './useVoice';
-import { playBoom, playCannon, playPickup, playPop, playReload, playShot, playWhistle } from './audio';
+import { playBoom, playCannon, playPickup, playPop, playReload, playShot, playStreak, playWhistle } from './audio';
 
 export type Team = 'green' | 'red';
 export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean; blind: number; spec: number; specCd: number; shield: number; heat: number; shieldHp: number };
@@ -27,6 +27,7 @@ export type World = {
   booms: { x: number; y: number; at: number; big?: boolean }[];
   mapId: string; // which map the server is playing
   corpses: { x: number; y: number; aim: number; team: Team; cls: number; at: number; seed: number }[]; // where soldiers fell, kept on the ground for a minute
+  callouts: { id: number; name: string; team: Team; n: number; at: number }[]; // kill-streak announcements, newest last
   pops: { x: number; y: number; at: number; kind: string }[]; // smoke / flash / flare canisters going off
   crates: number[]; // 1 = ready to use, in the same order as the crates in the map file
   progress: number;
@@ -51,7 +52,7 @@ export type ChatLine = { name: string; team: Team; text: string; at: number; mod
 export type Hud = { myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0 });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], mapId: 'city', gas: [], booms: [], corpses: [], pops: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, e: 0, s: 'live', l: 0, w: null, mp: 'city', mr: 1, mt: 3, nx: '' }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [] });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], mapId: 'city', gas: [], booms: [], corpses: [], callouts: [], pops: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, e: 0, s: 'live', l: 0, w: null, mp: 'city', mr: 1, mt: 3, nx: '' }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [] });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -284,6 +285,9 @@ export function useGame() {
             w.score = m.ts ?? [0, 0, 0, 0];
           } else if (m.t === 'kill') {
             feed.current = [...feed.current.slice(-4), { text: '', kteam: m.kteam, vteam: m.vteam, killer: m.killer, victim: m.victim, weapon: m.weapon ?? 'rifle', self: !!m.self, tk: !!m.tk, at: Date.now() }];
+          } else if (m.t === 'streak') {
+            w.callouts = [...w.callouts.filter((c) => Date.now() - c.at < 5000).slice(-2), { id: m.id, name: m.name, team: m.team, n: m.n, at: Date.now() }];
+            playStreak(m.n, m.id === w.me);
           } else if (m.t === 'boom') {
             w.booms.push({ x: m.x, y: m.y, at: Date.now(), big: !!m.big });
             const me = w.units.get(w.me);
@@ -324,6 +328,7 @@ export function useGame() {
           setHud(null);
           if (before === 'idle' || before === 'error') return; // we left on purpose, or already showed the reason
           if (ev.code === 4000) setError('You signed in somewhere else.');
+          else if (ev.code === 4002) setError('You were removed for being idle for over a minute. Join again when you are ready.');
           else if (ev.code === 4451) setError('Not available in your region.');
           else if (ev.code === 1013) setError('Too many connections from your network.');
           else setError(before === 'playing' ? 'Disconnected from the battle.' : 'Could not connect.');

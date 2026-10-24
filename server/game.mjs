@@ -349,6 +349,26 @@ export function attachGame(server) {
     if (++ticks % 40 === 0) broadcast({ t: 'sb', rows: sim.scoreboard(world) });
   }, TICK_MS).unref();
 
+  // Idle kick: a person who has not moved, fired or touched the mouse for IDLE_KICK_S seconds (default 60; 0 turns it off) is removed, after a warning.
+  const IDLE_S = Number(process.env.IDLE_KICK_S ?? 60);
+  if (IDLE_S > 0) {
+    setInterval(() => {
+      const t = Date.now();
+      for (const [id, sock] of sockets) {
+        const p = world.players.get(id);
+        if (!p || p.isBot || sock.readyState !== 1) continue;
+        const idle = (t - (p.lastActive ?? t)) / 1000;
+        if (idle >= IDLE_S) {
+          send(sock, { t: 'err', msg: 'Removed for being idle.' });
+          sock.close(4002, 'idle');
+        } else if (idle >= IDLE_S - 15 && !p.idleWarned) {
+          p.idleWarned = true;
+          send(sock, { t: 'chat', id: 0, name: 'Server', team: p.team, text: `Move or you will be removed for being idle in ${Math.ceil(IDLE_S - idle)} seconds.`, mode: 'all' });
+        } else if (idle < IDLE_S - 15) p.idleWarned = false;
+      }
+    }, 1000).unref();
+  }
+
   setInterval(() => {
     for (const ws of wss.clients) {
       if (ws._alive && !ws._alive()) {

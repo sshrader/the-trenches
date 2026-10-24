@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as bots from '../server/bots.mjs';
-import { CFG, applyMap, restartSeries, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount } from '../server/sim.mjs';
+import { CFG, applyMap, restartSeries, hurt, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount } from '../server/sim.mjs';
 
 CFG.FRIENDLY_FIRE = false; // the server ships with these on for testing; the checks below are about normal play
 CFG.FRIENDLY_FLASH = false;
@@ -1474,6 +1474,39 @@ test('an admin restart puts the wins back to 0:0 with a fresh timer, on the same
   assert.deepEqual([w.wins.green, w.wins.red], [0, 0]);
   assert.equal(restartSeries(w, now, 'nowhere'), false, 'an unknown map is refused');
   assert.equal(w.mapId, 'forest');
+});
+
+test('kill streaks are announced at 3, 5 and 7 and end when the soldier dies', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'ace', want: 'green' });
+  const v = addPlayer(w, { name: 'victim', want: 'red' });
+  const calls = () => drainEvents(w).filter((e) => e.t === 'streak').map((e) => e.n);
+  let now = 1000;
+  const kill = () => { v.hp = 100; hurt(w, v, 999, a.id, a.team, now, 'rifle'); };
+  drainEvents(w);
+  for (let i = 0; i < 7; i++) kill();
+  assert.deepEqual(calls(), [3, 5, 7]);
+  assert.equal(a.streak, 7);
+  a.hp = 100; hurt(w, a, 999, v.id, v.team, now, 'rifle'); // he dies
+  assert.equal(a.streak, 0);
+  drainEvents(w);
+  kill(); kill();
+  assert.deepEqual(calls(), [], 'the count starts again from zero');
+  kill();
+  assert.deepEqual(calls(), [3]);
+});
+
+test('idle detection: standing still does not count, moving the mouse or a key does', () => {
+  const w = fresh();
+  const p = addPlayer(w, { name: 'p', want: 'green' });
+  p.lastActive = 5;
+  setInput(w, p.id, { dx: 0, dy: 0, aim: p.aim, fire: false });
+  assert.equal(p.lastActive, 5, 'nothing happened');
+  setInput(w, p.id, { dx: 0, dy: 0, aim: p.aim + 0.3, fire: false });
+  assert.ok(p.lastActive > 5, 'aim moved');
+  p.lastActive = 5;
+  setInput(w, p.id, { dx: 1, dy: 0, aim: p.aim, fire: false });
+  assert.ok(p.lastActive > 5, 'walking');
 });
 
 console.log(`\n${n} checks passed`);
