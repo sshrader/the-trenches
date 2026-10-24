@@ -61,7 +61,7 @@ One-hit kill, 5 rounds, 3 s reload, slow fire (1.3 s), a sidearm pistol (8 round
 
 ## Class specials (key C)
 
-Every class except the Sniper (who has the tower on E) has a special on **C**. Thrown ones aim like a grenade (the cursor sets the range) and cannot be used inside your own base.
+Every class has a special on **C** (for the Sniper it is the tower). Thrown ones aim like a grenade (the cursor sets the range) and cannot be used inside your own base.
 
 | Class | Special | Details |
 | --- | --- | --- |
@@ -104,7 +104,7 @@ Needs a secure page: https (Railway) or localhost. On a plain `http://192.168...
 **Sniper rounds** now fly at 2600 px/s (was 1000), with the lifetime shortened so the reach stays the same, so they are hard to dodge.
 
 
-**Sniper tower (the sniper's special, E):** away from a tower, E builds a raised platform where the sniper stands and puts him on it; E again climbs down, and E beside a free tower of his side climbs it (so a teammate sniper can use it too). On a tower he is fixed in place and his rounds fly over low cover (barricades, rubble, wrecks) but still stop at buildings and the map edge. He can still be shot by anyone with a clear line. A tower is taken down when its builder dies, leaves or changes class (unless another sniper is on it, in which case it passes to him), when the round ends, or once nobody has been standing on it for 20 s (`CFG.TOWER_IDLE_S`); one tower per sniper at a time (to build another, stand beside your tower and hold **B** for 5 s to dismantle it; you can build again straight away), none inside the bases, and none within 150 px of another. The two sandbag pockets on the map (marked with a reticle) are still there as fixed sniper spots.
+**Sniper tower (the sniper's special, C):** away from a tower, C builds a raised platform where the sniper stands and puts him on it; C again climbs down, and C beside a free tower of his side climbs it (so a teammate sniper can use it too). On a tower he is fixed in place and his rounds fly over low cover (barricades, rubble, wrecks) but still stop at buildings and the map edge. He can still be shot by anyone with a clear line. A tower is taken down when its builder dies, leaves or changes class (unless another sniper is on it, in which case it passes to him), when the round ends, or once nobody has been standing on it for 20 s (`CFG.TOWER_IDLE_S`); one tower per sniper at a time (to build another, stand beside your tower and hold **B** for 5 s to dismantle it; you can build again straight away), none inside the bases, and none within 150 px of another. The two sandbag pockets on the map (marked with a reticle) are still there as fixed sniper spots.
 
 ## Sounds
 
@@ -117,3 +117,5 @@ Gunfire, reloads and grenade blasts use recordings in `src/assets/sfx` (ar, smg,
 ## Rounds fade in the fog
 
 Every gun except the Sniper rifle loses power once a round flies past your sight range (`CFG.FADE_START`, 420 px, the same as `VISION`): it loses 25% of its damage every 64 px (2 tiles) and disappears when it reaches 0, so the AR is full strength to 420 px, then 75%, 50%, 25% and nothing from 612 px. That ends blind spraying down a street. Sniper rounds keep full damage for their whole flight. Tune it with `FADE_START`, `FADE_STEP` and `FADE_LOSS` in `server/sim.mjs`.
+
+**Bodies:** when a soldier falls where you can see it, a body (sprawled soldier, dropped weapon, blood pool and splatter that darkens as it dries) stays on the ground for 60 s, then fades over 5 s. Bodies are drawn under the fog, so you only see ones in your line of sight, and a new round clears them. It is a client-side effect (`corpses` in `useGame.ts`, `drawCorpse` in `GameCanvas.tsx`).

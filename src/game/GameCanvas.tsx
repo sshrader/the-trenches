@@ -845,29 +845,90 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
 }
 
 /** A fallen soldier: lying down, faded, until he respawns. */
-function drawFallen(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: number) {
+const CORPSE_HOLD_MS = 60000; // a body stays on the ground this long...
+const CORPSE_FADE_MS = 5000; // ...then fades out over this
+/** A body left where a soldier fell: a dark blood pool and splatter, then the soldier lying sprawled with his kit. */
+function drawCorpse(ctx: CanvasRenderingContext2D, c: World['corpses'][number], sx: number, sy: number, now: number) {
+  const age = now - c.at;
+  const alpha = age < CORPSE_HOLD_MS ? 1 : Math.max(0, 1 - (age - CORPSE_HOLD_MS) / CORPSE_FADE_MS);
+  if (alpha <= 0) return;
+  let r = c.seed || 1;
+  const rnd = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
+  const dry = Math.min(1, age / 40000); // blood slowly darkens as it dries
   ctx.save();
-  ctx.globalAlpha = 0.55;
+  ctx.globalAlpha = alpha;
   ctx.translate(sx, sy);
-  ctx.rotate(u.aim + 1.3);
-  ctx.fillStyle = UNIFORM[u.team];
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  // the pool, built from overlapping blobs, plus a few drops thrown away from the body
+  const pool = `rgb(${Math.round(150 - 70 * dry)},${Math.round(14 - 6 * dry)},${Math.round(16 - 6 * dry)})`;
+  ctx.fillStyle = pool;
+  ctx.globalAlpha = alpha * 0.85;
+  for (let i = 0; i < 6; i++) {
+    const a = rnd() * Math.PI * 2, d = rnd() * 9, rad = 7 + rnd() * 9;
+    ctx.beginPath();
+    ctx.ellipse(Math.cos(a) * d, Math.sin(a) * d, rad, rad * (0.6 + rnd() * 0.4), rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (let i = 0; i < 9; i++) {
+    const a = rnd() * Math.PI * 2, d = 16 + rnd() * 20;
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * d, Math.sin(a) * d, 1 + rnd() * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // a smear dragged away from where he was hit
+  const sm = c.aim + Math.PI + (rnd() - 0.5) * 0.8;
+  ctx.strokeStyle = pool;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(Math.cos(sm) * 6, Math.sin(sm) * 6);
+  ctx.lineTo(Math.cos(sm) * 26, Math.sin(sm) * 26);
+  ctx.stroke();
+  ctx.globalAlpha = alpha;
+  // the body: turned a little differently for each soldier
+  ctx.rotate(c.aim + 1.2 + (rnd() - 0.5) * 1.4);
+  ctx.scale(1.15, 1.15);
+  const dark = 'rgba(0,0,0,0.55)';
+  const limb = (x1: number, y1: number, x2: number, y2: number, w: number, col: string) => {
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = w + 1.6;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  };
+  const trouser = c.team === 'green' ? '#4a5a30' : '#6e3326';
+  const skin = '#c9a27c';
+  const spread = 0.35 + rnd() * 0.5;
+  limb(-3, 9, -5 - spread * 6, 20, 4.5, trouser); // legs splayed
+  limb(3, 9, 5 + spread * 6, 20, 4.5, trouser);
+  limb(-7, -3, -14 - rnd() * 4, 4 + rnd() * 4, 3.5, UNIFORM[c.team]); // arms flung out
+  limb(7, -3, 13 + rnd() * 4, -6 + rnd() * 10, 3.5, UNIFORM[c.team]);
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.arc(-14, 5, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(13, -2, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = UNIFORM[c.team]; // torso
+  ctx.strokeStyle = dark;
   ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 8, 12, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = HELMET[u.team];
-  ctx.beginPath();
-  ctx.arc(11, 0, 6.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.strokeStyle = '#7a4e2a';
-  ctx.lineWidth = 3.5;
-  ctx.beginPath();
-  ctx.moveTo(-6, 13);
-  ctx.lineTo(10, 15);
-  ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, 2, 8.5, 10, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; // webbing across the chest
+  ctx.fillRect(-8, 0, 16, 2.5);
+  ctx.fillStyle = pool; // the wound
+  ctx.beginPath(); ctx.ellipse(-2 + rnd() * 4, 1 + rnd() * 4, 3.2, 2.4, rnd() * 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = HELMET[c.team]; // helmet, tipped off to one side
+  ctx.strokeStyle = dark;
+  ctx.beginPath(); ctx.arc(1.5, -11, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.beginPath(); ctx.arc(0, -12.5, 2.6, 0, Math.PI * 2); ctx.fill();
+  // his weapon, dropped beside him
+  ctx.save();
+  ctx.translate(18 + rnd() * 3, 2);
+  ctx.rotate(0.15 + rnd() * 0.5);
+  const len = c.cls === 3 ? 30 : c.cls === 4 ? 24 : c.cls === 1 ? 17 : 22;
+  ctx.fillStyle = dark; ctx.fillRect(-len / 2 - 1, -3, len + 2, 6);
+  ctx.fillStyle = '#2c3034'; ctx.fillRect(-len / 2, -2, len, 4);
+  ctx.fillStyle = '#7a4e2a'; ctx.fillRect(-len / 2, -2, len * 0.3, 4);
+  ctx.restore();
   ctx.restore();
 }
 
@@ -898,9 +959,12 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (k === 'r' && !e.repeat) input.current.reload += 1;
       if (k === 't' && !e.repeat) input.current.arty += 1;
       if (k === 'q' && !e.repeat) input.current.swap += 1; // swap between the bazooka and your main weapon
-      if (k === 'e' && !e.repeat) input.current.nest += 1; // a sniper builds, climbs or leaves his tower
       if (k === 'b') input.current.dismantle = true; // hold beside your tower to take it down
-      if (k === 'c' && !e.repeat) input.current.special += 1; // the class special: smoke, flashbang, flare, riot shield or UAV
+      if (k === 'c' && !e.repeat) {
+        // the class special: smoke, flashbang, flare, riot shield or UAV; for the sniper it is his tower (build, climb, climb down)
+        if (world.current.units.get(world.current.me)?.cls === 3) input.current.nest += 1;
+        else input.current.special += 1;
+      }
       if (k === 'g' && !e.repeat) input.current.nade += 1; // the server counts presses, so a lost packet cannot eat a throw
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) return;
       e.preventDefault();
@@ -1174,7 +1238,11 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       const seen = [...w.units.values()].filter((u) => u.seen);
       const alive = seen.filter((u) => u.hp > 0).sort((a, b) => a.y - b.y);
       const now = Date.now();
-      for (const u of seen) if (u.hp <= 0) drawFallen(ctx, u, u.x - camX, u.y - camY);
+      w.corpses = w.corpses.filter((c) => now - c.at < CORPSE_HOLD_MS + CORPSE_FADE_MS);
+      for (const c of w.corpses) {
+        if (c.x - camX < -60 || c.x - camX > VW + 60 || c.y - camY < -60 || c.y - camY > VH + 60) continue;
+        drawCorpse(ctx, c, c.x - camX, c.y - camY, now);
+      }
       for (const u of alive) drawSoldier(ctx, u, u.x - camX, u.y - camY - (u.elev ? 12 : 0), u.id === w.me, myTeam, now); // a sniper on a tower stands a little higher
       if (you && you.hp > 0 && you.scoped) {
         // scoped: a faint sight line out to the edge of what he can see

@@ -107,12 +107,12 @@ export default function HudBar({ h }: { h: Hud }) {
           <Slot
             icon="tower"
             value={h.myTowerProg > 0 ? 'taking down' : h.myElev ? 'up' : h.myNearTower ? 'climb' : h.myTowerUp ? 'built' : 'build'}
-            sub={h.myElev ? 'E: climb down' : h.myTowerUp ? 'E: climb\nB: dismantle' : 'E: build tower'}
-            keyHint="E"
+            sub={h.myElev ? 'C: climb down' : h.myTowerUp ? 'C: climb\nB: dismantle' : 'C: build tower'}
+            keyHint="C"
             keyHint2={h.myTowerUp ? 'B' : undefined}
             active={h.myElev}
             fill={h.myTowerProg > 0 ? h.myTowerProg : undefined}
-            title={h.myElev ? 'On your tower: your rounds fly over low cover. E climbs down.' : h.myTowerUp ? 'Stand beside your tower and hold B for 5 seconds to dismantle it, then you can build another. E climbs it.' : 'E: build a tower here and climb it. One at a time; it stays until you die, or for 20 seconds after nobody is on it.'}
+            title={h.myElev ? 'On your tower: your rounds fly over low cover. C climbs down.' : h.myTowerUp ? 'Stand beside your tower and hold B for 5 seconds to dismantle it, then you can build another. C climbs it.' : 'C: build a tower here and climb it. One at a time; it stays until you die, or for 20 seconds after nobody is on it.'}
           />
         ) : (
           <SpecialSlot h={h} />

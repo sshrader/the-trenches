@@ -270,7 +270,7 @@ export default function Play() {
                   <img className="cicon" src={icon(CLASS_ICON[c.id])} alt="" width={52} height={52} />
                   <b>{c.label} <em>{c.hp} HP</em></b>
                   <span>{c.blurb}</span>
-                  {c.special && <i className="cspec">{c.id === 'sniper' ? 'E' : 'C'} · {c.special}</i>}
+                  {c.special && <i className="cspec">C · {c.special}</i>}
                 </button>
               ))}
             </div>
@@ -491,8 +491,7 @@ export default function Play() {
                   <dt>R</dt><dd>Reload</dd>
                   <dt>G</dt><dd>Grenade</dd>
                   <dt>T</dt><dd>Artillery strike</dd>
-                  <dt>C</dt><dd>Class special (smoke, flash, flare, shield, UAV)</dd>
-                  <dt>E</dt><dd>Sniper: build / climb tower</dd>
+                  <dt>C</dt><dd>Class special (smoke, flash, flare, shield, UAV, sniper tower)</dd>
                   <dt>B (hold)</dt><dd>Sniper: dismantle tower</dd>
                   <dt>F</dt><dd>Full screen</dd>
                   <dt>N</dt><dd>Team chat</dd>
