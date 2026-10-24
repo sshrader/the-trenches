@@ -36,10 +36,11 @@ function Icon({ name, size = 42 }: { name: string; size?: number }) {
   );
 }
 
-function Slot({ icon, value, sub, keyHint, active, dim, fill, title }: { icon: string; value: ReactNode; sub?: string; keyHint?: string; active?: boolean; dim?: boolean; fill?: number; title?: string }) {
+function Slot({ icon, value, sub, keyHint, keyHint2, active, dim, fill, title }: { icon: string; value: ReactNode; sub?: string; keyHint?: string; keyHint2?: string; active?: boolean; dim?: boolean; fill?: number; title?: string }) {
   return (
     <div className={`hud-slot${active ? ' active' : ''}${dim ? ' dim' : ''}`} title={title}>
       {keyHint && <kbd>{keyHint}</kbd>}
+      {keyHint2 && <kbd className="k2" title="Hold">{keyHint2}</kbd>}
       <Icon name={icon} />
       <b>{value}</b>
       {sub && <small>{sub}</small>}
@@ -81,8 +82,9 @@ export default function HudBar({ h }: { h: Hud }) {
           <Slot
             icon="tower"
             value={h.myTowerProg > 0 ? 'taking down' : h.myElev ? 'up' : h.myNearTower ? 'climb' : h.myTowerUp ? 'built' : 'build'}
-            sub="tower"
+            sub={h.myTowerUp ? 'B: dismantle' : 'tower'}
             keyHint="E"
+            keyHint2={h.myTowerUp ? 'B' : undefined}
             active={h.myElev}
             fill={h.myTowerProg > 0 ? h.myTowerProg : undefined}
             title={h.myElev ? 'On your tower: your rounds fly over low cover. E climbs down.' : h.myTowerUp ? 'Stand beside your tower and hold B for 5 seconds to dismantle it, then you can build another. E climbs it.' : 'E: build a tower here and climb it. One at a time; it stays until you die, or for 20 seconds after nobody is on it.'}
