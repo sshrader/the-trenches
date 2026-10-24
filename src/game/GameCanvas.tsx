@@ -1220,16 +1220,6 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       }
       // Aim marker for where a grenade would land
       if (you && you.hp > 0) {
-        if (you.cls === 5 && you.specCd === 0) {
-          // squad leader with his UAV ready: the circle it would lift
-          const r2 = Math.max(70, Math.min(380, input.current.range));
-          ctx.strokeStyle = 'rgba(134,239,172,0.4)';
-          ctx.setLineDash([8, 8]);
-          ctx.beginPath();
-          ctx.arc(you.x - camX + Math.cos(input.current.aim) * r2, you.y - camY + Math.sin(input.current.aim) * r2, 420, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
         const rg = Math.max(70, Math.min(380, input.current.range));
         const lx = you.x - camX + Math.cos(input.current.aim) * rg;
         const ly = you.y - camY + Math.sin(input.current.aim) * rg;
