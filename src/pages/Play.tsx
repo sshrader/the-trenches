@@ -5,6 +5,40 @@ import HudBar from '../game/HudBar';
 import GameCanvas from '../game/GameCanvas';
 import { CLASSES, useGame } from '../game/useGame';
 const ruinsLogo = new URL('../assets/ruins-logo.svg', import.meta.url).href;
+const heroArt = new URL('../assets/splash-art.svg', import.meta.url).href;
+const iconFiles = import.meta.glob('../assets/hud/*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const icon = (n: string) => iconFiles[`../assets/hud/${n}.png`];
+// the class cards use the special-ability art as their emblem
+const CLASS_ICON: Record<string, string> = { rifleman: 'smoke', smg: 'flash', medic: 'flare', sniper: 'tower', shotgunner: 'shield', squad: 'uav' };
+
+/** A hanging cloth banner for each side. */
+function Banner({ team }: { team: 'green' | 'red' }) {
+  const c = team === 'green' ? ['#4ade80', '#166534', '#0b3a1d'] : ['#f87171', '#991b1b', '#450a0a'];
+  return (
+    <svg className={`faction-banner ${team}`} viewBox="0 0 80 220" aria-hidden="true">
+      <defs>
+        <linearGradient id={`bn-${team}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={c[1]} /><stop offset="1" stopColor={c[2]} />
+        </linearGradient>
+      </defs>
+      <rect x="4" y="2" width="72" height="8" rx="3" fill="#8a6a33" stroke="#1b1308" strokeWidth="1.5" />
+      <path d="M10 10 H70 V186 L40 212 L10 186Z" fill={`url(#bn-${team})`} stroke="#1b1308" strokeWidth="2.5" />
+      <path d="M16 16 H64 V182 L40 204 L16 182Z" fill="none" stroke={c[0]} strokeOpacity=".55" strokeWidth="1.5" />
+      {team === 'green' ? (
+        <g fill={c[0]}>
+          <path d="M40 54 L46 70 L63 71 L50 82 L54 98 L40 89 L26 98 L30 82 L17 71 L34 70Z" />
+          <path d="M22 124 L40 136 L58 124 V134 L40 146 L22 134Z M22 146 L40 158 L58 146 V156 L40 168 L22 156Z" opacity=".85" />
+        </g>
+      ) : (
+        <g fill={c[0]}>
+          <path d="M40 50 C26 50 20 62 22 74 C23 82 28 86 30 88 V96 H50 V88 C52 86 57 82 58 74 C60 62 54 50 40 50Z" />
+          <circle cx="33" cy="72" r="5" fill="#450a0a" /><circle cx="47" cy="72" r="5" fill="#450a0a" />
+          <path d="M22 122 L58 158 M58 122 L22 158" stroke={c[0]} strokeWidth="7" strokeLinecap="round" opacity=".85" />
+        </g>
+      )}
+    </svg>
+  );
+}
 import type { ClassId, Team } from '../game/useGame';
 import { WALLET_LOGIN } from '../config';
 import Leaderboard from './Leaderboard';
@@ -198,14 +232,18 @@ export default function Play() {
     <div className={`wrap${game.status === 'playing' ? ' wide' : ''}`}>
       {game.status !== 'playing' && (
         <section className="hero">
-          <div className="brand">
-            <img className="brand-logo" src={ruinsLogo} alt="" width={132} height={158} />
-            <div>
-              <p className="eyebrow">Multiplayer · Green vs Red</p>
-              <h1>The Ruins</h1>
+          <div className="lobby-hero" style={{ backgroundImage: `url(${heroArt})` }}>
+            <Banner team="green" />
+            <div className="lobby-brand">
+              <img className="brand-logo" src={ruinsLogo} alt="" width={132} height={158} />
+              <div>
+                <p className="eyebrow">Multiplayer · Green vs Red</p>
+                <h1>The Ruins</h1>
+                <p className="lede">Two crews hold opposite ends of a ruined city. Take cover, hold the plaza in the middle, stay out of the open.</p>
+              </div>
             </div>
+            <Banner team="red" />
           </div>
-          <p className="lede">Two crews hold opposite ends of a ruined city. Use the buildings and wrecks for cover, hold the plaza in the middle, and stay out of the open.</p>
 
           <div className="field">
             <label htmlFor="callsign">Callsign (optional)</label>
@@ -228,9 +266,11 @@ export default function Play() {
             <label>Class</label>
             <div className="classes" role="radiogroup" aria-label="Class">
               {CLASSES.map((c) => (
-                <button key={c.id} type="button" role="radio" aria-checked={cls === c.id} className={`class ${cls === c.id ? 'on' : ''}`} onClick={() => setCls(c.id)}>
-                  <b>{c.label}</b>
+                <button key={c.id} type="button" role="radio" aria-checked={cls === c.id} className={`class card ${cls === c.id ? 'on' : ''}`} onClick={() => setCls(c.id)}>
+                  <img className="cicon" src={icon(CLASS_ICON[c.id])} alt="" width={52} height={52} />
+                  <b>{c.label} <em>{c.hp} HP</em></b>
                   <span>{c.blurb}</span>
+                  {c.special && <i className="cspec">{c.id === 'sniper' ? 'E' : 'C'} · {c.special}</i>}
                 </button>
               ))}
             </div>
