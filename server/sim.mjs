@@ -81,6 +81,7 @@ export const CFG = {
   CAP_MAX: 6,
   ROUND_S: 360,
   END_S: 10,
+  AUTO_BALANCE_S: 15, // sides that stay two or more people apart this long are evened out by moving someone over (0 = off)
   STREAK_CALLOUTS: [3, 5, 7], // kills in a row (without dying) that are announced to everyone
   ROUNDS_PER_MAP: 3, // a map is played as a best-of series, then the server moves to the next map and the round wins start again
   MAP_EARLY_END: true, // a side that has won more than half of the series (2 of 3) ends the map without playing the rest
@@ -483,6 +484,39 @@ function rebalance(w, now, force) {
   }
 }
 
+/**
+ * Auto-balance: if one side has stayed two or more people ahead (say 1 v 5 after a team left) for AUTO_BALANCE_S, move someone from the bigger side to
+ * the smaller one, one every few seconds until they are within one of each other. Prefers a dead soldier, then one inside his own base, then the newest.
+ */
+function autoBalance(w, now) {
+  if (!(CFG.AUTO_BALANCE_S > 0)) return;
+  const g = teamCount(w, 'green');
+  const r = teamCount(w, 'red');
+  if (Math.abs(g - r) < 2) {
+    w.imbalanceAt = 0;
+    return;
+  }
+  if (!w.imbalanceAt) {
+    w.imbalanceAt = now;
+    return;
+  }
+  if (now - w.imbalanceAt < CFG.AUTO_BALANCE_S * 1000) return;
+  const big = g > r ? 'green' : 'red';
+  const mine = [...w.players.values()].filter((p) => p.team === big && !p.isBot);
+  const pick =
+    mine.filter((p) => p.hp <= 0).sort((a, b) => b.id - a.id)[0] ||
+    mine.filter((p) => isSafe(w, p)).sort((a, b) => b.id - a.id)[0] ||
+    mine.sort((a, b) => b.id - a.id)[0];
+  if (!pick) return;
+  if (pick.elevated) leaveTower(w, pick);
+  dropTower(w, pick.id);
+  pick.team = otherTeam(big);
+  pick.tentUsing = false;
+  w.events.push({ t: 'team', id: pick.id, team: pick.team, auto: true });
+  if (pick.hp > 0) respawn(w, pick, now);
+  w.imbalanceAt = now - (CFG.AUTO_BALANCE_S - 3) * 1000; // if it is still lopsided, the next move follows in 3 s
+}
+
 /** A tower of his own side that this sniper is close enough to climb (free, or already his). */
 function towerNear(w, p) {
   return w.towers.find((t) => t.team === p.team && Math.hypot(t.x - p.x, t.y - p.y) <= CFG.TOWER_REACH && (t.by === null || t.by === p.id));
@@ -781,6 +815,7 @@ export function step(w, dt, now = Date.now()) {
   }
 
   rebalance(w, now, false); // someone left? a dead soldier on the bigger side is moved over
+  autoBalance(w, now); // ...and if it stays lopsided, a living one is too
 
   // Players: respawn, move, shoot.
   for (const p of w.players.values()) {

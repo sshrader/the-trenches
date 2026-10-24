@@ -1509,4 +1509,21 @@ test('idle detection: standing still does not count, moving the mouse or a key d
   assert.ok(p.lastActive > 5, 'walking');
 });
 
+test('auto-balance: a side left 1 v 5 for 15 s is evened out, one player at a time', () => {
+  const w = fresh();
+  addPlayer(w, { name: 'lonely', want: 'green' });
+  for (let i = 0; i < 5; i++) {
+    const p = addPlayer(w, { name: 'r' + i, want: 'red' });
+    p.team = 'red'; // (as if they had been playing the other side and the teams had emptied since)
+  }
+  assert.deepEqual([teamCount(w, 'green'), teamCount(w, 'red')], [1, 5]);
+  let now = run(w, 10);
+  assert.deepEqual([teamCount(w, 'green'), teamCount(w, 'red')], [1, 5], 'a short imbalance is left alone');
+  now = run(w, 8, now);
+  const moves = drainEvents(w).filter((e) => e.t === 'team' && e.auto);
+  assert.ok(moves.length >= 1, 'someone was moved');
+  now = run(w, 6, now);
+  assert.deepEqual([teamCount(w, 'green'), teamCount(w, 'red')], [3, 3]);
+});
+
 console.log(`\n${n} checks passed`);

@@ -342,6 +342,10 @@ export function attachGame(server) {
         });
         continue;
       }
+      if (e.t === 'team' && e.auto) {
+        const who = world.players.get(e.id);
+        if (who) broadcast({ t: 'chat', id: 0, name: 'Server', team: e.team, text: `Auto-balance: ${who.name} moved to ${e.team === 'green' ? 'Green' : 'Red'} to even the teams.`, mode: 'all' });
+      }
       if (e.t === 'team' && world.players.get(e.id)?.voice === 'team') dropVoice(world.players.get(e.id), true, e.team === 'green' ? 'red' : 'green'); // moved to the other side: leaves that side's voice
       broadcast(e);
     }
