@@ -113,3 +113,7 @@ Gunfire, reloads and grenade blasts use recordings in `src/assets/sfx` (ar, smg,
 ## Test settings
 
 `CFG.FRIENDLY_FIRE` (bullets and rockets hurt your own side, never yourself) and `CFG.FRIENDLY_FLASH` (flashbangs blind your side and you) are **on** in `server/sim.mjs` while we test (set both false for normal play). Grenade, rocket and artillery blasts already hurt friends. Teamkills give no kill credit.
+
+## Rounds fade in the fog
+
+Every gun except the Sniper rifle loses power once a round flies past your sight range (`CFG.FADE_START`, 420 px, the same as `VISION`): it loses 25% of its damage every 64 px (2 tiles) and disappears when it reaches 0, so the AR is full strength to 420 px, then 75%, 50%, 25% and nothing from 612 px. That ends blind spraying down a street. Sniper rounds keep full damage for their whole flight. Tune it with `FADE_START`, `FADE_STEP` and `FADE_LOSS` in `server/sim.mjs`.

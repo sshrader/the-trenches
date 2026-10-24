@@ -91,6 +91,9 @@ export const CFG = {
   ARTY_COOLDOWN_MS: 1000,
   CRATE_R: 24, // walk this close to your own crate to resupply
   CRATE_COOLDOWN_S: 30,
+  FADE_START: 420, // every gun but the sniper rifle: past this distance (your sight range) its rounds start losing power ...
+  FADE_STEP: 64, // ... and lose FADE_LOSS of their damage every this many px (2 tiles) ...
+  FADE_LOSS: 0.25, // ... until they do nothing and vanish, so you cannot spray down the street blind
   FRIENDLY_FIRE: true, // TEST SETTING: bullets and rockets hurt your own side too (not yourself). Keep false for normal play.
   FRIENDLY_FLASH: true, // TEST SETTING: flashbangs blind your own side and you. Keep false for normal play.
   FRIENDLY_BLASTS: true, // grenades, rockets and artillery hurt your own side and yourself (bullets still do not)
@@ -553,6 +556,26 @@ const NADE_SPEC = () => ({ r: CFG.NADE_RADIUS, lethal: CFG.NADE_LETHAL, hi: CFG.
 const ARTY_SPEC = () => ({ r: CFG.ARTY_RADIUS, lethal: CFG.ARTY_LETHAL, hi: CFG.ARTY_OUTER_MAX, lo: CFG.ARTY_OUTER_MIN });
 const ROCKET_SPEC = () => ({ r: CFG.ROCKET_RADIUS, lethal: CFG.ROCKET_LETHAL, hi: CFG.ROCKET_OUTER_MAX, lo: CFG.ROCKET_OUTER_MIN });
 
+/** Out in the fog a round loses power: full strength inside sight range, then FADE_LOSS less every FADE_STEP px, to nothing. Sniper rounds are exempt. */
+function fadeFactor(b) {
+  if (b.weapon === 'sniper') return 1;
+  const d = Math.hypot(b.x - b.sx, b.y - b.sy);
+  if (d <= CFG.FADE_START) return 1;
+  return 1 - CFG.FADE_LOSS * (Math.floor((d - CFG.FADE_START) / CFG.FADE_STEP) + 1);
+}
+
+/** What a bullet does to whatever it hits now: shotgun pellets weaken with distance, and every non-sniper round fades past sight range. */
+function bulletDamage(b) {
+  let dmg = b.damage;
+  if (b.falloff) {
+    // pellets lose punch with distance: full damage up close, down to a fraction at the end of their reach
+    const [near, far, minF] = b.falloff;
+    const d = Math.hypot(b.x - b.sx, b.y - b.sy);
+    dmg *= d <= near ? 1 : Math.max(minF, 1 - ((1 - minF) * (d - near)) / (far - near));
+  }
+  return dmg * Math.max(0, fadeFactor(b));
+}
+
 function explode(w, n, now, spec = NADE_SPEC(), weapon = 'grenade') {
   w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y), big: weapon === 'rocket' || weapon === 'artillery' });
   for (const t of w.players.values()) {
@@ -809,6 +832,10 @@ export function step(w, dt, now = Date.now()) {
     for (let i = 0; i < steps && !dead; i++) {
       b.x += (b.vx * dt) / steps;
       b.y += (b.vy * dt) / steps;
+      if (fadeFactor(b) <= 0) {
+        dead = true; // spent: it has lost all its power out in the fog
+        break;
+      }
       if (solidAt(w, b.x, b.y)) {
         // Sniper rounds punch through light cover (barricades, rubble) but not buildings, wrecks or the map edge.
         const tx = Math.floor(b.x / w.tile), ty = Math.floor(b.y / w.tile);
@@ -831,13 +858,7 @@ export function step(w, dt, now = Date.now()) {
             da = Math.atan2(Math.sin(da), Math.cos(da));
             if (Math.abs(da) <= CFG.SHIELD_ARC) {
               // stopped by the shield, which soaks the damage and breaks when it is used up
-              let soak = b.damage;
-              if (b.falloff) {
-                const [near, far, minF] = b.falloff;
-                const d = Math.hypot(b.x - b.sx, b.y - b.sy);
-                soak *= d <= near ? 1 : Math.max(minF, 1 - ((1 - minF) * (d - near)) / (far - near));
-              }
-              t.shieldHp -= soak;
+              t.shieldHp -= bulletDamage(b);
               if (t.shieldHp <= 0) {
                 t.shieldUntil = 0; // broken: the recharge starts now
                 t.specReadyAt = now + (cls(t).special?.rechargeS ?? 30) * 1000;
@@ -846,14 +867,7 @@ export function step(w, dt, now = Date.now()) {
               break;
             }
           }
-          let dmg = b.damage;
-          if (b.falloff) {
-            // pellets lose punch with distance: full damage up close, down to a fraction at the end of their reach
-            const [near, far, minF] = b.falloff;
-            const d = Math.hypot(b.x - b.sx, b.y - b.sy);
-            dmg *= d <= near ? 1 : Math.max(minF, 1 - ((1 - minF) * (d - near)) / (far - near));
-          }
-          hurt(w, t, dmg, b.owner, b.team, now, b.weapon);
+          hurt(w, t, bulletDamage(b), b.owner, b.team, now, b.weapon);
           break;
         }
       }

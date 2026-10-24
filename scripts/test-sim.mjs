@@ -1182,6 +1182,29 @@ test('flashbang diminishing returns: back-to-back flashes get shorter, and it re
   assert.ok(left > 1.6 && left <= 2, 'full length again after a quiet spell: ' + left);
 });
 
+test('rounds fade out in the fog; sniper rounds do not', () => {
+  assert.equal(CFG.FADE_START, CFG.VISION, 'fading starts at sight range');
+  const damageAt = (cls, dist) => {
+    const w = fresh();
+    w.rows = w.rows.slice();
+    for (const y of [15, 16, 17]) w.rows[y] = w.rows[y].slice(0, 8) + '.'.repeat(60) + w.rows[y].slice(68); // a long open street
+    const a = mk(w, 'a', 'green', cls, 300);
+    const e = mk(w, 'e', 'red', 'rifleman', 300 + dist);
+    e.hp = 500; // so we can read the damage even from a sniper round
+    a.lastFire = -1e6;
+    setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+    step(w, 0.05, 1000);
+    setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
+    run(w, 1.5, 1050);
+    return 500 - e.hp;
+  };
+  assert.equal(damageAt('rifleman', 300), 34, 'full damage in sight');
+  const mid = damageAt('rifleman', 500);
+  assert.ok(mid > 0 && mid < 34, 'reduced past sight range: ' + mid);
+  assert.equal(damageAt('rifleman', 790), 0, 'spent far out in the fog');
+  assert.equal(damageAt('sniper', 450), 100, 'a sniper round keeps full power (his rifle reaches ' + Math.round(CFG.CLASSES.sniper.speed * CFG.CLASSES.sniper.life) + ' px)');
+});
+
 test('riot shield: stops shots from the front for 5 s, then a 30 s recharge', () => {
   const w = fresh();
   const s = mk(w, 's', 'green', 'shotgunner', 520, Math.PI); // faces west
