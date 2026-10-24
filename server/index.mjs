@@ -7,7 +7,8 @@ import express from 'express';
 import { Connection, clusterApiUrl } from '@solana/web3.js';
 import { applyGuards, checkNetwork } from './guard.mjs';
 import { newNonce } from './auth.mjs';
-import { attachGame, onlineCount, lobbyRoster } from './game.mjs';
+import crypto from 'node:crypto';
+import { attachGame, onlineCount, lobbyRoster, getBotSettings, setBotSettings } from './game.mjs';
 import { leaderboard } from './stats.mjs';
 
 const PORT = Number(process.env.PORT || 8787);
@@ -31,6 +32,21 @@ app.get('/api/leaderboard', (req, res) => {
   res.json({ sort, rows: leaderboard(sort, Number(req.query.limit) || 10) });
 });
 app.get('/api/nonce', (_req, res) => res.json(newNonce()));
+
+// Admin: fill-in bots. Needs ADMIN_TOKEN set on the server and sent as the x-admin-token header; without ADMIN_TOKEN these routes do not exist.
+//   curl -H "x-admin-token: $ADMIN_TOKEN" https://your-site/api/admin/bots
+//   curl -X POST -H "x-admin-token: $ADMIN_TOKEN" -H "content-type: application/json" -d '{"enabled":true,"size":5}' https://your-site/api/admin/bots
+const adminOk = (req) => {
+  const want = process.env.ADMIN_TOKEN;
+  const got = String(req.headers['x-admin-token'] || '');
+  if (!want || want.length < 12 || got.length !== want.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want));
+};
+app.get('/api/admin/bots', (req, res) => (adminOk(req) ? res.json(getBotSettings()) : res.status(404).json({ error: 'not found' })));
+app.post('/api/admin/bots', express.json({ limit: '1kb' }), (req, res) => {
+  if (!adminOk(req)) return res.status(404).json({ error: 'not found' });
+  res.json(setBotSettings({ enabled: typeof req.body?.enabled === 'boolean' ? req.body.enabled : undefined, size: req.body?.size }));
+});
 
 // The built client. Anything that is not a file falls back to the app.
 const DIST = path.resolve('dist');

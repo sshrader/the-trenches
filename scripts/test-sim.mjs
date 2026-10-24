@@ -1,6 +1,7 @@
 // Plain-Node checks for the simulation.  node scripts/test-sim.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import * as bots from '../server/bots.mjs';
 import { CFG, applyMap, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount } from '../server/sim.mjs';
 
 CFG.FRIENDLY_FIRE = false; // the server ships with these on for testing; the checks below are about normal play
@@ -1419,6 +1420,40 @@ test('the forest map is playable: bases joined, no tile letters the simulation d
   for (const t of forest.tents) assert.ok(!solidAt(w, t.x, t.y), 'clinic tents stand on open ground');
   for (const c of forest.crates) assert.ok(!solidAt(w, c.x, c.y), 'crates are reachable');
   for (const nst of forest.nests) assert.ok(!solidAt(w, nst.x, nst.y), 'nests are open inside');
+});
+
+test('fill-in bots top each side up to the set size, make way for people, and play the map', () => {
+  const w = createWorld(forest, rng, { id: 'forest', maps: { forest }, order: ['forest'] });
+  const human = addPlayer(w, { name: 'me', want: 'green' });
+  let now = 1000;
+  const cfg = { enabled: true, size: 5 };
+  const ch = bots.sync(w, cfg, now);
+  assert.equal(ch.added.length, 9, 'four green and five red bots for a lone human on green');
+  const count = (team) => [...w.players.values()].filter((p) => p.team === team).length;
+  assert.deepEqual([count('green'), count('red')], [5, 5]);
+  assert.equal(teamCount(w, 'green'), 1, 'bots do not count as people for balancing');
+  const classes = new Set([...w.players.values()].filter((p) => p.team === 'red').map((p) => p.cls));
+  assert.ok(classes.size >= 4, 'a mixed squad, not five riflemen');
+  const joiner = addPlayer(w, { name: 'second', want: 'red' });
+  assert.equal(joiner.team, 'red');
+  const ch2 = bots.sync(w, cfg, now);
+  assert.equal(ch2.removed.length, 1, 'a bot leaves when a person takes the place');
+  assert.deepEqual([count('green'), count('red')], [5, 5]);
+  const start = [...w.players.values()].filter((p) => p.fill).map((p) => Math.hypot(p.x - w.map.capture.x, p.y - w.map.capture.y));
+  for (let i = 0; i < 20 * 90; i++) {
+    now += 50;
+    bots.tick(w, now, 0.05);
+    step(w, 0.05, now);
+  }
+  const fillers = [...w.players.values()].filter((p) => p.fill);
+  const after = fillers.map((p) => Math.hypot(p.x - w.map.capture.x, p.y - w.map.capture.y));
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  assert.ok(mean(after) < mean(start) * 0.5, 'they walked to the plaza');
+  assert.ok(fillers.some((p) => p.kills > 0 || p.deaths > 0) || w.points.green + w.points.red > 0, 'and the fight is on');
+  assert.ok(w.round.n >= 1 && Number.isFinite(w.points.green), 'the world is sane');
+  assert.equal(bots.sync(w, { enabled: false, size: 5 }, now).removed.length, 8, 'switching the setting off clears every bot');
+  assert.equal(count('green') + count('red'), 2);
+  void human;
 });
 
 console.log(`\n${n} checks passed`);

@@ -127,3 +127,17 @@ The server plays a **best of three** on each map, then moves to the next one (th
 To add a map: write a generator that outputs `shared/<id>.json` (same 120×68 grid, bases, tents, crates, nests and capture point as the others), add it to `MAPS` in `server/game.mjs` and `src/game/maps.ts`, and give it a `theme` so the client knows how to paint it.
 
 **The forest** (`node scripts/make-forest.mjs` -> `shared/forest.json`): grass and dirt tracks, a creek you can wade, trees (solid, stop every bullet), boulders and fallen logs (solid cover; sniper rounds punch through them, and a sniper on a tower shoots over them), and **bushes**. A soldier standing in a bush is hidden from the enemy until an enemy soldier gets within `CFG.BUSH_REVEAL` (110 px), a UAV covers him, or he fires (revealed for `CFG.BUSH_FIRE_REVEAL_S`, 1.5 s). His own side always sees him. Bullets pass through bushes.
+
+## Fill-in bots (5v5)
+
+An admin setting, off by default. With `BOTS=1` (and `BOT_TEAM_SIZE`, default 5) each side is topped up with bots until it has that many soldiers **counting the people on it**, so a lone player gets a 5v5 (four bots with them, five against). Bots only exist while at least one person is online; each one makes way when a person takes the side's place, and they disappear when the setting is turned off. Bots build a mixed squad (assault, medic, SMG, sniper, shotgunner, squad leader), walk to the plaza, spread around it, fight from range suited to their weapon, use their class special and grenades, fall back to the clinic tent when hurt, and only act on what their side can see (fog, smoke and bushes apply to them too). They never appear on the scoreboard or in the stats. The code is `server/bots.mjs`.
+
+To switch it while the server is running, set `ADMIN_TOKEN` (12+ characters) on the server and call:
+
+```
+curl -H "x-admin-token: $ADMIN_TOKEN" https://your-site/api/admin/bots                      # current setting
+curl -X POST -H "x-admin-token: $ADMIN_TOKEN" -H "content-type: application/json" \
+     -d '{"enabled":true,"size":5}' https://your-site/api/admin/bots
+```
+
+The change lasts until the server restarts (then `BOTS` / `BOT_TEAM_SIZE` apply again). Without `ADMIN_TOKEN` the route does not exist.

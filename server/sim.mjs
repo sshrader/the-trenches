@@ -116,7 +116,7 @@ export const CFG = {
 
 export const CLASS_IDS = ['rifleman', 'smg', 'medic', 'sniper', 'shotgunner', 'squad']; // the client uses the index, so new classes go on the end
 const cls = (p) => CFG.CLASSES[p.cls];
-const maxHp = (p) => cls(p).hp ?? CFG.HP;
+export const maxHp = (p) => cls(p).hp ?? CFG.HP;
 /** The weapon a soldier is holding: his class weapon, or his sidearm if he has one and switched to it. */
 const spec = (p) => (p.weapon === 'side' && cls(p).side ? cls(p).side : cls(p));
 const ammoOf = (p) => (spec(p) === cls(p) ? p.ammo : p.sideAmmo);
@@ -241,7 +241,7 @@ function respawn(w, p, now) {
     p.nextCls = null;
     if (p.cls === 'sniper' && !sniperAllowed(w, p)) p.cls = 'rifleman';
   }
-  const s = p.isBot ? p.post : spawnPoint(w, p.team);
+  const s = p.dummy ? p.post : spawnPoint(w, p.team);
   p.x = s.x;
   p.y = s.y;
   p.hp = maxHp(p);
@@ -266,18 +266,22 @@ function respawn(w, p, now) {
 }
 
 /** Adds a player. `want` is 'green' | 'red' | 'random'. Returns the player, or null when both teams are full. */
-export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' }, now = Date.now()) {
+export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman', fill = false }, now = Date.now()) {
   const g = teamCount(w, 'green');
   const r = teamCount(w, 'red');
   let team = want === 'green' || want === 'red' ? want : g === r ? TEAMS[Math.floor(w.rng() * 2)] : g < r ? 'green' : 'red';
-  // Keep the teams even: you can only join the bigger side if it is not already ahead.
-  const mine = team === 'green' ? g : r;
-  const theirs = team === 'green' ? r : g;
-  if (mine > theirs) team = otherTeam(team);
-  if (teamCount(w, team) >= CFG.MAX_PER_TEAM) team = otherTeam(team);
-  if (teamCount(w, team) >= CFG.MAX_PER_TEAM) return null;
+  if (!fill) {
+    // Keep the teams even: you can only join the bigger side if it is not already ahead. (A fill-in bot goes where it is told.)
+    const mine = team === 'green' ? g : r;
+    const theirs = team === 'green' ? r : g;
+    if (mine > theirs) team = otherTeam(team);
+    if (teamCount(w, team) >= CFG.MAX_PER_TEAM) team = otherTeam(team);
+    if (teamCount(w, team) >= CFG.MAX_PER_TEAM) return null;
+  }
   const p = {
     id: w.nextId++,
+    isBot: fill,
+    fill,
     name,
     team,
     x: 0,
@@ -354,6 +358,7 @@ export function addBot(w, ownerId, now = Date.now()) {
   w.players.delete(p.id);
   p.team = o.team;
   p.isBot = true;
+  p.dummy = true; // the stationary test bot (not a fill-in soldier)
   p.owner = ownerId;
   p.post = spot;
   p.fullAt = 0;
@@ -1021,7 +1026,7 @@ export function step(w, dt, now = Date.now()) {
   }
   // Test bots get wounded again a few seconds after they are fully healed.
   for (const b of w.players.values()) {
-    if (!b.isBot || b.hp <= 0) continue;
+    if (!b.dummy || b.hp <= 0) continue;
     if (b.hp >= maxHp(b)) {
       if (!b.fullAt) b.fullAt = now;
       else if (now - b.fullAt > 3000) {

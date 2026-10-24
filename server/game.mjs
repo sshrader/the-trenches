@@ -15,6 +15,7 @@ import { verifyLogin } from './auth.mjs';
 import { blockedCountry } from './guard.mjs';
 import * as sim from './sim.mjs';
 import * as stats from './stats.mjs';
+import * as bots from './bots.mjs';
 
 // The maps, played in this order (a best-of-3 on each, then the next one). MAP_ORDER=forest,city overrides it, e.g. to start on the forest.
 const MAPS = {
@@ -41,7 +42,17 @@ const sockets = new Map(); // player id -> ws
 const byWallet = new Map(); // wallet -> ws
 const perIp = new Map();
 
-export const onlineCount = () => world.players.size;
+export const onlineCount = () => [...world.players.values()].filter((p) => !p.isBot).length;
+
+// Fill-in bots (an admin setting). BOTS=1 turns them on at start-up, BOT_TEAM_SIZE (default 5) is how many soldiers each side is topped up to,
+// counting the people on it. Admins can also change it while the server runs (see /api/admin/bots in index.mjs).
+const botSettings = { enabled: process.env.BOTS === '1', size: Math.max(1, Math.min(15, Number(process.env.BOT_TEAM_SIZE) || 5)) };
+export const getBotSettings = () => ({ ...botSettings, bots: [...world.players.values()].filter((p) => p.fill).length });
+export function setBotSettings({ enabled, size }) {
+  if (typeof enabled === 'boolean') botSettings.enabled = enabled;
+  if (Number.isFinite(Number(size))) botSettings.size = Math.max(1, Math.min(15, Math.floor(Number(size))));
+  return getBotSettings();
+}
 /** Who is in the match right now, by side (names and classes only), for the lobby. */
 export const lobbyRoster = () => {
   const out = { green: [], red: [] };
@@ -258,6 +269,12 @@ export function attachGame(server) {
     const dt = Math.min(0.2, (now - last) / 1000);
     last = now;
     if (!world.players.size) return;
+    // fill-in bots: topped up each side to the set size while at least one person is online, gone when the setting is off or everyone has left
+    const change = bots.sync(world, botSettings, now);
+    for (const id of change.removed) broadcast({ t: 'leave', id });
+    for (const b of change.added) broadcast({ t: 'join', id: b.id, name: b.name, team: b.team, bot: true });
+    if (![...world.players.values()].some((p) => !p.isBot)) return;
+    bots.tick(world, now, dt);
     sim.step(world, dt, now);
     for (const e of sim.drainEvents(world)) {
       if (e.t === 'kill') {
