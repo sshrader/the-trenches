@@ -18,12 +18,28 @@ export const CFG = {
   BULLET_R: 3,
   // Classes. `life` is how long a bullet flies, so speed x life is the weapon's reach.
   CLASSES: {
-    rifleman: { label: 'Rifleman', weapon: 'rifle', mag: 8, reloadS: 2, fireMs: 700, damage: 50, speed: 760, life: 1.5 }, // two hits kill, longest reach
-    smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6 }, // five hits kill, short reach
+    // Assault (id 'rifleman'): a modern AR. Three hits kill; held on full auto it climbs and the shots spread (tap or burst to stay accurate).
+    rifleman: { label: 'Assault', weapon: 'rifle', mag: 30, reloadS: 2.2, fireMs: 140, damage: 34, speed: 760, life: 1.1, recoil: { per: 0.2, max: 0.17 }, special: { id: 'smoke', charges: 1 } },
+    smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6, special: { id: 'flash', charges: 1 } }, // five hits kill, short reach
     sniper: { label: 'Sniper', weapon: 'sniper', mag: 5, reloadS: 3, fireMs: 1300, damage: 100, speed: 2600, life: 0.65, grenades: 1, arty: 0, side: { weapon: 'pistol', mag: 8, reloadS: 1.5, fireMs: 350, damage: 20, speed: 600, life: 0.5 } }, // one hit kills; hold scope to see far, but slow, only 5 rounds, a weak 8-round pistol to swap to, no artillery strike, and each shot gives him away
-    shotgunner: { label: 'Shotgunner', weapon: 'shotgun', mag: 5, reloadS: 2.5, fireMs: 450, damage: 25, falloff: [80, 200, 0.2], speed: 700, life: 0.28, pellets: 8, spread: 0.2, hp: 140, staminaX: 1.5, side: { weapon: 'pistol', mag: 12, reloadS: 1.5, fireMs: 280, damage: 20, speed: 600, life: 0.55 } }, // 140 HP, 8-pellet shotgun (deadly up close, 5 shells, quicker than the rifle, slower than the SMG) and a pistol to swap to
-    medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, // heals teammates next to him
+    shotgunner: { label: 'Shotgunner', weapon: 'shotgun', mag: 5, reloadS: 2.5, fireMs: 450, damage: 25, falloff: [80, 200, 0.2], speed: 700, life: 0.28, pellets: 8, spread: 0.2, hp: 140, staminaX: 1.5, side: { weapon: 'pistol', mag: 12, reloadS: 1.5, fireMs: 280, damage: 20, speed: 600, life: 0.55 }, special: { id: 'shield', durS: 5, rechargeS: 30 } }, // 140 HP, 8-pellet shotgun (deadly up close, 5 shells, quicker than the rifle, slower than the SMG) and a pistol to swap to
+    medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5, special: { id: 'drop', charges: 1 } },
+    // Squad leader: the Assault's AR plus a pistol, and a UAV that shows the whole team where the enemy is. Not refilled by resupply.
+    squad: { label: 'Squad Leader', weapon: 'rifle', mag: 30, reloadS: 2.2, fireMs: 140, damage: 34, speed: 760, life: 1.1, recoil: { per: 0.2, max: 0.17 }, arty: 1, grenades: 2, side: { weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, special: { id: 'uav', durS: 10, rechargeS: 60 } }, // heals teammates next to him
   },
+  RECOIL_DECAY: 0.8, // how fast an AR settles per second when you let off the trigger
+  SMOKE_R: 95, // a smoke grenade's cloud: enemies cannot see in, out of, or through it; its own side can
+  SMOKE_S: 12,
+  SMOKE_POINT_BLANK: 60, // ... except a target this close
+  FLASH_R: 170, // a flashbang blinds enemies this close (with a clear line to it) ...
+  FLASH_S: 3, // ... for this long: white screen and almost no sight
+  BLIND_VISION: 70,
+  DROP_DELAY_S: 1.5, // medic flare: the air drop lands this long after the flare ...
+  DROP_S: 10, // ... and heals friendlies near it for this long
+  DROP_R: 75,
+  DROP_RATE: 22, // HP per second
+  SHIELD_ARC: 1.15, // riot shield: stops bullets arriving within this many radians of where he faces
+  SHIELD_SPEED: 0.7, // ... and slows him
   HEAL_RADIUS: 60, // a medic heals teammates this close ...
   HEAL_RATE: 18, // ... at this many HP per second
   HEAL_POOL: 100, // a medic's medkit: total HP he can give out before it runs dry ...
@@ -83,7 +99,7 @@ export const CFG = {
   NADE_OUTER_MIN: 20, // ... fading to this at the edge
 };
 
-export const CLASS_IDS = ['rifleman', 'smg', 'medic', 'sniper', 'shotgunner']; // the client uses the index, so new classes go on the end
+export const CLASS_IDS = ['rifleman', 'smg', 'medic', 'sniper', 'shotgunner', 'squad']; // the client uses the index, so new classes go on the end
 const cls = (p) => CFG.CLASSES[p.cls];
 const maxHp = (p) => cls(p).hp ?? CFG.HP;
 /** The weapon a soldier is holding: his class weapon, or his sidearm if he has one and switched to it. */
@@ -95,6 +111,7 @@ const setAmmo = (p, v) => {
 };
 const maxGren = (p) => cls(p).grenades ?? CFG.GRENADES;
 const maxArty = (p) => cls(p).arty ?? CFG.ARTY;
+const maxSpec = (p) => cls(p).special?.charges ?? 0; // thrown specials (smoke, flash, flare) come in charges; shield and UAV run on a recharge timer
 /** Snipers on a side (counting those waiting to become one), so a team cannot be all snipers. */
 const snipersOn = (w, team, exceptId = 0) =>
   [...w.players.values()].filter((q) => !q.isBot && q.team === team && q.id !== exceptId && (q.cls === 'sniper' || q.nextCls === 'sniper')).length;
@@ -121,6 +138,9 @@ export function createWorld(map, rng = Math.random) {
     tents: map.tents || [],
     crates: (map.crates || []).map((c) => ({ x: c.x, y: c.y, team: c.team, readyAt: 0 })),
     arty: [], // incoming artillery strikes
+    clouds: [], // smoke: { x, y, r, left, team }
+    drops: [], // medic air drops: { x, y, team, delay, left }
+    uav: { green: 0, red: 0 }, // until when each side's UAV shows the enemy
     towers: [], // sniper towers: { owner, team, x, y, by (the sniper standing on it, or null), awayS }
     teamKills: { green: 0, red: 0 }, // kills this round
     wins: { green: 0, red: 0 }, // rounds won since the server started
@@ -193,6 +213,10 @@ function respawn(w, p, now) {
   p.respawnAt = 0;
   p.grenades = maxGren(p);
   p.arty = maxArty(p);
+  p.spec = maxSpec(p);
+  p.shieldUntil = 0;
+  p.heat = 0;
+  p.blindUntil = 0;
   p.scoped = false;
   p.rockets = 0;
   p.weapon = 'main';
@@ -230,6 +254,13 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman' 
     lastFire: 0,
     grenades: 0,
     arty: 0,
+    spec: 0,
+    specSeq: null,
+    wantSpecial: false,
+    specReadyAt: 0,
+    shieldUntil: 0,
+    heat: 0,
+    blindUntil: 0,
     cls: CLASS_IDS.includes(wantCls) ? wantCls : 'rifleman',
     scoped: false,
     scope: false,
@@ -313,7 +344,7 @@ export const removePlayer = (w, id) => {
   return w.players.delete(id);
 };
 
-export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope, swap, nest, dismantle }) {
+export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, sprint, scope, swap, nest, dismantle, special }) {
   const p = w.players.get(id);
   if (!p) return;
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -342,6 +373,10 @@ export function setInput(w, id, { dx, dy, aim, fire, nade, range, reload, arty, 
     if (p.nestSeq !== null && p.nestSeq !== undefined) p.wantNest = true;
     p.nestSeq = nest;
   }
+  if (special !== undefined && special !== p.specSeq) {
+    if (p.specSeq !== null) p.wantSpecial = true;
+    p.specSeq = special;
+  }
   if (arty !== undefined && arty !== p.artySeq) {
     if (p.artySeq !== null) p.wantArty = true;
     p.artySeq = arty;
@@ -367,6 +402,8 @@ export function setClass(w, id, wantCls, now = Date.now()) {
     p.nextCls = null;
     p.grenades = Math.min(p.grenades, maxGren(p));
     p.arty = Math.min(p.arty, maxArty(p));
+    p.spec = maxSpec(p);
+    p.shieldUntil = 0;
     p.scoped = false;
     p.weapon = p.weapon === 'rocket' ? 'rocket' : 'main';
     p.ammo = cls(p).mag;
@@ -451,6 +488,8 @@ function endRound(w, winner) {
   w.nades = [];
   w.arty = [];
   w.towers = [];
+  w.clouds = [];
+  w.drops = [];
   for (const q of w.players.values()) q.elevated = false;
   for (const p of w.players.values()) {
     p.dx = p.dy = 0;
@@ -466,7 +505,10 @@ function newRound(w, now) {
   w.progress = 0;
   w.points = { green: 0, red: 0 };
   w.towers = [];
-  for (const q of w.players.values()) q.elevated = false;
+  w.clouds = [];
+  w.drops = [];
+  w.uav = { green: 0, red: 0 };
+  for (const q of w.players.values()) { q.elevated = false; q.specReadyAt = 0; q.shieldUntil = 0; }
   w.bullets = [];
   w.nades = [];
   w.rockets = [];
@@ -486,7 +528,8 @@ function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   t.respawnAt = now + CFG.RESPAWN_S * 1000;
   t.dx = t.dy = 0;
   t.fire = false;
-  t.wantNade = t.wantReload = t.wantArty = t.wantNest = false;
+  t.wantNade = t.wantReload = t.wantArty = t.wantNest = t.wantSpecial = false;
+  t.shieldUntil = 0;
   const k = w.players.get(ownerId);
   const own = !!k && k.team === t.team; // killed himself or a teammate: no credit
   if (k && !own) {
@@ -543,16 +586,54 @@ function spawnPickup(w, team) {
 /** One bazooka per side at a time: a side cannot pick up another while one of its soldiers still holds rockets. */
 const holdsBazooka = (w, team) => [...w.players.values()].some((q) => q.team === team && q.hp > 0 && q.rockets > 0);
 
-function throwNade(w, p, now) {
-  if (p.hp <= 0 || (CFG.BASE_NO_FIRE && isSafe(w, p)) || p.grenades <= 0 || now - p.lastNade < CFG.NADE_COOLDOWN_MS) return;
-  p.grenades--;
-  p.lastNade = now;
+/** Lob an item along the aim: a frag grenade, or a smoke / flash / flare canister. It lands on open ground. */
+function lob(w, p, kind) {
+  p.lastNade = p.lobNow;
   const c = Math.cos(p.aim);
   const s = Math.sin(p.aim);
   let dist = p.nadeRange;
   // It lands on open ground: if the target is inside a wall or cover, pull it back toward the thrower.
   while (dist > CFG.NADE_MIN / 2 && solidAt(w, p.x + c * dist, p.y + s * dist)) dist -= 8;
-  w.nades.push({ sx: p.x, sy: p.y, x: p.x, y: p.y, tx: p.x + c * dist, ty: p.y + s * dist, flight: CFG.NADE_FLIGHT_S, fuse: CFG.NADE_FUSE_S, owner: p.id, team: p.team });
+  w.nades.push({ sx: p.x, sy: p.y, x: p.x, y: p.y, tx: p.x + c * dist, ty: p.y + s * dist, flight: CFG.NADE_FLIGHT_S, fuse: kind === 'frag' ? CFG.NADE_FUSE_S : CFG.NADE_FLIGHT_S, owner: p.id, team: p.team, kind });
+}
+
+function throwNade(w, p, now) {
+  if (p.hp <= 0 || (CFG.BASE_NO_FIRE && isSafe(w, p)) || p.grenades <= 0 || now - p.lastNade < CFG.NADE_COOLDOWN_MS) return;
+  p.grenades--;
+  p.lobNow = now;
+  lob(w, p, 'frag');
+}
+
+/** The F key: the class's special. Thrown ones (smoke, flash, flare) use a charge; the riot shield and UAV run on a recharge timer. */
+function useSpecial(w, p, now) {
+  const sp = cls(p).special;
+  if (!sp || p.hp <= 0) return;
+  if (sp.charges !== undefined) {
+    if (p.spec <= 0 || (CFG.BASE_NO_FIRE && isSafe(w, p)) || now - p.lastNade < CFG.NADE_COOLDOWN_MS) return;
+    p.spec--;
+    p.lobNow = now;
+    lob(w, p, sp.id === 'smoke' ? 'smoke' : sp.id === 'flash' ? 'flash' : 'flare');
+    return;
+  }
+  if (now < p.specReadyAt) return;
+  p.specReadyAt = now + (sp.durS + sp.rechargeS) * 1000;
+  if (sp.id === 'shield') p.shieldUntil = now + sp.durS * 1000;
+  else if (sp.id === 'uav') {
+    w.uav[p.team] = Math.max(w.uav[p.team], now + sp.durS * 1000);
+    w.events.push({ t: 'uav', team: p.team });
+  }
+}
+
+/** A smoke / flash / flare canister has landed. */
+function land(w, n, now) {
+  if (n.kind === 'smoke') w.clouds.push({ x: n.x, y: n.y, r: CFG.SMOKE_R, left: CFG.SMOKE_S, team: n.team });
+  else if (n.kind === 'flare') w.drops.push({ x: n.x, y: n.y, team: n.team, delay: CFG.DROP_DELAY_S, left: CFG.DROP_S });
+  else if (n.kind === 'flash') {
+    for (const t of w.players.values()) {
+      if (t.team === n.team || t.hp <= 0 || Math.hypot(t.x - n.x, t.y - n.y) > CFG.FLASH_R || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
+      t.blindUntil = now + CFG.FLASH_S * 1000;
+    }
+  }
 }
 
 function callArty(w, p, now) {
@@ -585,6 +666,7 @@ export function step(w, dt, now = Date.now()) {
       if (p.respawnAt && now >= p.respawnAt) respawn(w, p, now);
       continue;
     }
+    p.heat = Math.max(0, p.heat - CFG.RECOIL_DECAY * dt);
     p.scoped = p.cls === 'sniper' && p.scope && p.weapon === 'main'; // holding the scope: sees farther, moves slowly, no sprint
     const len = Math.hypot(p.dx, p.dy);
     const sprinting = !p.scoped && p.sprint && len > 0 && !p.winded && p.stamina > 0;
@@ -598,7 +680,7 @@ export function step(w, dt, now = Date.now()) {
       if (p.winded && p.stamina >= CFG.STAMINA_RESUME) p.winded = false;
     }
     if (len > 0 && !p.elevated) {
-      const k = (len > 1 ? 1 / len : 1) * CFG.SPEED * (sprinting ? CFG.SPRINT_MULT : p.scoped ? CFG.SCOPE_SPEED : 1) * dt;
+      const k = (len > 1 ? 1 / len : 1) * CFG.SPEED * (sprinting ? CFG.SPRINT_MULT : p.scoped ? CFG.SCOPE_SPEED : 1) * (now < p.shieldUntil ? CFG.SHIELD_SPEED : 1) * dt;
       const nx = p.x + p.dx * k;
       if (!blockedAt(w, nx, p.y) && !inEnemyBase(w, p.team, nx)) p.x = nx;
       const ny = p.y + p.dy * k;
@@ -644,13 +726,15 @@ export function step(w, dt, now = Date.now()) {
       p.lastFire = now;
       setAmmo(p, ammoOf(p) - 1);
       if (ammoOf(p) <= 0) p.reloadLeft = k.reloadS; // empty: reload on its own
+      const heat = p.heat; // this shot spreads by the heat built up before it
+      if (k.recoil) p.heat = Math.min(1, p.heat + k.recoil.per);
       const c = Math.cos(p.aim);
       const s = Math.sin(p.aim);
       w.shots.push([Math.round(p.x), Math.round(p.y), p.id]);
       if (p.cls === 'sniper' && p.weapon === 'main') p.revealUntil = now + CFG.SNIPER_REVEAL_S * 1000; // the flash gives him away
       // a shotgun fires a spread of pellets; everything else fires one bullet
       for (let i = 0; i < (k.pellets ?? 1); i++) {
-        const a = p.aim + (k.pellets ? (w.rng() * 2 - 1) * k.spread : 0);
+        const a = p.aim + (k.pellets ? (w.rng() * 2 - 1) * k.spread : 0) + (k.recoil ? (w.rng() * 2 - 1) * heat * k.recoil.max : 0);
         const ca = Math.cos(a);
         const sa = Math.sin(a);
         const sp = k.speed * (k.pellets ? 0.9 + w.rng() * 0.2 : 1);
@@ -688,6 +772,10 @@ export function step(w, dt, now = Date.now()) {
       p.wantArty = false;
       callArty(w, p, now);
     }
+    if (p.wantSpecial) {
+      p.wantSpecial = false;
+      useSpecial(w, p, now);
+    }
   }
 
   // Bullets: move in small steps so they cannot jump through cover or a player.
@@ -716,6 +804,11 @@ export function step(w, dt, now = Date.now()) {
         if (t.team === b.team || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
         if (Math.hypot(t.x - b.x, t.y - b.y) <= CFG.RADIUS + CFG.BULLET_R) {
           dead = true;
+          if (now < t.shieldUntil) {
+            let da = Math.atan2(b.y - b.vy * 0.05 - t.y, b.x - b.vx * 0.05 - t.x) - t.aim; // where the round came from, against where he faces
+            da = Math.atan2(Math.sin(da), Math.cos(da));
+            if (Math.abs(da) <= CFG.SHIELD_ARC) break; // stopped by the shield
+          }
           let dmg = b.damage;
           if (b.falloff) {
             // pellets lose punch with distance: full damage up close, down to a fraction at the end of their reach
@@ -786,8 +879,10 @@ export function step(w, dt, now = Date.now()) {
       n.y = n.sy + (n.ty - n.sy) * k;
     }
     n.fuse -= dt;
-    if (n.fuse <= 0) explode(w, n, now);
-    else live.push(n);
+    if (n.fuse <= 0) {
+      if (n.kind && n.kind !== 'frag') land(w, n, now);
+      else explode(w, n, now);
+    } else live.push(n);
   }
   w.nades = live;
 
@@ -799,6 +894,21 @@ export function step(w, dt, now = Date.now()) {
     else incoming.push(a);
   }
   w.arty = incoming;
+
+  // Smoke fades; an air drop lands after its delay, then heals friendlies standing near it until it runs out.
+  w.clouds = w.clouds.filter((c) => (c.left -= dt) > 0);
+  w.drops = w.drops.filter((d) => {
+    if (d.delay > 0) d.delay -= dt;
+    else d.left -= dt;
+    return d.left > 0;
+  });
+  for (const d of w.drops) {
+    if (d.delay > 0) continue;
+    for (const t of w.players.values()) {
+      if (t.team !== d.team || t.hp <= 0 || t.hp >= maxHp(t) || Math.hypot(t.x - d.x, t.y - d.y) > CFG.DROP_R) continue;
+      t.hp = Math.min(maxHp(t), t.hp + CFG.DROP_RATE * dt);
+    }
+  }
 
   // Healing: a medic mends teammates standing next to him, and each side's tent mends anyone close to it.
   for (const p of w.players.values()) p.healing = false;
@@ -845,12 +955,13 @@ export function step(w, dt, now = Date.now()) {
     if (now < c.readyAt) continue;
     for (const p of w.players.values()) {
       if (p.team !== c.team || p.hp <= 0 || Math.hypot(p.x - c.x, p.y - c.y) > CFG.CRATE_R) continue;
-      if (p.ammo >= cls(p).mag && p.sideAmmo >= (cls(p).side?.mag ?? 0) && p.grenades >= maxGren(p) && p.arty >= maxArty(p)) continue; // nothing to take
+      if (p.ammo >= cls(p).mag && p.sideAmmo >= (cls(p).side?.mag ?? 0) && p.grenades >= maxGren(p) && p.arty >= maxArty(p) && p.spec >= maxSpec(p)) continue; // nothing to take
       p.ammo = cls(p).mag;
       p.sideAmmo = cls(p).side?.mag ?? 0;
       p.reloadLeft = 0;
       p.grenades = maxGren(p);
       p.arty = maxArty(p);
+      p.spec = maxSpec(p);
       c.readyAt = now + CFG.CRATE_COOLDOWN_S * 1000;
       w.events.push({ t: 'crate', who: p.id });
       break;
@@ -877,30 +988,44 @@ export function step(w, dt, now = Date.now()) {
 }
 
 /** Who can a side see? Teammates are always visible; anything else only within VISION of a living teammate. */
-export function eyesFor(w, team) {
+export function eyesFor(w, team, now = Date.now()) {
   const mates = [...w.players.values()].filter((q) => q.team === team);
   const live = mates.filter((q) => q.hp > 0);
   // Everyone sees a circle around them; a scoped sniper also sees a long, narrow beam along his aim: [x, y, radius, aim, halfWidth, range].
-  return (live.length ? live : mates).flatMap((q) => (q.scoped ? [[q.x, q.y, CFG.VISION], [q.x, q.y, 0, q.aim, CFG.SCOPE_HALF, CFG.SCOPE_VISION]] : [[q.x, q.y, CFG.VISION]]));
+  return (live.length ? live : mates).flatMap((q) => (now < q.blindUntil ? [[q.x, q.y, CFG.BLIND_VISION]] : q.scoped ? [[q.x, q.y, CFG.VISION], [q.x, q.y, 0, q.aim, CFG.SCOPE_HALF, CFG.SCOPE_VISION]] : [[q.x, q.y, CFG.VISION]]));
 }
-export const canSee = (eyes, x, y, extra = 0) =>
+/** Does a smoke cloud sit between (ex,ey) and (x,y)? A target at point-blank range is still seen. */
+const smoked = (ex, ey, x, y, clouds) => {
+  const dx = x - ex, dy = y - ey;
+  const len2 = dx * dx + dy * dy;
+  if (len2 <= CFG.SMOKE_POINT_BLANK * CFG.SMOKE_POINT_BLANK) return false;
+  return clouds.some((c) => {
+    const t = len2 ? clamp(((c.x - ex) * dx + (c.y - ey) * dy) / len2, 0, 1) : 0;
+    return Math.hypot(ex + dx * t - c.x, ey + dy * t - c.y) <= c.r;
+  });
+};
+export const canSee = (eyes, x, y, extra = 0, clouds = []) =>
   eyes.some(([ex, ey, er, aim, half, range]) => {
     const d = Math.hypot(ex - x, ey - y);
-    if (d <= er + extra) return true;
-    if (range === undefined || d > range + extra) return false;
-    let da = Math.atan2(y - ey, x - ex) - aim;
-    da = Math.atan2(Math.sin(da), Math.cos(da)); // wrap to -PI..PI
-    return Math.abs(da) <= half;
+    let seen = d <= er + extra;
+    if (!seen && range !== undefined && d <= range + extra) {
+      let da = Math.atan2(y - ey, x - ex) - aim;
+      da = Math.atan2(Math.sin(da), Math.cos(da)); // wrap to -PI..PI
+      seen = Math.abs(da) <= half;
+    }
+    return seen && (!clouds.length || !smoked(ex, ey, x, y, clouds));
   });
 
 /** What a side's clients need each tick (fog of war applied when a team is given). Kept small. */
 export function snapshot(w, now = Date.now(), team = null) {
-  const eyes = team ? eyesFor(w, team) : null;
-  const vis = (x, y) => !eyes || canSee(eyes, x, y);
+  const eyes = team ? eyesFor(w, team, now) : null;
+  const walls = team ? w.clouds.filter((c) => c.team !== team) : []; // the other side's smoke blocks our view
+  const vis = (x, y) => !eyes || canSee(eyes, x, y, 0, walls);
+  const uav = !!team && now < w.uav[team]; // our UAV shows every enemy
   const p = [];
   for (const q of w.players.values()) {
-    if (team && q.team !== team && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
-    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0]);
+    if (team && q.team !== team && !uav && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
+    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0, Math.max(0, Math.ceil((q.blindUntil - now) / 100)), q.spec, Math.max(0, Math.ceil((q.specReadyAt - now) / 1000)), Math.max(0, Math.ceil((q.shieldUntil - now) / 100)), Math.round(q.heat * 100)]);
   }
   const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
   const owner = (id) => w.players.get(id);
@@ -912,10 +1037,13 @@ export function snapshot(w, now = Date.now(), team = null) {
     p,
     b,
     f: w.shots.filter(([x, y, id]) => vis(x, y) || owner(id)?.team === team || (owner(id)?.cls === 'sniper' && now < owner(id).revealUntil)),
-    g: w.nades.filter((n) => vis(n.x, n.y) || n.team === team).map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0]),
+    g: w.nades.filter((n) => vis(n.x, n.y) || n.team === team).map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0, n.kind === 'smoke' ? 1 : n.kind === 'flash' ? 2 : n.kind === 'flare' ? 3 : 0]),
     a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), 0, Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100]),
     rk: w.rockets.filter((r) => r.team === team || vis(r.x, r.y)).map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.aim * 100) / 100]),
     u: w.pickups.filter((q) => !team || q.team === team).map((q) => [q.x, q.y, team && holdsBazooka(w, team) ? 1 : 0]), // your side's crate only; 1 = your side already holds a bazooka, so it cannot be taken yet
+    cl: w.clouds.filter((c) => !eyes || c.team === team || canSee(eyes, c.x, c.y, c.r)).map((c) => [Math.round(c.x), Math.round(c.y), c.r, Math.round((c.left / CFG.SMOKE_S) * 100) / 100, c.team === 'green' ? 0 : 1]),
+    dr: w.drops.filter((d) => !eyes || d.team === team || canSee(eyes, d.x, d.y)).map((d) => [Math.round(d.x), Math.round(d.y), d.delay > 0 ? 0 : 1, Math.round((d.left / CFG.DROP_S) * 100) / 100, d.delay > 0 ? Math.round((d.delay / CFG.DROP_DELAY_S) * 100) / 100 : 0]),
+    uv: team ? [Math.max(0, Math.ceil((w.uav[team] - now) / 100)), Math.max(0, Math.ceil((w.uav[otherTeam(team)] - now) / 100))] : [0, 0], // tenths of a second left: ours, the enemy's
     tw: w.towers.filter((t) => !team || t.team === team || vis(t.x, t.y)).map((t) => [t.team === 'green' ? 0 : 1, t.owner, Math.round(t.x), Math.round(t.y), t.by === null ? 0 : 1, Math.round(t.prog * 100) / 100]),
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),

@@ -12,6 +12,7 @@ const KEYS: [string, string][] = [
   ['R', 'Reload'],
   ['G', 'Grenade (2 per life)'],
   ['T', 'Artillery strike (1 per life)'],
+  ['C', 'Class special: smoke, flashbang, flare, riot shield or UAV'],
   ['E', 'Sniper: build / climb a tower'],
   ['B', 'Hold beside your tower to dismantle'],
   ['Q / Mouse wheel', 'Swap to the bazooka (when you have one)'],

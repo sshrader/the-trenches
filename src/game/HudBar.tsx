@@ -20,11 +20,16 @@ const drawings: Record<string, ReactNode> = {
   tower: (<><rect x="2" y="14" width="8" height="10" rx="2" fill="#a8895a" /><rect x="12" y="14" width="8" height="10" rx="2" fill="#b89a68" /><rect x="22" y="14" width="8" height="10" rx="2" fill="#a8895a" /></>),
   medkit: (<><rect x="4" y="9" width="24" height="17" rx="3" fill="#f8fafc" /><rect x="14" y="12" width="4" height="11" fill="#dc2626" /><rect x="10.5" y="15.5" width="11" height="4" fill="#dc2626" /></>),
   tent: (<><polygon points="2,26 16,6 30,26" fill="#c9c2a4" /><rect x="14.5" y="14" width="3" height="9" fill="#dc2626" /><rect x="11.5" y="17" width="9" height="3" fill="#dc2626" /></>),
+  smoke: (<><circle cx="11" cy="19" r="7" fill="#cbd5e1" /><circle cx="20" cy="16" r="8" fill="#e2e8f0" /><circle cx="16" cy="11" r="6" fill="#94a3b8" /></>),
+  flash: (<><circle cx="16" cy="16" r="5" fill="#fef9c3" /><path d="M16 1 L18 11 L28 8 L20 15 L30 18 L19 20 L22 30 L16 22 L10 30 L12 20 L2 18 L12 15 L4 8 L14 11Z" fill="#fde047" opacity="0.9" /></>),
+  flare: (<><rect x="14" y="10" width="4" height="18" fill="#94a3b8" /><path d="M16 2 C21 8 21 12 16 12 C11 12 11 8 16 2Z" fill="#ef4444" /><rect x="8" y="24" width="16" height="6" rx="1" fill="#e2e8f0" /><rect x="14.5" y="25" width="3" height="4" fill="#dc2626" /></>),
+  shield: (<path d="M16 3 L28 7 L27 18 C26 24 21 28 16 30 C11 28 6 24 5 18 L4 7Z" fill="#94a3b8" stroke="#e2e8f0" strokeWidth="2" />),
+  uav: (<><rect x="12" y="13" width="8" height="5" rx="2" fill="#cbd5e1" /><path d="M3 12 L12 15 M29 12 L20 15" stroke="#94a3b8" strokeWidth="2" /><circle cx="4" cy="11" r="3" fill="#64748b" /><circle cx="28" cy="11" r="3" fill="#64748b" /><path d="M10 24 q6 4 12 0" stroke="#4ade80" strokeWidth="2" fill="none" /></>),
   heart: (<path d="M16 28 C2 18 4 7 11 7 C14 7 16 9 16 11 C16 9 18 7 21 7 C28 7 30 18 16 28Z" fill="#ef4444" />),
 };
 
 // If there is no art for an exact name, these generic files stand in (your ammo icon for weapons, the special icon for class abilities).
-const FALLBACK: Record<string, string> = { rifle: 'ammo', smg: 'ammo', pistol: 'ammo', shotgun: 'ammo', sniper: 'ammo', rocket: 'special', tower: 'special', medkit: 'special', tent: 'special' };
+const FALLBACK: Record<string, string> = { rifle: 'ammo', smg: 'ammo', pistol: 'ammo', shotgun: 'ammo', sniper: 'ammo', rocket: 'special', tower: 'special', medkit: 'special', tent: 'special', smoke: 'special', flash: 'special', flare: 'special', shield: 'special', uav: 'special' };
 
 function Icon({ name, size = 42 }: { name: string; size?: number }) {
   const url = art[name] ?? (FALLBACK[name] ? art[FALLBACK[name]] : undefined);
@@ -49,7 +54,27 @@ function Slot({ icon, value, sub, keyHint, keyHint2, active, dim, fill, title }:
   );
 }
 
-const WEAPON_ICON: Record<string, string> = { rifleman: 'rifle', smg: 'smg', medic: 'pistol', sniper: 'sniper', shotgunner: 'shotgun' };
+const WEAPON_ICON: Record<string, string> = { rifleman: 'rifle', smg: 'smg', medic: 'pistol', sniper: 'sniper', shotgunner: 'shotgun', squad: 'rifle' };
+
+const SPECIALS: Record<string, { icon: string; sub: string; title: string; charges?: boolean; dur?: number; recharge?: number }> = {
+  rifleman: { icon: 'smoke', sub: 'smoke', charges: true, title: 'Smoke grenade (C): enemies cannot see into or through the cloud; your side can. Resupply refills it.' },
+  smg: { icon: 'flash', sub: 'flashbang', charges: true, title: 'Flashbang (C): blinds enemies it reaches for 3 seconds. Resupply refills it.' },
+  medic: { icon: 'flare', sub: 'air drop', charges: true, title: 'Air drop flare (C): a medical crate lands and heals your side near it for 10 seconds. Resupply refills it.' },
+  shotgunner: { icon: 'shield', sub: 'riot shield', dur: 5, recharge: 30, title: 'Riot shield (C): 5 seconds of cover from the front, slower walking. 30 second recharge.' },
+  squad: { icon: 'uav', sub: 'UAV', dur: 10, recharge: 60, title: 'UAV (C): 10 seconds of every enemy shown to your whole side. 60 second recharge; resupply does not refresh it.' },
+};
+
+/** The class's own ability: a count of charges, or a timer for the shield and UAV. */
+function SpecialSlot({ h }: { h: Hud }) {
+  const sp = SPECIALS[h.myClassId];
+  if (!sp) return null;
+  if (sp.charges) return <Slot icon={sp.icon} value={h.mySpec} sub={sp.sub} keyHint="C" dim={h.mySpec === 0} title={sp.title} />;
+  const activeS = h.myClassId === 'squad' ? Math.ceil(h.uavMine / 10) : Math.ceil(h.myShield / 10);
+  const total = (sp.dur ?? 0) + (sp.recharge ?? 0);
+  const cd = h.mySpecCd;
+  const value = activeS > 0 ? `${activeS}s` : cd > 0 ? `${cd}s` : 'ready';
+  return <Slot icon={sp.icon} value={value} sub={sp.sub} keyHint="C" active={activeS > 0} dim={activeS === 0 && cd > 0} fill={activeS === 0 && cd > 0 ? 1 - cd / total : undefined} title={sp.title} />;
+}
 
 /** The bottom bar: health, sprint, then one slot each for your weapon, grenades, artillery and whatever special your class has. */
 export default function HudBar({ h }: { h: Hud }) {
@@ -89,11 +114,14 @@ export default function HudBar({ h }: { h: Hud }) {
             fill={h.myTowerProg > 0 ? h.myTowerProg : undefined}
             title={h.myElev ? 'On your tower: your rounds fly over low cover. E climbs down.' : h.myTowerUp ? 'Stand beside your tower and hold B for 5 seconds to dismantle it, then you can build another. E climbs it.' : 'E: build a tower here and climb it. One at a time; it stays until you die, or for 20 seconds after nobody is on it.'}
           />
-        ) : h.myClassId === 'medic' ? (
-          <Slot icon="medkit" value={`${h.myKit}`} sub="medkit" fill={h.myKit / 100} title="Medkit: healing left for teammates" />
         ) : (
-          <Slot icon="rocket" value={h.myRockets > 0 ? h.myRockets : '–'} sub="bazooka" keyHint="Q" dim={h.myRockets === 0} title="Bazooka: walk over your side's gold crate for 2 rockets, then mouse wheel or Q to equip" />
+          <SpecialSlot h={h} />
         )}
+        {h.myClassId === 'medic' ? (
+          <Slot icon="medkit" value={`${h.myKit}`} sub="medkit" fill={h.myKit / 100} title="Medkit: healing left for teammates" />
+        ) : h.myRockets > 0 && !h.myBazooka ? (
+          <Slot icon="rocket" value={h.myRockets} sub="bazooka" keyHint="Q" title="Bazooka: mouse wheel or Q equips it." />
+        ) : null}
       </div>
     </div>
   );

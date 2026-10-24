@@ -83,13 +83,16 @@ test('a bullet hits an enemy, not a friend', () => {
   place(f, 460, LANE);
   place(e, 560, LANE);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
-  const t0 = run(w, 0.4);
-  assert.equal(e.hp, CFG.HP - 50, 'one rifle hit takes half');
-  const t = run(w, 0.5, t0); // the second shot lands
+  let t0 = run(w, 0.05);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
+  t0 = run(w, 0.5, t0);
+  assert.equal(e.hp, CFG.HP - 34, 'one AR hit takes a third');
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  const t = run(w, 0.8, t0); // more shots land
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
   run(w, 0.5, t);
   assert.equal(f.hp, CFG.HP, 'friendly fire is off');
-  assert.equal(e.hp, 0, 'two rifle hits kill');
+  assert.equal(e.hp, 0, 'three AR hits kill');
 });
 
 test('cover blocks bullets', () => {
@@ -132,7 +135,7 @@ test('shots are reported once for sound and flashes', () => {
   assert.deepEqual(snapshot(w, 1050).f, [], 'not repeated on the next tick');
 });
 
-test('two rifle hits kill, then the player respawns protected', () => {
+test('three AR hits kill, then the player respawns protected', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
   const e = addPlayer(w, { name: 'e', want: 'red' });
@@ -287,18 +290,18 @@ test('two grenades per life, with a cooldown, refilled on respawn', () => {
   assert.equal(a.grenades, CFG.GRENADES);
 });
 
-test('8 rounds, then a 2 second reload', () => {
+test('30 rounds, then a reload', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green' });
   place(a, 500, openRow() * 32 + 16, 0);
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
   let now = 1000;
-  for (let i = 0; i < 8; i++) {
-    now += 800;
+  for (let i = 0; i < CFG.CLASSES.rifleman.mag; i++) {
+    now += 200;
     step(w, 0.05, now);
   }
   assert.equal(a.ammo, 0);
-  assert.ok(a.reloadLeft > 1.9, 'reload starts on its own when empty');
+  assert.ok(a.reloadLeft > CFG.CLASSES.rifleman.reloadS - 0.1, 'reload starts on its own when empty');
   now += 500;
   step(w, 0.05, now);
   assert.equal(a.ammo, 0, 'no shots while reloading');
@@ -793,8 +796,8 @@ test('shotgunner: 140 HP, 5 shells, spread kills up close but not far away, can 
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
   now = run(w, 0.5, now);
   assert.equal(e.hp, CFG.HP, 'out of range');
-  // Fire rate: quicker than the rifle (700 ms), slower than the SMG (110 ms).
-  assert.ok(CFG.CLASSES.shotgunner.fireMs < CFG.CLASSES.rifleman.fireMs && CFG.CLASSES.shotgunner.fireMs > CFG.CLASSES.smg.fireMs);
+  // Fire rate: slower than the AR and the SMG (110 ms).
+  assert.ok(CFG.CLASSES.shotgunner.fireMs > CFG.CLASSES.rifleman.fireMs && CFG.CLASSES.shotgunner.fireMs > CFG.CLASSES.smg.fireMs);
   // Swap to the pistol: separate ammo, different fire rate.
   const shells = a.ammo;
   setInput(w, a.id, { dx: 0, dy: 0, aim: 0, swap: 0 }); // the first value only sets the counter
@@ -1081,6 +1084,161 @@ test('another sniper of the side can climb a free tower; enemies cannot', () => 
   now = run(w, 0.1, now);
   assert.ok(b.elevated, 'a teammate sniper uses the free tower');
   assert.equal(w.towers.length, 1, 'no second tower built beside it');
+});
+
+// ---- class specials -------------------------------------------------------------------------------------
+const mk = (w, name, team, cls, x, aim = 0) => {
+  const p = addPlayer(w, { name, want: team, cls });
+  p.team = team;
+  place(p, x, LANE, aim);
+  p.wasSafe = false;
+  p.exitProtectReadyAt = 1e12;
+  return p;
+};
+const special = (w, p, n) => setInput(w, p.id, { dx: 0, dy: 0, aim: p.aim, fire: false, special: n });
+const hasId = (snap, id) => snap.p.some((q) => q[0] === id);
+
+test('AR recoil: the first shot is true, held fire spreads, letting go settles it', () => {
+  const w = fresh();
+  const a = mk(w, 'a', 'green', 'rifleman', 400);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  step(w, 0.05, 1000);
+  assert.equal(w.bullets.at(-1).vy, 0, 'first shot goes dead straight');
+  const t = run(w, 1.2, 1050);
+  assert.ok(a.heat > 0.4, 'heat built up on full auto: ' + a.heat);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: false });
+  run(w, 1.5, t);
+  assert.equal(a.heat, 0, 'settled again');
+});
+
+test('smoke blocks the enemy view but not your own side', () => {
+  const w = fresh();
+  const g = mk(w, 'g', 'green', 'rifleman', 400);
+  const r = mk(w, 'r', 'red', 'rifleman', 680, Math.PI);
+  setInput(w, g.id, { dx: 0, dy: 0, aim: 0, range: 140, special: 0 });
+  let now = run(w, 0.1);
+  assert.ok(hasId(snapshot(w, now, 'red'), g.id), 'seen before the smoke');
+  special(w, g, 1);
+  now = run(w, 1, now);
+  assert.equal(g.spec, 0, 'the one smoke is used');
+  assert.equal(w.clouds.length, 1);
+  assert.ok(!hasId(snapshot(w, now, 'red'), g.id), 'the enemy cannot see through it');
+  assert.ok(hasId(snapshot(w, now, 'green'), r.id), 'your side sees through');
+  assert.equal(snapshot(w, now, 'green').cl.length, 1);
+  now = run(w, CFG.SMOKE_S + 0.5, now);
+  assert.equal(w.clouds.length, 0, 'it clears');
+  assert.ok(hasId(snapshot(w, now, 'red'), g.id));
+  // resupply gives the smoke back
+  const crate = w.crates.find((c) => c.team === 'green');
+  place(g, crate.x, crate.y);
+  now = run(w, 0.2, now);
+  assert.equal(g.spec, 1, 'resupply refills the smoke grenade');
+});
+
+test('flashbang blinds enemies, not friends', () => {
+  const w = fresh();
+  const g = mk(w, 'g', 'green', 'smg', 400);
+  const mate = mk(w, 'm', 'green', 'rifleman', 520);
+  const r = mk(w, 'r', 'red', 'rifleman', 520, Math.PI);
+  setInput(w, g.id, { dx: 0, dy: 0, aim: 0, range: 120, special: 0 });
+  let now = run(w, 0.1);
+  special(w, g, 1);
+  now = run(w, 1, now);
+  assert.ok(r.blindUntil > now, 'enemy blinded');
+  assert.equal(mate.blindUntil, 0, 'friend is not');
+  assert.ok(snapshot(w, now, 'red').p.find((q) => q[0] === r.id)[23] > 0, 'blind time is sent to the client');
+  now = run(w, CFG.FLASH_S + 0.5, now);
+  assert.ok(!(r.blindUntil > now), 'it wears off');
+});
+
+test('riot shield: stops shots from the front for 5 s, then a 30 s recharge', () => {
+  const w = fresh();
+  const s = mk(w, 's', 'green', 'shotgunner', 520, Math.PI); // faces west
+  const r = mk(w, 'r', 'red', 'rifleman', 400, 0);
+  setInput(w, s.id, { dx: 0, dy: 0, aim: Math.PI, special: 0 });
+  let now = run(w, 0.1);
+  special(w, s, 1);
+  now = run(w, 0.1, now);
+  assert.ok(s.shieldUntil > now);
+  setInput(w, r.id, { dx: 0, dy: 0, aim: 0, fire: true });
+  now = run(w, 0.8, now);
+  assert.equal(s.hp, 140, 'frontal fire is stopped');
+  setInput(w, r.id, { dx: 0, dy: 0, aim: 0, fire: false });
+  now = run(w, 0.5, now);
+  // shot in the back while the shield is up
+  const b = mk(w, 'b', 'red', 'rifleman', 640, Math.PI);
+  setInput(w, b.id, { dx: 0, dy: 0, aim: Math.PI, fire: true });
+  now = run(w, 0.3, now);
+  setInput(w, b.id, { dx: 0, dy: 0, aim: Math.PI, fire: false });
+  now = run(w, 0.3, now);
+  assert.ok(s.hp < 140, 'a shot from behind still hurts');
+  const hp = s.hp;
+  now = run(w, 6, now);
+  assert.ok(!(now < s.shieldUntil), 'the shield drops after 5 s');
+  special(w, s, 2); // too soon
+  now = run(w, 0.2, now);
+  assert.ok(!(now < s.shieldUntil), 'still recharging');
+  now = run(w, 30, now);
+  special(w, s, 3);
+  now = run(w, 0.2, now);
+  assert.ok(now < s.shieldUntil, 'ready again after the recharge');
+  void hp;
+});
+
+test('medic flare: an air drop lands, heals friendlies for 10 s, then goes', () => {
+  const w = fresh();
+  const m = mk(w, 'm', 'medic', 'medic', 400);
+  m.team = 'green';
+  const hurtMate = mk(w, 't', 'green', 'rifleman', 500);
+  const foe = mk(w, 'f', 'red', 'rifleman', 505);
+  hurtMate.hp = 40;
+  foe.hp = 40;
+  setInput(w, m.id, { dx: 0, dy: 0, aim: 0, range: 100, special: 0 });
+  let now = run(w, 0.1);
+  special(w, m, 1);
+  now = run(w, 1, now);
+  assert.equal(w.drops.length, 1);
+  assert.ok(w.drops[0].delay > 0, 'still on its way down');
+  assert.equal(hurtMate.hp, 40);
+  now = run(w, 3, now);
+  assert.ok(hurtMate.hp > 80, 'healed: ' + hurtMate.hp);
+  assert.equal(foe.hp, 40, 'enemies are not');
+  assert.equal(snapshot(w, now, 'green').dr.length, 1);
+  now = run(w, 12, now);
+  assert.equal(w.drops.length, 0, 'gone after 10 s');
+});
+
+test('squad leader: has the AR, pistol, 2 grenades, artillery, and a UAV that shows the enemy for 10 s', () => {
+  const w = fresh();
+  const l = mk(w, 'l', 'green', 'squad', 400);
+  const e = mk(w, 'e', 'red', 'rifleman', 1500);
+  assert.equal(l.grenades, 2);
+  assert.equal(l.arty, 1);
+  assert.equal(l.sideAmmo, 10, 'has a pistol');
+  let now = run(w, 0.1);
+  assert.ok(!hasId(snapshot(w, now, 'green'), e.id), 'enemy is in the fog');
+  special(w, l, 0);
+  now = run(w, 0.1, now);
+  special(w, l, 1);
+  now = run(w, 0.2, now);
+  assert.ok(hasId(snapshot(w, now, 'green'), e.id), 'UAV shows the enemy');
+  assert.ok(snapshot(w, now, 'red').uv[1] > 0, 'the enemy is told about it');
+  assert.ok(!hasId(snapshot(w, now, 'red'), l.id), 'but it is only for the leader\'s side');
+  now = run(w, 10, now);
+  assert.ok(!hasId(snapshot(w, now, 'green'), e.id), 'gone after 10 s');
+  special(w, l, 2);
+  now = run(w, 1, now);
+  assert.ok(!hasId(snapshot(w, now, 'green'), e.id), 'recharging: no second UAV yet');
+  const crate = w.crates.find((c) => c.team === 'green');
+  place(l, crate.x, crate.y);
+  l.grenades = 0;
+  now = run(w, 0.2, now);
+  assert.ok(now < l.specReadyAt, 'resupply does not reset the UAV');
+  place(l, 400, LANE);
+  now = run(w, 61, now);
+  special(w, l, 3);
+  now = run(w, 0.2, now);
+  assert.ok(hasId(snapshot(w, now, 'green'), e.id), 'ready again after 60 s');
 });
 
 test('leaving removes the player', () => {

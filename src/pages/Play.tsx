@@ -12,7 +12,7 @@ import { isMuted, setMuted, unlockAudio } from '../game/audio';
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 type RosterRow = { name: string; cls: string; kills: number };
-const CLS_LABEL: Record<string, string> = { rifleman: 'Rifleman', smg: 'SMG', medic: 'Medic', sniper: 'Sniper', shotgunner: 'Shotgunner' };
+const CLS_LABEL: Record<string, string> = { rifleman: 'Assault', smg: 'SMG', medic: 'Medic', sniper: 'Sniper', shotgunner: 'Shotgunner', squad: 'Squad Leader' };
 
 /** Who is in the match right now, refreshed every few seconds while you pick a side. */
 function LobbyRoster() {
@@ -86,7 +86,7 @@ export default function Play() {
   const [cls, setCls] = useState<ClassId>(() => {
     try {
       const c = localStorage.getItem('trenches-class');
-      return c === 'smg' || c === 'medic' || c === 'sniper' || c === 'shotgunner' ? c : 'rifleman';
+      return c === 'smg' || c === 'medic' || c === 'sniper' || c === 'shotgunner' || c === 'squad' ? c : 'rifleman';
     } catch {
       return 'rifleman';
     }
@@ -440,6 +440,7 @@ export default function Play() {
                   <dt>R</dt><dd>Reload</dd>
                   <dt>G</dt><dd>Grenade</dd>
                   <dt>T</dt><dd>Artillery strike</dd>
+                  <dt>C</dt><dd>Class special (smoke, flash, flare, shield, UAV)</dd>
                   <dt>E</dt><dd>Sniper: build / climb tower</dd>
                   <dt>B (hold)</dt><dd>Sniper: dismantle tower</dd>
                   <dt>F</dt><dd>Full screen</dd>

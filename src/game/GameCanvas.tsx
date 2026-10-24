@@ -791,6 +791,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       if (k === 'q' && !e.repeat) input.current.swap += 1; // swap between the bazooka and your main weapon
       if (k === 'e' && !e.repeat) input.current.nest += 1; // a sniper builds, climbs or leaves his tower
       if (k === 'b') input.current.dismantle = true; // hold beside your tower to take it down
+      if (k === 'c' && !e.repeat) input.current.special += 1; // the class special: smoke, flashbang, flare, riot shield or UAV
       if (k === 'g' && !e.repeat) input.current.nade += 1; // the server counts presses, so a lost packet cannot eat a throw
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) return;
       e.preventDefault();
@@ -1102,22 +1103,100 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         ctx.fillText(`${(left * 3).toFixed(1)}s`, sx, sy + 4);
       }
       // Grenades: a shadow stays on the ground while the grenade itself arcs up and over cover
-      for (const [gx, gy, f] of w.nades) {
+      for (const [gx, gy, f, kind] of w.nades) {
         const lift = Math.sin(Math.min(1, f) * Math.PI) * 46;
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.beginPath();
         ctx.ellipse(gx - camX, gy - camY, 6, 3.5, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#3f4a36';
+        ctx.fillStyle = kind === 1 ? '#9ca3af' : kind === 2 ? '#fde68a' : kind === 3 ? '#ef4444' : '#3f4a36'; // frag, smoke, flash, flare
         ctx.beginPath();
         ctx.arc(gx - camX, gy - camY - lift, 5 + lift / 14, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#111';
         ctx.lineWidth = 1;
         ctx.stroke();
-        if (f <= 0 && Math.floor(Date.now() / 120) % 2 === 0) {
+        if (f <= 0 && (!kind || kind === 0) && Math.floor(Date.now() / 120) % 2 === 0) {
           ctx.fillStyle = '#f87171'; // sizzling fuse once it has landed
           ctx.fillRect(gx - camX - 1, gy - camY - 8, 2, 3);
+        }
+      }
+      // Smoke: the enemy's cloud is nearly solid; your own side's is see-through
+      for (const [cx, cy, cr, left, ct] of w.clouds) {
+        const mineSmoke = (ct === 0 ? 'green' : 'red') === myTeam;
+        const fade = Math.min(1, left * 5, (1 - left) * 8 + 0.2);
+        const t = Date.now() / 1400;
+        for (let i = 0; i < 9; i++) {
+          const a = (i / 9) * Math.PI * 2 + t * (i % 2 ? 1 : -1) * 0.4;
+          const d = i === 0 ? 0 : cr * 0.45;
+          ctx.fillStyle = `rgba(${mineSmoke ? '200,205,210' : '170,175,182'},${(mineSmoke ? 0.4 : 0.86) * fade})`;
+          ctx.beginPath();
+          ctx.arc(cx - camX + Math.cos(a) * d, cy - camY + Math.sin(a) * d, cr * 0.58, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // Air drops: a flare comes down, then a medical crate heals friendlies around it until it runs out
+      for (const [dx, dy, landed, left, fall] of w.drops) {
+        const sx = dx - camX;
+        const sy = dy - camY;
+        if (!landed) {
+          const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 90);
+          ctx.fillStyle = `rgba(239,68,68,${0.25 + 0.25 * pulse})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 16 + 10 * (1 - fall), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#e2e8f0';
+          const h = fall * 60; // the crate drifts down under its parachute
+          ctx.fillRect(sx - 7, sy - 7 - h, 14, 14);
+          ctx.fillStyle = '#dc2626';
+          ctx.fillRect(sx - 1.5, sy - 5 - h, 3, 10);
+          ctx.fillRect(sx - 5, sy - 1.5 - h, 10, 3);
+          ctx.strokeStyle = 'rgba(226,232,240,0.7)';
+          ctx.beginPath();
+          ctx.arc(sx, sy - 28 - h, 16, Math.PI, 0);
+          ctx.stroke();
+          continue;
+        }
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 250);
+        ctx.fillStyle = `rgba(74,222,128,${0.1 + 0.07 * pulse})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 75, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(74,222,128,${0.5 + 0.3 * pulse})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(sx - 9, sy - 9, 18, 18);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx - 9, sy - 9, 18, 18);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(sx - 2, sy - 7, 4, 14);
+        ctx.fillRect(sx - 7, sy - 2, 14, 4);
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillRect(sx - 12, sy + 13, 24 * left, 3); // time left
+      }
+      // Riot shield: a bright arc in front of the soldier
+      for (const u of alive) {
+        if (!u.shield) continue;
+        ctx.strokeStyle = 'rgba(147,197,253,0.9)';
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(u.x - camX, u.y - camY, 24, (u.id === w.me ? input.current.aim : u.aim) - 1.15, (u.id === w.me ? input.current.aim : u.aim) + 1.15);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+      }
+      // Recoil: your fire cone opens as the AR heats up
+      if (you && you.hp > 0 && you.heat > 12) {
+        const sp = (you.heat / 100) * 0.17;
+        ctx.strokeStyle = `rgba(251,191,36,${Math.min(0.6, you.heat / 120)})`;
+        ctx.lineWidth = 1;
+        for (const sgn of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(you.x - camX + Math.cos(input.current.aim + sgn * sp) * 40, you.y - camY + Math.sin(input.current.aim + sgn * sp) * 40);
+          ctx.lineTo(you.x - camX + Math.cos(input.current.aim + sgn * sp) * 150, you.y - camY + Math.sin(input.current.aim + sgn * sp) * 150);
+          ctx.stroke();
         }
       }
       // Explosions
@@ -1193,11 +1272,48 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
               }
             }
           }
+          if (w.uav[0] > 0) {
+            // UAV: enemies show through the fog, ringed in red
+            for (const u of alive) {
+              if (u.team === myTeam) continue;
+              const ex = u.x - camX;
+              const ey = u.y - camY;
+              const g = fc.createRadialGradient(ex, ey, 14, ex, ey, 48);
+              g.addColorStop(0, 'rgba(0,0,0,1)');
+              g.addColorStop(1, 'rgba(0,0,0,0)');
+              fc.fillStyle = g;
+              fc.beginPath();
+              fc.arc(ex, ey, 48, 0, Math.PI * 2);
+              fc.fill();
+            }
+          }
           ctx.drawImage(fogCv, 0, 0);
+          if (w.uav[0] > 0) {
+            ctx.strokeStyle = 'rgba(248,113,113,0.85)';
+            ctx.lineWidth = 1.5;
+            for (const u of alive) {
+              if (u.team === myTeam) continue;
+              ctx.beginPath();
+              ctx.arc(u.x - camX, u.y - camY, 20 + 3 * Math.sin(Date.now() / 150), 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
         }
       }
 
       ctx.restore();
+      // Flashbang: the screen whites out, then fades
+      if (you && you.blind > 0) {
+        ctx.fillStyle = `rgba(255,255,255,${Math.min(1, you.blind / 12)})`;
+        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      }
+      // UAV status
+      if (w.uav[0] > 0 || w.uav[1] > 0) {
+        ctx.font = 'bold 14px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = w.uav[1] > 0 ? '#fca5a5' : '#86efac';
+        ctx.fillText(w.uav[1] > 0 ? `ENEMY UAV OVERHEAD ${Math.ceil(w.uav[1] / 10)}s: they can see you` : `UAV ONLINE ${Math.ceil(w.uav[0] / 10)}s: enemies marked`, VIEW_W / 2, 28);
+      }
       // Minimap: the whole field, your side's soldiers and the point. Enemies stay hidden.
       const mw = 168;
       const mh = (mw * MAP_H) / MAP_W;
@@ -1253,10 +1369,11 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       }
       // Spotting ping: enemies a scoped teammate is picking out at long range show as pulsing red dots on the minimap.
       const scopers = alive.filter((q) => q.team === myTeam && q.scoped);
-      if (scopers.length) {
+      const uavOn = w.uav[0] > 0;
+      if (scopers.length || uavOn) {
         const pulse2 = 0.5 + 0.5 * Math.sin(Date.now() / 200);
         for (const e of alive) {
-          if (e.team === myTeam || !scopers.some((q) => inBeam(q, e, w.scopeVision, w.scopeHalf, q.id === w.me ? input.current.aim : q.aim))) continue;
+          if (e.team === myTeam || !(uavOn || scopers.some((q) => inBeam(q, e, w.scopeVision, w.scopeHalf, q.id === w.me ? input.current.aim : q.aim)))) continue;
           const ex = mx + e.x * k;
           const ey = my + e.y * k;
           ctx.fillStyle = '#f87171';
