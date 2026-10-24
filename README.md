@@ -66,7 +66,7 @@ Every class except the Sniper (who has the tower on E) has a special on **C**. T
 | Class | Special | Details |
 | --- | --- | --- |
 | **Assault** (was Rifleman) | Smoke grenade | 1 per life, refilled at a crate. A 12 s cloud (140 px radius): enemies cannot see in, out of or through it (except point-blank); your side sees through it, so you can push in under cover. The AR is 15 rounds, 3 hits to kill, 8 shots a second; held on full auto it builds recoil and the shots spread (a cone shows on screen), tapping or bursting stays accurate. |
-| **SMG** | Flashbang | 1 per life, refilled at a crate. Enemies within 170 px with a clear line are blinded for 3 s: white screen and almost no sight. Friends are not affected. |
+| **SMG** | Flashbang | 1 per life, refilled at a crate. Enemies within 170 px with a clear line are blinded for 2 s (halved by each repeat flash within 10 s, minimum 0.4 s): white screen and almost no sight. Friends are not affected. |
 | **Medic** | Air drop flare | 1 per life, refilled at a crate. The flare lands, 1.5 s later a medical crate drops and heals friendlies within 75 px at 22 HP/s for 10 s. |
 | **Shotgunner** | Riot shield | 5 s of stopping bullets (it soaks 200 damage, then breaks and the recharge starts early) that arrive from the front (about 130 degrees), walking at 70%; you can still shoot. 30 s recharge after it ends. Explosions are not stopped. |
 | **Squad Leader** (6th class) | UAV | The AR plus a 10-round pistol, 2 grenades, 1 artillery strike. The UAV is called in like an artillery strike (same reach as a grenade): it lifts the fog in a 420 px circle at the cursor for 10 s, showing every enemy in it to your whole side (the enemy gets a warning); 60 s recharge after it ends, and resupply does not refresh it. |

@@ -58,7 +58,7 @@ const WEAPON_ICON: Record<string, string> = { rifleman: 'rifle', smg: 'smg', med
 
 const SPECIALS: Record<string, { icon: string; sub: string; title: string; charges?: boolean; dur?: number; recharge?: number }> = {
   rifleman: { icon: 'smoke', sub: 'smoke', charges: true, title: 'Smoke grenade (C): enemies cannot see into or through the cloud; your side can. Resupply refills it.' },
-  smg: { icon: 'flash', sub: 'flashbang', charges: true, title: 'Flashbang (C): blinds enemies it reaches for 3 seconds. Resupply refills it.' },
+  smg: { icon: 'flash', sub: 'flashbang', charges: true, title: 'Flashbang (C): blinds enemies it reaches for 2 seconds (shorter on repeat). Resupply refills it.' },
   medic: { icon: 'flare', sub: 'air drop', charges: true, title: 'Air drop flare (C): a medical crate lands and heals your side near it for 10 seconds. Resupply refills it.' },
   shotgunner: { icon: 'shield', sub: 'riot shield', dur: 5, recharge: 30, title: 'Riot shield (C): 5 seconds of cover from the front (soaks 200 damage, then breaks), slower walking. 30 second recharge.' },
   squad: { icon: 'uav', sub: 'UAV', dur: 10, recharge: 60, title: 'UAV (C): aim it like an artillery strike; for 10 seconds the fog lifts in a big circle there and your whole side sees every enemy in it. 60 second recharge; resupply does not refresh it.' },

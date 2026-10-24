@@ -32,7 +32,10 @@ export const CFG = {
   SMOKE_S: 12,
   SMOKE_POINT_BLANK: 60, // ... except a target this close
   FLASH_R: 170, // a flashbang blinds enemies this close (with a clear line to it) ...
-  FLASH_S: 3, // ... for this long: white screen and almost no sight
+  FLASH_S: 2, // ... for this long: white screen and almost no sight
+  FLASH_DR: 0.5, // diminishing returns: each flash on someone already flashed lately lasts this fraction of the one before ...
+  FLASH_DR_WINDOW_S: 10, // ... until he has gone this long without being flashed
+  FLASH_MIN_S: 0.4,
   BLIND_VISION: 70,
   UAV_R: 420, // the UAV lifts the fog in a circle this big, called in at the cursor like an artillery strike
   DROP_DELAY_S: 1.5, // medic flare: the air drop lands this long after the flare ...
@@ -646,7 +649,11 @@ function land(w, n, now) {
   else if (n.kind === 'flash') {
     for (const t of w.players.values()) {
       if ((t.team === n.team && !CFG.FRIENDLY_FLASH) || t.hp <= 0 || Math.hypot(t.x - n.x, t.y - n.y) > CFG.FLASH_R || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
-      t.blindUntil = now + CFG.FLASH_S * 1000;
+      if (now - (t.flashAt ?? -1e9) > CFG.FLASH_DR_WINDOW_S * 1000) t.flashStacks = 0;
+      const secs = Math.max(CFG.FLASH_MIN_S, CFG.FLASH_S * CFG.FLASH_DR ** (t.flashStacks ?? 0));
+      t.flashStacks = (t.flashStacks ?? 0) + 1;
+      t.flashAt = now;
+      t.blindUntil = now + secs * 1000;
     }
   }
 }

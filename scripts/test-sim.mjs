@@ -1156,6 +1156,32 @@ test('flashbang blinds enemies, not friends', () => {
   assert.ok(!(r.blindUntil > now), 'it wears off');
 });
 
+test('flashbang diminishing returns: back-to-back flashes get shorter, and it resets after a quiet spell', () => {
+  const w = fresh();
+  const g = mk(w, 'g', 'green', 'smg', 400);
+  const r = mk(w, 'r', 'red', 'rifleman', 520, Math.PI);
+  let n = 0;
+  const flash = (now) => {
+    g.spec = 1;
+    g.lastNade = -1e6;
+    setInput(w, g.id, { dx: 0, dy: 0, aim: 0, range: 120, special: ++n });
+    now = run(w, 0.8, now); // thrown, in the air 0.7 s, lands
+    return [now, (r.blindUntil - now) / 1000];
+  };
+  setInput(w, g.id, { dx: 0, dy: 0, aim: 0, range: 120, special: 0 });
+  let now = run(w, 0.1);
+  let left;
+  [now, left] = flash(now);
+  assert.ok(left > 1.6 && left <= 2, 'first flash is about 2 s: ' + left);
+  [now, left] = flash(now);
+  assert.ok(left > 0.7 && left <= 1, 'the second is half as long: ' + left);
+  [now, left] = flash(now);
+  assert.ok(left > 0.2 && left <= 0.5, 'the third is a quarter: ' + left);
+  now = run(w, 12, now);
+  [now, left] = flash(now);
+  assert.ok(left > 1.6 && left <= 2, 'full length again after a quiet spell: ' + left);
+});
+
 test('riot shield: stops shots from the front for 5 s, then a 30 s recharge', () => {
   const w = fresh();
   const s = mk(w, 's', 'green', 'shotgunner', 520, Math.PI); // faces west
