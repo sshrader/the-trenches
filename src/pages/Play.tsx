@@ -201,12 +201,9 @@ export default function Play() {
           <h1>The Ruins</h1>
           <p className="lede">Two crews hold opposite ends of a ruined city. Use the buildings and wrecks for cover, hold the plaza in the middle, and stay out of the open.</p>
 
-          <div className="top-row">
           <div className="field">
             <label htmlFor="callsign">Callsign (optional)</label>
             <input id="callsign" className="in" value={name} maxLength={16} placeholder="Recruit" autoComplete="off" onChange={(e) => setName(e.target.value)} disabled={useWalletLogin && connected} />
-          </div>
-          <LobbyRoster />
           </div>
 
           {WALLET_LOGIN && (
@@ -220,6 +217,7 @@ export default function Play() {
             </div>
           )}
 
+          <div className="class-row">
           <div className="field wide-field">
             <label>Class</label>
             <div className="classes" role="radiogroup" aria-label="Class">
@@ -230,6 +228,8 @@ export default function Play() {
                 </button>
               ))}
             </div>
+          </div>
+          <LobbyRoster />
           </div>
 
           <div className="sides">

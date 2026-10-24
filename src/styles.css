@@ -226,8 +226,8 @@ b.red { color: var(--red); }
 .hud-slot kbd.k2 { left: auto; right: 4px; }
 .hud-slot small { white-space: pre-line; text-align: center; line-height: 1.15; }
 
-/* callsign on the left, who is on each team to its right */
-.top-row { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; max-width: 760px; margin-bottom: 12px; }
-.top-row .roster { flex: 1 1 320px; margin: 0; max-width: none; }
-.top-row .roster-col { min-height: 0; padding: 8px 12px; }
-.top-row .roster-col ul { max-height: 92px; }
+/* classes on the left, who is on each team to their right */
+.class-row { display: flex; align-items: flex-start; gap: 16px; width: 100%; max-width: 1010px; flex-wrap: wrap; }
+.class-row .wide-field { flex: 1 1 560px; max-width: none; width: auto; }
+.class-row .roster { flex: 0 1 240px; display: grid; grid-template-columns: 1fr; margin: 22px 0 0; }
+.class-row .roster-col ul { max-height: 130px; }
