@@ -28,7 +28,7 @@ const X0 = 13; // the forest starts here (the base exit, columns 8..12, stays op
 // 1. Forest blocks: random trees smoothed into groves, so they come out as clumps with gaps rather than noise.
 for (const [ya, yb] of BLOCKS) {
   const h = yb - ya + 1;
-  let grid = Array.from({ length: h }, () => Array.from({ length: HALF - X0 }, () => rnd() < 0.44));
+  let grid = Array.from({ length: h }, () => Array.from({ length: HALF - X0 }, () => rnd() < 0.43));
   for (let step = 0; step < 3; step++) {
     grid = grid.map((row, y) => row.map((_, x) => {
       let n = 0;
@@ -42,14 +42,26 @@ for (const [ya, yb] of BLOCKS) {
   }
   for (let y = 0; y < h; y++) for (let x = 0; x < grid[0].length; x++) if (grid[y][x]) put(X0 + x, ya + y, 'B');
   // trails through the grove, so nobody has to go the long way round: wiggly, three tiles wide, linking the avenues either side
-  const trails = ri(4, 5);
+  const trails = ri(5, 6);
   for (let t = 0; t < trails; t++) {
     let tx = 17 + Math.floor(((t + 0.5) * (HALF - 20)) / trails) + ri(-3, 3);
     for (let y = ya - 1; y <= yb + 1; y++) {
       tx += rnd() < 0.3 ? ri(-1, 1) : 0;
-      for (let dx = -1; dx <= 1; dx++) if (get(tx + dx, y) === 'B') put(tx + dx, y, rnd() < 0.5 ? 'd' : '.');
+      for (let dx = -1; dx <= 2; dx++) if (get(tx + dx, y) === 'B') put(tx + dx, y, rnd() < 0.5 ? 'd' : '.'); // four tiles wide
     }
   }
+}
+
+// Lone trees and thin spurs snag people on the way past: keep only trees that are part of a real clump (3+ tree neighbours).
+for (let pass = 0; pass < 2; pass++) {
+  const kill = [];
+  for (let y = 2; y < H - 2; y++) for (let x = X0; x < HALF - 1; x++) {
+    if (get(x, y) !== 'B') continue;
+    let n = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && get(x + dx, y + dy) === 'B') n++;
+    if (n < 3) kill.push([x, y]);
+  }
+  for (const [x, y] of kill) put(x, y, '.');
 }
 
 // 2. Avenues: open ground with a dirt track down the middle and a few logs and boulders for cover (always leaving three open rows).

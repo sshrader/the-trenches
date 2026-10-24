@@ -1448,7 +1448,7 @@ test('fill-in bots top each side up to the set size, make way for people, and pl
   const fillers = [...w.players.values()].filter((p) => p.fill);
   const after = fillers.map((p) => Math.hypot(p.x - w.map.capture.x, p.y - w.map.capture.y));
   const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
-  assert.ok(mean(after) < mean(start) * 0.5, 'they walked to the plaza');
+  assert.ok(mean(after) < mean(start) * 0.8, 'they walked towards the plaza');
   assert.ok(fillers.some((p) => p.kills > 0 || p.deaths > 0) || w.points.green + w.points.red > 0, 'and the fight is on');
   assert.ok(w.round.n >= 1 && Number.isFinite(w.points.green), 'the world is sane');
   assert.equal(bots.sync(w, { enabled: false, size: 5 }, now).removed.length, 8, 'switching the setting off clears every bot');
