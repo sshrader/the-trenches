@@ -8,3 +8,5 @@ Name the files exactly like this (any of .png .webp .svg):
   heart                                    next to your health bar
 
 In use now: ammo.png (stands in for every weapon), grenade.png, artillery.png, special.png (stands in for nest, medkit, bazooka and clinic). Add rifle.png, nest.png, etc. to give any of those their own art.
+
+Class specials now have their own art: flash.png (SMG flashbang), smoke.png (Assault smoke grenade), flare.png (Medic air drop), shield.png (Shotgunner riot shield), uav.png (Squad Leader UAV) and tower.png (Sniper tower).
