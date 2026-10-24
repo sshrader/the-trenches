@@ -224,3 +224,4 @@ b.red { color: var(--red); }
 .capbar .pts b.green { color: #bbf7d0; }
 .capbar .pts b.red { color: #fecaca; }
 .hud-slot kbd.k2 { left: auto; right: 4px; }
+.hud-slot small { white-space: pre-line; text-align: center; line-height: 1.15; }

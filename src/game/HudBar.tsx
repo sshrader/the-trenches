@@ -82,7 +82,7 @@ export default function HudBar({ h }: { h: Hud }) {
           <Slot
             icon="tower"
             value={h.myTowerProg > 0 ? 'taking down' : h.myElev ? 'up' : h.myNearTower ? 'climb' : h.myTowerUp ? 'built' : 'build'}
-            sub={h.myTowerUp ? 'B: dismantle' : 'tower'}
+            sub={h.myElev ? 'E: climb down' : h.myTowerUp ? 'E: climb\nB: dismantle' : 'E: build tower'}
             keyHint="E"
             keyHint2={h.myTowerUp ? 'B' : undefined}
             active={h.myElev}
