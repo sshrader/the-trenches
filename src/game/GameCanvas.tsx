@@ -1286,17 +1286,56 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         ctx.fillStyle = 'rgba(255,255,255,0.8)';
         ctx.fillRect(sx - 12, sy + 13, 24 * left, 3); // time left
       }
-      // Riot shield: a bright arc in front of the soldier
+      // Riot shield: a curved ballistic plate held out in front, with a clear viewport slit and a rim that shows its wear
       for (const u of alive) {
         if (!u.shield) continue;
-        const hpF = Math.max(0.1, Math.min(1, u.shieldHp / 200));
-        ctx.strokeStyle = hpF > 0.5 ? 'rgba(147,197,253,0.9)' : hpF > 0.25 ? 'rgba(253,224,71,0.9)' : 'rgba(248,113,113,0.9)'; // cracks toward red as it wears down
-        ctx.lineWidth = 2 + 4 * hpF;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(u.x - camX, u.y - camY, 24, (u.id === w.me ? input.current.aim : u.aim) - 1.15, (u.id === w.me ? input.current.aim : u.aim) + 1.15);
-        ctx.stroke();
+        const hpF = Math.max(0.05, Math.min(1, u.shieldHp / 200));
+        const a = u.id === w.me ? input.current.aim : u.aim;
+        const cx = u.x - camX, cy = u.y - camY, R = 25, half = 0.95;
+        const rim = hpF > 0.5 ? '#93c5fd' : hpF > 0.25 ? '#fde047' : '#f87171'; // the rim goes red as it wears down
+        ctx.save();
         ctx.lineCap = 'butt';
+        ctx.shadowColor = 'rgba(0,0,0,0.55)';
+        ctx.shadowBlur = 6;
+        ctx.strokeStyle = '#0f1417'; // dark outline
+        ctx.lineWidth = 11;
+        ctx.beginPath(); ctx.arc(cx, cy, R, a - half, a + half); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#3b4650'; // gunmetal plate
+        ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.arc(cx, cy, R, a - half, a + half); ctx.stroke();
+        ctx.strokeStyle = rim; // outer rim, a thin bright edge
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(cx, cy, R + 4, a - half, a + half); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.28)'; // sheen
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(cx, cy, R + 1.5, a - half * 0.8, a + half * 0.2); ctx.stroke();
+        // the viewport: a clear slit in the middle of the plate
+        ctx.strokeStyle = 'rgba(147,210,255,0.85)';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(cx, cy, R, a - 0.2, a + 0.2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(cx, cy, R + 1, a - 0.16, a + 0.04); ctx.stroke();
+        // rivets
+        ctx.fillStyle = '#aab4bd';
+        for (const k of [-0.75, -0.5, 0.5, 0.75]) {
+          ctx.beginPath(); ctx.arc(cx + Math.cos(a + k) * R, cy + Math.sin(a + k) * R, 1.3, 0, Math.PI * 2); ctx.fill();
+        }
+        // cracks appear once the plate is badly hurt
+        if (hpF < 0.5) {
+          ctx.strokeStyle = 'rgba(15,20,23,0.9)';
+          ctx.lineWidth = 1;
+          for (const k of [-0.5, 0.35, 0.65]) {
+            const ax = cx + Math.cos(a + k) * (R - 4), ay = cy + Math.sin(a + k) * (R - 4);
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(ax + Math.cos(a + k + 0.5) * 4, ay + Math.sin(a + k + 0.5) * 4 + 1);
+            ctx.lineTo(ax + Math.cos(a + k) * 8, ay + Math.sin(a + k) * 8 - 1);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
       }
       // Recoil: your fire cone opens as the AR heats up
       if (you && you.hp > 0 && you.heat > 12) {
