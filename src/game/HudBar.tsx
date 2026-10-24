@@ -70,7 +70,7 @@ const REWARDS = [
   null,
   { icon: 'uav', sub: 'UAV', title: 'Kill-streak UAV (Z): for 8 seconds the whole map is lit and every enemy shows, on the screen and the minimap.' },
   { icon: 'predator', sub: 'Predator', title: 'Predator missile (Z): you steer it with the mouse; the enemy gets no warning. Click or Z again to detonate. You stand still while you fly it.' },
-  { icon: 'heli', sub: 'Heli', title: 'Attack helicopter (Z): fly it for 5 seconds with WASD, mouse to aim, click for the minigun, G for rockets. You stand still while you fly it.' },
+  { icon: 'heli', sub: 'Heli', title: 'Attack helicopter (Z): fly it for 15 seconds with WASD, mouse to aim, click for the minigun, G for rockets. You stand still while you fly it.' },
 ];
 
 /** The kill-streak reward you have earned (3 kills: UAV, 5: Predator, 7: helicopter). Z spends the best one; dying loses them. */

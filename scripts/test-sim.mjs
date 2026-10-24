@@ -1608,7 +1608,7 @@ test('Predator can be steered: it turns toward the aim, not instantly', () => {
   assert.ok(!a.control || Math.abs(a.control.aim - Math.PI / 2) < 0.05, 'now pointing the new way');
 });
 
-test('attack helicopter: flies 5 s, its minigun kills, it ends on time', () => {
+test('attack helicopter: flies 15 s, its minigun kills, it ends on time', () => {
   const w = fresh();
   const a = mk(w, 'a', 'green', 'rifleman', 400);
   const e = mk(w, 'e', 'red', 'rifleman', 800);
@@ -1624,8 +1624,8 @@ test('attack helicopter: flies 5 s, its minigun kills, it ends on time', () => {
   assert.equal(a.x, sx, 'the soldier himself stands still');
   assert.ok(a.control.x > sx + 100, 'the helicopter moved');
   assert.ok(e.hp < 100 || e.hp <= 0, 'the minigun hurt him');
-  for (let i = 0; i < 60; i++) { now += 50; step(w, 0.05, now); }
-  assert.equal(a.control, null, 'the 5 seconds are up');
+  for (let i = 0; i < 300; i++) { now += 50; step(w, 0.05, now); }
+  assert.equal(a.control, null, 'the 15 seconds are up');
 });
 
 console.log(`\n${n} checks passed`);

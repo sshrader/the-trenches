@@ -90,7 +90,7 @@ export const CFG = {
   MISSILE_RADIUS: 170,
   MISSILE_LETHAL: 90,
   MISSILE_VISION: 260, // the owner's side sees this far around the missile
-  HELI_S: 5, // attack helicopter flight time
+  HELI_S: 15, // attack helicopter flight time
   HELI_SPEED: 210,
   HELI_VISION: 340,
   HELI_FIRE_MS: 55, // minigun
