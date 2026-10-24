@@ -20,7 +20,7 @@ export const CFG = {
   CLASSES: {
     rifleman: { label: 'Rifleman', weapon: 'rifle', mag: 8, reloadS: 2, fireMs: 700, damage: 50, speed: 760, life: 1.5 }, // two hits kill, longest reach
     smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6 }, // five hits kill, short reach
-    sniper: { label: 'Sniper', weapon: 'sniper', mag: 5, reloadS: 3, fireMs: 1300, damage: 100, speed: 2600, life: 0.65, grenades: 1, arty: 0 }, // one hit kills; hold scope to see far, but slow, only 5 rounds, no artillery strike, and each shot gives him away
+    sniper: { label: 'Sniper', weapon: 'sniper', mag: 5, reloadS: 3, fireMs: 1300, damage: 100, speed: 2600, life: 0.65, grenades: 1, arty: 0, side: { weapon: 'pistol', mag: 8, reloadS: 1.5, fireMs: 350, damage: 20, speed: 600, life: 0.5 } }, // one hit kills; hold scope to see far, but slow, only 5 rounds, a weak 8-round pistol to swap to, no artillery strike, and each shot gives him away
     shotgunner: { label: 'Shotgunner', weapon: 'shotgun', mag: 5, reloadS: 2.5, fireMs: 450, damage: 25, falloff: [80, 200, 0.2], speed: 700, life: 0.28, pellets: 8, spread: 0.2, hp: 140, staminaX: 1.5, side: { weapon: 'pistol', mag: 12, reloadS: 1.5, fireMs: 280, damage: 20, speed: 600, life: 0.55 } }, // 140 HP, 8-pellet shotgun (deadly up close, 5 shells, quicker than the rifle, slower than the SMG) and a pistol to swap to
     medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, // heals teammates next to him
   },
@@ -585,7 +585,7 @@ export function step(w, dt, now = Date.now()) {
       if (p.respawnAt && now >= p.respawnAt) respawn(w, p, now);
       continue;
     }
-    p.scoped = p.cls === 'sniper' && p.scope; // holding the scope: sees farther, moves slowly, no sprint
+    p.scoped = p.cls === 'sniper' && p.scope && p.weapon === 'main'; // holding the scope: sees farther, moves slowly, no sprint
     const len = Math.hypot(p.dx, p.dy);
     const sprinting = !p.scoped && p.sprint && len > 0 && !p.winded && p.stamina > 0;
     if (sprinting) {
@@ -647,7 +647,7 @@ export function step(w, dt, now = Date.now()) {
       const c = Math.cos(p.aim);
       const s = Math.sin(p.aim);
       w.shots.push([Math.round(p.x), Math.round(p.y), p.id]);
-      if (p.cls === 'sniper') p.revealUntil = now + CFG.SNIPER_REVEAL_S * 1000; // the flash gives him away
+      if (p.cls === 'sniper' && p.weapon === 'main') p.revealUntil = now + CFG.SNIPER_REVEAL_S * 1000; // the flash gives him away
       // a shotgun fires a spread of pellets; everything else fires one bullet
       for (let i = 0; i < (k.pellets ?? 1); i++) {
         const a = p.aim + (k.pellets ? (w.rng() * 2 - 1) * k.spread : 0);

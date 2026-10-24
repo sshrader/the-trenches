@@ -57,7 +57,7 @@ Press Enter to type a message to **everyone**; Tab inside the box switches to **
 Sniper rounds punch through light cover (barricades and rubble) but still stop at buildings, wrecks and the map edge, so a sniper can shoot through the clutter that blocks everyone else.
 
 
-One-hit kill, 5 rounds, 3 s reload, slow fire (1.3 s), 1 grenade, no artillery strike, max 2 per side (`CFG.MAX_SNIPERS`). Hold the **right mouse button** to scope: the side's fog opens to `CFG.SCOPE_VISION` (680 px) around him, but he moves at 35% speed and cannot sprint. Each shot reveals him to the enemy through the fog for 1.6 s (`CFG.SNIPER_REVEAL_S`).
+One-hit kill, 5 rounds, 3 s reload, slow fire (1.3 s), a sidearm pistol (8 rounds, 20 damage; mouse wheel or Q swaps, and the scope only works with the rifle), 1 grenade, no artillery strike, max 2 per side (`CFG.MAX_SNIPERS`). Hold the **right mouse button** to scope: the side's fog opens to `CFG.SCOPE_VISION` (680 px) around him, but he moves at 35% speed and cannot sprint. Each shot reveals him to the enemy through the fog for 1.6 s (`CFG.SNIPER_REVEAL_S`).
 
 ## Bazooka pickups
 
