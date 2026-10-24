@@ -223,6 +223,19 @@ for (const [sx, sy, wallY, inner, laneY] of [[14, 15, 15, [16, 17], [16, 17]], [
 for (let y = 1; y < H - 1; y++) for (let x = 8; x <= 12; x++) if ('cYK'.includes(left[y][x] ?? '.')) left[y][x] = null;
 for (let i = props.length - 1; i >= 0; i--) if (['car', 'debris'].includes(props[i].kind) && props[i].x <= 12) props.splice(i, 1);
 
+// Wrecks must be whole: clearing a lane or the base exit can remove a car's picture but leave part of its footprint solid (an invisible wall).
+// Drop any car that lost tiles, then any wreck tile that no car covers.
+const covered = new Set();
+for (let i = props.length - 1; i >= 0; i--) {
+  const q = props[i];
+  if (q.kind !== 'car') continue;
+  let whole = true;
+  for (let dy = 0; dy < q.h; dy++) for (let dx = 0; dx < q.w; dx++) if (left[q.y + dy]?.[q.x + dx] !== 'K') whole = false;
+  if (!whole) props.splice(i, 1);
+  else for (let dy = 0; dy < q.h; dy++) for (let dx = 0; dx < q.w; dx++) covered.add((q.y + dy) * W + q.x + dx);
+}
+for (let y = 0; y < H; y++) for (let x = 0; x < W / 2; x++) if (left[y][x] === 'K' && !covered.has(y * W + x)) left[y][x] = null;
+
 for (let y = 0; y < H; y++) {
   for (let x = 0; x < W / 2; x++) {
     if (left[y][x]) {

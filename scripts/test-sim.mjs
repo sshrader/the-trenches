@@ -599,6 +599,8 @@ test('spawn protection: enemies cannot enter, soldiers at home are safe and cann
   // Once green steps out of the zone he can be hurt and can fire.
   setInput(w, g.id, { dx: 0, dy: 0, aim: 0, fire: false });
   place(g, edge + 30, LANE, 0);
+  r.ammo = CFG.CLASSES.rifleman.mag; // (the 15-round magazine ran dry above)
+  r.reloadLeft = 0;
   setInput(w, r.id, { dx: 0, dy: 0, aim: Math.PI, fire: true });
   now = run(w, 2, now);
   assert.ok(g.hp < CFG.HP, 'outside the zone he can be hurt');
