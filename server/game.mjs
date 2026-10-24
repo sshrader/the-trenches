@@ -41,6 +41,7 @@ const SAY = ['', 'Cover me!', "I'll cover you!", 'Throw a grenade!', 'Call in ar
 const sockets = new Map(); // player id -> ws
 const byWallet = new Map(); // wallet -> ws
 const perIp = new Map();
+const adminTries = new Map(); // ip -> failed /admin attempts
 
 export const onlineCount = () => [...world.players.values()].filter((p) => !p.isBot).length;
 
@@ -219,6 +220,40 @@ export function attachGame(server) {
         const text = String(m.text ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, 120);
         if (!text || nowMs - (me.lastChat || 0) < 800) return;
         me.lastChat = nowMs;
+        if (text.startsWith('/')) {
+          // chat commands (never shown to anyone else, so a typed password cannot leak into the chat log)
+          const reply = (msg) => send(ws, { t: 'chat', id: 0, name: 'Server', team: me.team, text: msg, mode: 'all' });
+          const [cmd, ...rest] = text.slice(1).split(/\s+/);
+          const arg = rest.join(' ').trim();
+          if (cmd.toLowerCase() === 'admin') {
+            const want = process.env.ADMIN_TOKEN || '';
+            const key = `${ip}`;
+            const tries = adminTries.get(key) || { n: 0, until: 0 };
+            if (nowMs < tries.until) return reply('Too many tries. Wait a minute.');
+            const ok = want.length >= 12 && arg.length === want.length && crypto.timingSafeEqual(Buffer.from(arg), Buffer.from(want));
+            if (!ok) {
+              tries.n++;
+              if (tries.n >= 5) { tries.until = nowMs + 60_000; tries.n = 0; }
+              adminTries.set(key, tries);
+              return reply('Wrong password.');
+            }
+            adminTries.delete(key);
+            me.admin = true;
+            console.log(`[admin] ${me.name} unlocked admin commands`);
+            return reply('Admin unlocked. /bots 5 = fill each side to 5, /bots 0 = no bots, /bots = show the setting.');
+          }
+          if (cmd.toLowerCase() === 'bots' && me.admin) {
+            if (arg !== '') {
+              const n = Number(arg);
+              if (!Number.isInteger(n) || n < 0 || n > 15) return reply('Use /bots followed by a number from 0 to 15.');
+              setBotSettings(n === 0 ? { enabled: false } : { enabled: true, size: n });
+              console.log(`[admin] ${me.name} set bots to ${n}`);
+            }
+            const st = getBotSettings();
+            return reply(st.enabled ? `Bots on: each side is filled to ${st.size} soldiers (${st.bots} bots in play now).` : 'Bots off.');
+          }
+          return reply('Unknown command.');
+        }
         const teamOnly = m.mode === 'team';
         const raw = JSON.stringify({ t: 'chat', id: me.id, name: me.name, team: me.team, text, mode: teamOnly ? 'team' : 'all' });
         for (const [pid, sock] of sockets) {
