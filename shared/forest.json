@@ -1,0 +1,181 @@
+{
+ "name": "The Forest",
+ "theme": "forest",
+ "tile": 32,
+ "rows": [
+  "########################################################################################################################",
+  "#TTTTTTc..d...................wwwY....................................................Ywww...................d..cTTTTTT#",
+  "#TTTTTT...d..BB.BB.ddBBBB...BBBwww.BBBBBBg..BBBBBBBBBBd..BBBBBB..dBBBBBBBBBB..gBBBBBB.wwwBBB...BBBBdd.BB.BB..d...TTTTTT#",
+  "#TTTTTT...d..B.ggB.d.BBB.......www.BBBBBgg.......Y..BB..dBB..BBd..BB..Y.......ggBBBBB.www.......BBB.d.Bgg.B..d...TTTTTT#",
+  "#TTTTTT.g.d..BBggBg.dBBB........wwwBBBBBBg...............B....B...............gBBBBBBwww........BBBd.gBggBB..d.g.TTTTTT#",
+  "#TTTTTT...d..BBBBBgddBBB........www....BBd....................................dBB....www........BBBddgBBBBB..d...TTTTTT#",
+  "#TTTTTTc..d..BBBggg.dBB......B..www.....B....B........c..........c........B....B.....www..B......BBd.gggBBB..d..cTTTTTT#",
+  "#TTTTTTc..d..BBggg............gwww..........BBB.....BBc..........cBB.....BBB..........wwwg............gggBB..d..cTTTTTT#",
+  "#TTTTTT...d..B..........BB....gwwwcc.....gggBBB.....BB............BB.....BBBggg.....ccwwwg....BB..........B..d...TTTTTT#",
+  "#TTTTTT...g..B........BBBB...Ywww..B.....gg..........B............B..........gg.....B..wwwY...BBBB........B..g...TTTTTT#",
+  "#TTTTTT...d..B.......BBBB....YwwwgdBBB...gggg..............................gggg...BBBdgwwwY....BBBB.......B..d...TTTTTT#",
+  "#TTTTTT...d..B.......BBBB.....wwwggBBBB..gggg.Y..gg..g............g..gg..Y.gggg..BBBBggwww.....BBBB.......B..d...TTTTTT#",
+  "#TTTTTTc..d..B.......BBBBBBBBBwwwgg.BBcccgggg..ggggg.g.gd......dg.g.ggggg..ggggcccBB.ggwwwBBBBBBBBB.......B..d..cTTTTTT#",
+  "#TTTTTTc..d..BB.....dBBBBBBBBBwwwgggBBBBBggggg.gggBB.gBg........gBg.BBggg.gggggBBBBBgggwwwBBBBBBBBBd.....BB..d..cTTTTTT#",
+  "#TTTTTT...d..BBB.YY.dBBBBBBBBBwwwgggBBBBBggggggggBBBBBB.ddB..Bdd.BBBBBBggggggggBBBBBgggwwwBBBBBBBBBd.YY.BBB..d...TTTTTT#",
+  "#TTTTTT...d...ccc..........gg.wwwggg.....gggggg.ggg..................ggg.gggggg.....gggwww.gg..........ccc...d...TTTTTT#",
+  "#TTTTTT...d..dc..dddddddddddddwwwgggddddddddddddddddddddddddddddddddddddddddddddddddgggwwwddddddddddddd..cd..d...TTTTTT#",
+  "#TTTTTT...d..dc..dddddddddddd.wwwdddggddd....dddddddddddddddddddddddddddddd....dddggdddwww.dddddddddddd..cd..d...TTTTTT#",
+  "#TTTTTTc..d...ggg...g.g.......www.ggg.ggg..........ccc............ccc..........ggg.ggg.www.......g.g...ggg...d..cTTTTTT#",
+  "#TTTTTTc..d..BBBBBgggBBBBBBBBwww.BBBBBBggdBBB.ddBBBBdd.BBBBBBBBBB.ddBBBBdd.BBBdggBBBBBB.wwwBBBBBBBBgggBBBBB..d..cTTTTTT#",
+  "#TTTTTT...d..BB.BBdggBBBBBB..www..gggBBggdB....c.....d.dBBB..BBBd.d.....c....BdggBBggg..www..BBBBBBggdBB.BB..d...TTTTTT#",
+  "#TTTTTT...d..B...B.ggBBBBBB.www.....ggBdd.B....c......dggg....gggd......c....B.ddBgg.....www.BBBBBBgg.B...B..d...TTTTTT#",
+  "#TTTTTT...d..B.......BBBBBBwwwY.gg.....dd.B....c......ggggg..ggggg......c....B.dd.....gg.YwwwBBBBBB.......B..d...TTTTTT#",
+  "#TTTTTT...dg.BB....d.BBBBBwwwggggBgg...........BB.....gggggggggggg.....BB...........ggBggggwwwBBBBB.d....BB.gd...TTTTTT#",
+  "#TTTTTTc..d..BB...Bd....BBwwwggg.Bgg...........BB...gggggggggggggggg...BB...........ggB.gggwwwBB....dB...BB..d..cTTTTTT#",
+  "#TTTTTTc..d..BB..gg.......wwwggggBgg.................gggggggggggggg.................ggBggggwww.......gg..BB..d..cTTTTTT#",
+  "#TTTTTT...d..BB.gggg.....Ywwwggggggg............ggg.ggggg.g..g.ggggg.ggg............gggggggwwwY.....gggg.BB..d...TTTTTT#",
+  "#TTTTTT...d.....g.gg......wwwg..ggggg...........ggg.d.ggg......ggg.d.ggg...........ggggg..gwww......gg.g.....d...TTTTTT#",
+  "#TTTTTT...g....ggggg......www...ggggg.....BBg...ggg..d............d..ggg...gBB.....ggggg...www......ggggg....g...TTTTTT#",
+  "#TTTTTT...dg....ggg........www...ggg..Bd..BBBd.....c................c.....dBBB..dB..ggg...www........ggg....gd...TTTTTT#",
+  "#TTTTTTc..d.....g.....gBBBB.wwwd.....BB.cdBBB.....gcgdd.Y......Y.ddgcg.....BBBdc.BB.....dwww.BBBBg.....g.....d..cTTTTTT#",
+  "#TTTTTTc..d.....BBd.dBBBBBBBBwwwYBBBBBBBcd.BB..dB.gcg..............gcg.Bd..BB.dcBBBBBBBYwwwBBBBBBBBd.dBB.....d..cTTTTTT#",
+  "#TTTTTT...d.....g.....ggg....wwwgg...........dddddggg.YY........YY.gggddddd...........ggwww....ggg.....g.....d...TTTTTT#",
+  "#TTTTTT...d.gddddddddddddddddgwwwYddddd......ddddddddYddddddddddddYdddddddd......dddddYwwwgddddddddddddddddg.d...TTTTTT#",
+  "#TTTTTT...d..ddddddddddddddddgwwwgddddg...........dddddgdgddddgdgddddd...........gddddgwwwgdddddddddddddddd..d...TTTTTT#",
+  "#TTTTTT...d...................www..gggg......gggg....Yggggg..gggggY....gggg......gggg..www...................d...TTTTTT#",
+  "#TTTTTTc..d..BBB.gggBBB.ddBBBYwwwd.ggggggBBBgggBg....YYggg....gggYY....gBgggBBBgggggg.dwwwYBBBdd.BBBggg.BBB..d..cTTTTTT#",
+  "#TTTTTTc..d..BB.g.ggg.B.d.BBB.www..ggg....BBBdggB...d.gg.gg..gg.gg.d...BggdBBB....ggg..www.BBB.d.B.ggg.g.BB..d..cTTTTTT#",
+  "#TTTTTT...d..BB...ggg..B.ddB.www..........BBBd.....c...gYg....gYg...c.....dBBB..........www.Bdd.B..ggg...BB..d...TTTTTT#",
+  "#TTTTTT...d..BB.ggggg........www..........BBB......c.....gg..gg.....c......BBB..........www........ggggg.BB..d...TTTTTT#",
+  "#TTTTTT...d..BB..gg.........ggwwwd........BBB...gggc....ggg..ggg....cggg...BBB........dwwwgg.........gg..BB..d...TTTTTT#",
+  "#TTTTTT...d..B.......BB.....ggwww........gBBB...ggg..dggggg..gggggd..ggg...BBBg........wwwgg.....BB.......B..d...TTTTTT#",
+  "#TTTTTTc..d..B......BBBB.....Bwww........ggBB...ggg..dggggggggggggd..ggg...BBgg........wwwB.....BBBB......B..d..cTTTTTT#",
+  "#TTTTTTc..d..B......BBB.....BBBwww.......gBBBcccc....dggggggggggggd....ccccBBBg.......wwwBBB.....BBB......B..d..cTTTTTT#",
+  "#TTTTTT...d..B..ccBBBB..ggg.....www...cc.BBBBBd..ggg.dB..........Bd.ggg..dBBBBB.cc...www.....ggg..BBBBcc..B..d...TTTTTT#",
+  "#TTTTTT...d..B...BBBB...ggg....Ywww....BBBBBBB...gBg..BBBB....BBBB..gBg...BBBBBBB....wwwY....ggg...BBBB...B..d...TTTTTT#",
+  "#TTTTTT...d..B...BBBB...gg......www...BBBBBBgg..ggBg..BBB......BBB..gBgg..ggBBBBBB...www......gg...BBBB...B..d...TTTTTT#",
+  "#TTTTTT...d..BBBBBBB...d.....g..www.BBBBBBBBgg.dggBg..ggg......ggg..gBggd.ggBBBBBBBB.www..g.....d...BBBBBBB..d...TTTTTT#",
+  "#TTTTTTc..d..BBBBBBBB.B.dd..gBBwwwdBBBBBBBBBBBB.ggggd..............dgggg.BBBBBBBBBBBBdwwwBBg..dd.B.BBBBBBBB..d..cTTTTTT#",
+  "#TTTTTTc..d...gg............g..wwwYY.gg....gg....gggYYccc......cccYYggg....gg....gg.YYwww..g............gg...d..cTTTTTT#",
+  "#TTTTTT...d...c..gggddddddddddwwwddddddddddddddddddddd..dddddddd..dddddddddddddddddddddwwwddddddddddggg..c...d...TTTTTT#",
+  "#TTTTTT...d...c..gdgdddddddddwwwdddddddddddd...ddddddggddddddddddggdddddd...ddddddddddddwwwdddddddddgdg..c...d...TTTTTT#",
+  "#TTTTTT.g.d...cccggg...ggg..wwwggg.......YY.........ggggg......ggggg.........YY.......gggwww..ggg...gggccc...d.g.TTTTTT#",
+  "#TTTTTT...d..BBg..ddBBBBBBBwwwBgggBBBB...BBB...BBBBBBBgggBBBBBBgggBBBBBBB...BBB...BBBBgggBwwwBBBBBBBdd..gBB..d...TTTTTT#",
+  "#TTTTTTc..d..BgY.gd.BBBBBgYwwwBBgg.....d.BB.......BBBBggdBBBBBBdggBBBB.......BB.d.....ggBBwwwYgBBBBB.dg.YgB..d..cTTTTTT#",
+  "#TTTTTTc..d..BggggddB....gYwww..........dBB........BBBggdBBBBBBdggBBB........BBd..........wwwYg....BddggggB..d..cTTTTTT#",
+  "#TTTTTT...d..BBggBdd......gwwwY........d.B.........BBB.d.BBBBBB.d.BBB.........B.d........Ywwwg......ddBggBB..d...TTTTTT#",
+  "#TTTTTT...d..BBBBBd......ggwww......gg.ddccc.......BB...dBBBBBBd...BB.......cccdd.gg......wwwgg......dBBBBB..d...TTTTTT#",
+  "#TTTTTT...d..BBBBB...B....gwww....gg.gg................YYBBBBBBYY................gg.gg....wwwg....B...BBBBB..d...TTTTTT#",
+  "#TTTTTT...d..BBBBBgggB....Ywww....ggggg.YYgg...ggg....d.gBYYYYBg.d....ggg...ggYY.ggggg....wwwY....BgggBBBBB..d...TTTTTT#",
+  "#TTTTTTc..d..BBBB.gggB.ccccYwww...gg.gg..gg....gggg...dggBBBBBBggd...gggg....gg..gg.gg...wwwYcccc.Bggg.BBBB..d..cTTTTTT#",
+  "#TTTTTTc..d..BBBB.ggg.......wwwggg.gg....ggg...YYgg....gBBBBBBBBg....ggYY...ggg....gg.gggwww.......ggg.BBBB..d..cTTTTTT#",
+  "#TTTTTT...d..BBBB..........gwwwggg......ggg...gggggg..ggBBBBBBBBgg..gggggg...ggg......gggwwwg..........BBBB..d...TTTTTT#",
+  "#TTTTTT...d..BBBB.....BB..ggwwwggg......ggg....ggggg...BBBBBBBBBB...ggggg....ggg......gggwwwgg..BB.....BBBB..d...TTTTTT#",
+  "#TTTTTT...d..BBBBB...BBBB.g.www...BBBB..ggg...........gBBBBBBBBBBg...........ggg..BBBB...www.g.BBBB...BBBBB..d...TTTTTT#",
+  "#TTTTTT...d..BBBBd.dBBBBBBBgwwwY.dBBBB...BBBBBBBB.YY..dBBBBBBBBBBd..YY.BBBBBBBB...BBBBd.YwwwgBBBBBBBd.dBBBB..d...TTTTTT#",
+  "#TTTTTTc..d................www............................................................www................d..cTTTTTT#",
+  "########################################################################################################################"
+ ],
+ "props": [
+  {
+   "kind": "tent",
+   "x": 40,
+   "y": 33,
+   "w": 4,
+   "h": 2
+  },
+  {
+   "kind": "tent",
+   "x": 76,
+   "y": 33,
+   "w": 4,
+   "h": 2,
+   "flip": true
+  }
+ ],
+ "roads": {
+  "v": [],
+  "h": []
+ },
+ "crates": [
+  {
+   "x": 464,
+   "y": 1008,
+   "team": "green"
+  },
+  {
+   "x": 432,
+   "y": 912,
+   "team": "green"
+  },
+  {
+   "x": 400,
+   "y": 1648,
+   "team": "green"
+  },
+  {
+   "x": 3376,
+   "y": 1008,
+   "team": "red"
+  },
+  {
+   "x": 3408,
+   "y": 912,
+   "team": "red"
+  },
+  {
+   "x": 3440,
+   "y": 1648,
+   "team": "red"
+  }
+ ],
+ "tents": [
+  {
+   "x": 1344,
+   "y": 1088,
+   "team": "green"
+  },
+  {
+   "x": 2496,
+   "y": 1088,
+   "team": "red"
+  }
+ ],
+ "nests": [
+  {
+   "x": 496,
+   "y": 544,
+   "team": "green"
+  },
+  {
+   "x": 496,
+   "y": 1632,
+   "team": "green"
+  },
+  {
+   "x": 3344,
+   "y": 544,
+   "team": "red"
+  },
+  {
+   "x": 3344,
+   "y": 1632,
+   "team": "red"
+  }
+ ],
+ "capture": {
+  "x": 1920,
+  "y": 1088,
+  "r": 112
+ },
+ "spawns": {
+  "green": {
+   "x0": 32,
+   "x1": 224,
+   "y0": 64,
+   "y1": 2112
+  },
+  "red": {
+   "x0": 3616,
+   "x1": 3808,
+   "y0": 64,
+   "y1": 2112
+  }
+ }
+}

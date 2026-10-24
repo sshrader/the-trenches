@@ -5,7 +5,7 @@
 //   server -> client  {t:'welcome', id, team, players:[{id,name,team}], sb}
 //                     {t:'join', id, name, team} / {t:'leave', id}
 //                     {t:'s', p, b, c, r}    world snapshot every tick (see sim.snapshot)
-//                     {t:'kill', killer, kteam, victim, vteam} / {t:'round', winner}
+//                     {t:'kill', killer, kteam, victim, vteam} / {t:'round', winner} / {t:'map', id} (the series moved to another map)
 //                     {t:'sb', rows}         scoreboard every couple of seconds
 //                     {t:'err', msg}
 import fs from 'node:fs';
@@ -16,8 +16,14 @@ import { blockedCountry } from './guard.mjs';
 import * as sim from './sim.mjs';
 import * as stats from './stats.mjs';
 
-const MAP = JSON.parse(fs.readFileSync(new URL('../shared/map.json', import.meta.url), 'utf8'));
-const world = sim.createWorld(MAP);
+// The maps, played in this order (a best-of-3 on each, then the next one). MAP_ORDER=forest,city overrides it, e.g. to start on the forest.
+const MAPS = {
+  city: JSON.parse(fs.readFileSync(new URL('../shared/map.json', import.meta.url), 'utf8')),
+  forest: JSON.parse(fs.readFileSync(new URL('../shared/forest.json', import.meta.url), 'utf8')),
+};
+const ORDER = (process.env.MAP_ORDER || 'city,forest').split(',').map((s) => s.trim()).filter((id) => MAPS[id]);
+if (!ORDER.length) ORDER.push('city');
+const world = sim.createWorld(MAPS[ORDER[0]], Math.random, { id: ORDER[0], maps: MAPS, order: ORDER });
 const TICK_MS = 50;
 const MAX_PLAYERS = Number(process.env.MAX_PLAYERS || 60);
 const MAX_PER_IP = Number(process.env.MAX_CONN_PER_IP || 4);
@@ -157,7 +163,7 @@ export function attachGame(server) {
         p.joinedAt = Date.now();
         if (wallet) p.wallet = wallet;
         sockets.set(p.id, ws);
-        send(ws, { t: 'welcome', training: TRAINING, id: p.id, team: p.team, players: sim.roster(world), sb: sim.scoreboard(world) });
+        send(ws, { t: 'welcome', training: TRAINING, map: world.mapId, id: p.id, team: p.team, players: sim.roster(world), sb: sim.scoreboard(world) });
         broadcast({ t: 'join', id: p.id, name: p.name, team: p.team });
         return;
       }

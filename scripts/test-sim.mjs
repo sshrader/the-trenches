@@ -1,7 +1,7 @@
 // Plain-Node checks for the simulation.  node scripts/test-sim.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { CFG, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount } from '../server/sim.mjs';
+import { CFG, applyMap, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount } from '../server/sim.mjs';
 
 CFG.FRIENDLY_FIRE = false; // the server ships with these on for testing; the checks below are about normal play
 CFG.FRIENDLY_FLASH = false;
@@ -951,7 +951,7 @@ test('scoped sniper sees a long narrow beam along his aim, not a big circle', ()
   assert.ok(!snapshot(w, n2, 'green').p.some((q) => q[0] === ahead.id), 'and the one behind is lost again');
 });
 
-test('sniper tower: E builds one under him and climbs it; rounds fly over low cover; abandoned or dead = gone', () => {
+test('sniper tower: C builds one under him and climbs it; rounds fly over low cover; abandoned or dead = gone', () => {
   const w = fresh();
   const sn = addPlayer(w, { name: 'sn', want: 'green', cls: 'sniper' });
   const r = addPlayer(w, { name: 'r', want: 'red' });
@@ -1330,6 +1330,95 @@ test('leaving removes the player', () => {
   const a = addPlayer(w, { name: 'a' });
   removePlayer(w, a.id);
   assert.equal(w.players.size, 0);
+});
+
+const forest = JSON.parse(fs.readFileSync(new URL('../shared/forest.json', import.meta.url), 'utf8'));
+const series = () => {
+  const w = createWorld(map, rng, { id: 'city', maps: { city: map, forest }, order: ['city', 'forest'] });
+  addPlayer(w, { name: 'g', want: 'green' });
+  return w;
+};
+/** Play one round to its end (green wins it, or red when `winner` says so) and through the pause. */
+const finishRound = (w, now, winner = 'green') => {
+  w.points[winner] = 10;
+  w.round.left = 0.01;
+  now = run(w, 0.2, now);
+  assert.equal(w.round.state, 'ended');
+  return run(w, CFG.END_MAP_S + 1, now);
+};
+
+test('a map is played as a best of three, then the next map starts with the wins cleared', () => {
+  const w = series();
+  let now = 1000;
+  now = finishRound(w, now, 'green');
+  assert.equal(w.mapId, 'city');
+  assert.equal(w.mapRound, 2);
+  assert.equal(w.wins.green, 1);
+  now = finishRound(w, now, 'red');
+  assert.equal(w.mapId, 'city');
+  assert.equal(w.mapRound, 3);
+  assert.deepEqual([w.wins.green, w.wins.red], [1, 1]);
+  w.points = { green: 10, red: 0 };
+  w.round.left = 0.01;
+  now = run(w, 0.2, now);
+  assert.equal(snapshot(w, now, 'green').r.nx, 'forest', 'the pause names the next map');
+  now = run(w, CFG.END_MAP_S + 1, now);
+  assert.equal(w.mapId, 'forest');
+  assert.equal(w.mapRound, 1);
+  assert.deepEqual([w.wins.green, w.wins.red], [0, 0]);
+  assert.equal(w.rows, forest.rows, 'the world now plays on the forest ground');
+  assert.equal(snapshot(w, now, 'green').r.mp, 'forest');
+  assert.ok([...w.players.values()].every((p) => p.x < forest.spawns.green.x1 + 1), 'everyone respawned in their base');
+});
+
+test('a side that wins two rounds ends the map early, and the series loops back to the first map', () => {
+  const w = series();
+  let now = 1000;
+  now = finishRound(w, now, 'green');
+  assert.equal(w.mapId, 'city');
+  now = finishRound(w, now, 'green'); // 2-0: clinched
+  assert.equal(w.mapId, 'forest');
+  assert.equal(w.mapRound, 1);
+  now = finishRound(w, now, 'red');
+  now = finishRound(w, now, 'red');
+  assert.equal(w.mapId, 'city', 'after the last map it starts over');
+});
+
+test('soldiers hiding in a bush are hidden from the enemy until one gets close, or until they fire', () => {
+  const w = fresh();
+  const spot = { tx: 20, ty: 16 };
+  w.rows = w.rows.slice();
+  w.rows[spot.ty] = w.rows[spot.ty].slice(0, spot.tx) + 'g' + w.rows[spot.ty].slice(spot.tx + 1);
+  const bx = spot.tx * 32 + 16, by = spot.ty * 32 + 16;
+  const hider = addPlayer(w, { name: 'hider', want: 'red' });
+  const seeker = addPlayer(w, { name: 'seeker', want: 'green' });
+  place(hider, bx, by);
+  place(seeker, bx - 300, by); // inside the fog radius, outside the bush reveal radius
+  let now = run(w, 0.1);
+  const has = (snap, id) => snap.p.some((r) => r[0] === id);
+  assert.ok(!has(snapshot(w, now, 'green'), hider.id), 'hidden in the bush');
+  assert.ok(has(snapshot(w, now, 'red'), hider.id), 'his own side still sees him');
+  place(seeker, bx - CFG.BUSH_REVEAL + 20, by);
+  assert.ok(has(snapshot(w, now, 'green'), hider.id), 'revealed when an enemy gets close');
+  place(seeker, bx - 300, by);
+  setInput(w, hider.id, { dx: 0, dy: 0, aim: Math.PI, fire: true });
+  now = run(w, 0.3, now);
+  assert.ok(has(snapshot(w, now, 'green'), hider.id), 'firing from the bush gives him away');
+  setInput(w, hider.id, { dx: 0, dy: 0, aim: Math.PI, fire: false });
+  now = run(w, CFG.BUSH_FIRE_REVEAL_S + 0.5, now);
+  assert.ok(!has(snapshot(w, now, 'green'), hider.id), 'hidden again a moment after he stops');
+});
+
+test('the forest map is playable: bases joined, no tile letters the simulation does not know', () => {
+  assert.equal(forest.rows.length, map.rows.length);
+  assert.equal(forest.rows[0].length, map.rows[0].length);
+  assert.ok(/^[#TdgwcBY.]+$/.test(forest.rows.join('')), 'only forest tile letters');
+  const w = createWorld(forest, rng);
+  applyMap(w, forest, 'forest');
+  assert.ok(!solidAt(w, forest.capture.x, forest.capture.y), 'the point is in the open');
+  for (const t of forest.tents) assert.ok(!solidAt(w, t.x, t.y), 'clinic tents stand on open ground');
+  for (const c of forest.crates) assert.ok(!solidAt(w, c.x, c.y), 'crates are reachable');
+  for (const nst of forest.nests) assert.ok(!solidAt(w, nst.x, nst.y), 'nests are open inside');
 });
 
 console.log(`\n${n} checks passed`);

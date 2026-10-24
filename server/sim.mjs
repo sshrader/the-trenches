@@ -81,6 +81,11 @@ export const CFG = {
   CAP_MAX: 6,
   ROUND_S: 360,
   END_S: 10,
+  ROUNDS_PER_MAP: 3, // a map is played as a best-of series, then the server moves to the next map and the round wins start again
+  MAP_EARLY_END: true, // a side that has won more than half of the series (2 of 3) ends the map without playing the rest
+  END_MAP_S: 14, // the pause after the last round on a map is a little longer: the result, then the next map's name
+  BUSH_REVEAL: 110, // a soldier hiding in a bush is hidden from the enemy until one of them gets this close ...
+  BUSH_FIRE_REVEAL_S: 1.5, // ... or until he fires from it (this long)
   MAX_PER_TEAM: 30,
   ARTY: 1, // artillery strikes per life
   ARTY_DELAY_S: 3, // call-in to impact
@@ -130,9 +135,27 @@ const TEAMS = ['green', 'red'];
 const otherTeam = (t) => (t === 'green' ? 'red' : 'green');
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-export function createWorld(map, rng = Math.random) {
+/** Point the world at a map (the ground, the clinic tents, the crates). Used when the world is made and when the series moves to the next map. */
+export function applyMap(w, map, id = 'map') {
+  w.map = map;
+  w.mapId = id;
+  w.rows = map.rows;
+  w.W = map.rows[0].length;
+  w.H = map.rows.length;
+  w.tile = map.tile;
+  w.tents = map.tents || [];
+  w.crates = (map.crates || []).map((c) => ({ x: c.x, y: c.y, team: c.team, readyAt: 0 }));
+}
+
+/** `opts.maps` is { id: mapData } and `opts.order` the ids in the order they are played; with neither, the one map is replayed. */
+export function createWorld(map, rng = Math.random, opts = {}) {
+  const id = opts.id ?? 'map';
   return {
     map,
+    mapId: id,
+    maps: opts.maps ?? { [id]: map },
+    mapOrder: opts.order ?? [id],
+    mapRound: 1, // which round of the series on this map
     rows: map.rows,
     W: map.rows[0].length,
     H: map.rows.length,
@@ -171,6 +194,8 @@ export const solidAt = (w, px, py) => {
   const c = w.rows[ty][tx];
   return c === '#' || c === 'c' || c === 'B' || c === 'K' || c === 'Y'; // wall, sandbags, ruin, tank wreck, tree
 };
+/** Is this spot in a bush ('g')? A soldier standing in one is hidden from the enemy until they get close (see snapshot). */
+export const inBush = (w, px, py) => w.rows[Math.floor(py / w.tile)]?.[Math.floor(px / w.tile)] === 'g';
 export const blockedAt = (w, x, y, r = CFG.RADIUS) =>
   solidAt(w, x - r, y - r) || solidAt(w, x + r, y - r) || solidAt(w, x - r, y + r) || solidAt(w, x + r, y + r);
 
@@ -508,10 +533,27 @@ function endRound(w, winner) {
     p.fire = false;
   }
   if (winner === 'green' || winner === 'red') w.wins[winner]++;
+  if (seriesOver(w)) w.round.endLeft = CFG.END_MAP_S;
   w.events.push({ t: 'round', winner });
 }
 
+/** Is this the last round on the map? (the set is played out, or one side has clinched it) */
+export function seriesOver(w) {
+  const need = Math.floor(CFG.ROUNDS_PER_MAP / 2) + 1;
+  return w.mapRound >= CFG.ROUNDS_PER_MAP || (CFG.MAP_EARLY_END && (w.wins.green >= need || w.wins.red >= need));
+}
+/** The id of the map that comes after this one. */
+export const nextMapId = (w) => w.mapOrder[(w.mapOrder.indexOf(w.mapId) + 1) % w.mapOrder.length];
+
 function newRound(w, now) {
+  if (seriesOver(w)) {
+    // on to the next map: the round wins start again and everyone respawns on the new ground
+    const id = nextMapId(w);
+    applyMap(w, w.maps[id], id);
+    w.wins = { green: 0, red: 0 };
+    w.mapRound = 1;
+    w.events.push({ t: 'map', id });
+  } else w.mapRound++;
   w.teamKills = { green: 0, red: 0 };
   w.round = { n: w.round.n + 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
@@ -777,6 +819,7 @@ export function step(w, dt, now = Date.now()) {
       const s = Math.sin(p.aim);
       w.shots.push([Math.round(p.x), Math.round(p.y), p.id]);
       if (p.cls === 'sniper' && p.weapon === 'main') p.revealUntil = now + CFG.SNIPER_REVEAL_S * 1000; // the flash gives him away
+      else if (inBush(w, p.x, p.y)) p.revealUntil = now + CFG.BUSH_FIRE_REVEAL_S * 1000; // firing out of a bush gives the position away
       // a shotgun fires a spread of pellets; everything else fires one bullet
       for (let i = 0; i < (k.pellets ?? 1); i++) {
         const a = p.aim + (k.pellets ? (w.rng() * 2 - 1) * k.spread : 0) + (k.recoil ? (w.rng() * 2 - 1) * heat * k.recoil.max : 0);
@@ -1074,9 +1117,13 @@ export function snapshot(w, now = Date.now(), team = null) {
   const vis = (x, y) => !eyes || areas.some((a) => Math.hypot(a.x - x, a.y - y) <= CFG.UAV_R) || canSee(eyes, x, y, 0, walls);
   w.uavAreas = w.uavAreas.filter((a) => now < a.until);
   const areas = team ? w.uavAreas.filter((a) => a.team === team) : []; // where our UAV has lifted the fog
+  // enemies in a bush stay hidden unless one of ours is close, a UAV covers them, or they just fired
+  const watchers = team ? [...w.players.values()].filter((q) => q.team === team && q.hp > 0) : [];
+  const bushHidden = (q) => team && q.team !== team && inBush(w, q.x, q.y) && now >= q.revealUntil && !areas.some((a) => Math.hypot(a.x - q.x, a.y - q.y) <= CFG.UAV_R) && !watchers.some((m) => Math.hypot(m.x - q.x, m.y - q.y) <= CFG.BUSH_REVEAL);
   const p = [];
   for (const q of w.players.values()) {
     if (team && q.team !== team && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
+    if (bushHidden(q)) continue;
     p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0, Math.max(0, Math.ceil((q.blindUntil - now) / 100)), q.spec, Math.max(0, Math.ceil((q.specReadyAt - now) / 1000)), Math.max(0, Math.ceil((q.shieldUntil - now) / 100)), Math.round(q.heat * 100), now < q.shieldUntil ? Math.max(0, Math.round(q.shieldHp)) : 0]);
   }
   const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
@@ -1088,7 +1135,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     sh: CFG.SCOPE_HALF,
     p,
     b,
-    f: w.shots.filter(([x, y, id]) => vis(x, y) || owner(id)?.team === team || (owner(id)?.cls === 'sniper' && now < owner(id).revealUntil)),
+    f: w.shots.filter(([x, y, id]) => (vis(x, y) && !(owner(id) && bushHidden(owner(id)))) || owner(id)?.team === team || now < (owner(id)?.revealUntil ?? 0)),
     g: w.nades.filter((n) => vis(n.x, n.y) || n.team === team).map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0, n.kind === 'smoke' ? 1 : n.kind === 'flash' ? 2 : n.kind === 'flare' ? 3 : 0]),
     a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), 0, Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100]),
     rk: w.rockets.filter((r) => r.team === team || vis(r.x, r.y)).map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.aim * 100) / 100]),
@@ -1102,7 +1149,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,
     pt: [Math.floor(w.points.green), Math.floor(w.points.red)],
-    r: { n: w.round.n, s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
+    r: { n: w.round.n, mp: w.mapId, mr: w.mapRound, mt: CFG.ROUNDS_PER_MAP, nx: w.round.state === 'ended' && seriesOver(w) ? nextMapId(w) : '', s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
   };
 }
 

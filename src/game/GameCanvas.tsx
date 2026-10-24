@@ -1,12 +1,42 @@
 import { useEffect, useRef } from 'react';
 import type { MouseEvent, MutableRefObject } from 'react';
-import map from '../../shared/map.json';
+import { MAPS } from './maps';
+import type { MapData } from './maps';
 import { CLASSES } from './useGame';
 import type { Input, Unit, World } from './useGame';
 
-const TILE = map.tile as number;
-const ROWS = map.rows as string[];
-const COLS = ROWS[0].length;
+// The ground of the map being played. The server names the current map in every snapshot, and applyMap() switches these when it changes.
+let TILE = 32;
+let ROWS: string[] = [];
+let COLS = 0;
+let MAP_W = 0;
+let MAP_H = 0;
+let CAP = { x: 0, y: 0, r: 0 };
+let PROPS: NonNullable<MapData['props']> = [];
+let CRATES: NonNullable<MapData['crates']> = [];
+let TENTS: NonNullable<MapData['tents']> = [];
+let NESTS: NonNullable<MapData['nests']> = [];
+let ROADS: { v: number[][]; h: number[][] } = { v: [], h: [] };
+let THEME = 'city';
+let curMap = '';
+function applyMap(id: string) {
+  if (id === curMap) return;
+  const m = MAPS[id] ?? MAPS.city;
+  curMap = id;
+  TILE = m.tile;
+  ROWS = m.rows;
+  COLS = ROWS[0].length;
+  MAP_W = COLS * TILE;
+  MAP_H = ROWS.length * TILE;
+  CAP = m.capture;
+  PROPS = m.props ?? [];
+  CRATES = m.crates ?? [];
+  TENTS = m.tents ?? [];
+  NESTS = m.nests ?? [];
+  ROADS = m.roads ?? { v: [], h: [] };
+  THEME = m.theme ?? 'city';
+}
+applyMap('city');
 const solidTile = (px: number, py: number) => {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
   if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS.length) return true;
@@ -16,14 +46,7 @@ const solidTile = (px: number, py: number) => {
 const blockedAt = (x: number, y: number, r = 11) => solidTile(x - r, y - r) || solidTile(x + r, y - r) || solidTile(x - r, y + r) || solidTile(x + r, y + r);
 const VIEW_W = 1152; // a wider field of view than before: the camera is zoomed out a little
 const VIEW_H = 720;
-const MAP_W = COLS * TILE;
-const MAP_H = ROWS.length * TILE;
-const CAP = map.capture as { x: number; y: number; r: number };
-type Prop = { kind: string; x: number; y: number; w: number; h: number; flip?: boolean; v?: number };
-const PROPS = ((map as unknown as { props?: Prop[] }).props ?? []) as Prop[];
-const CRATES = ((map as unknown as { crates?: { x: number; y: number; team: string }[] }).crates ?? []);
-const TENTS = ((map as unknown as { tents?: { x: number; y: number; team: string }[] }).tents ?? []);
-const NESTS = ((map as unknown as { nests?: { x: number; y: number; team: string }[] }).nests ?? []);
+type Prop = NonNullable<MapData['props']>[number];
 const SCOPE_ZOOM = 0.82; // a scoped sniper's view pulls back a little (1 = normal) ...
 const SCOPE_PAN = 330; // ... and slides this far toward where the scope points
 /** Is `e` inside the narrow beam a scoped sniper `q` is aiming? */
@@ -38,10 +61,184 @@ const RED = '#f87171';
 const teamColor = (t: string) => (t === 'green' ? GREEN : RED);
 
 // Tiles that belong to a street (painted asphalt) rather than a sidewalk or lot.
-const ROADS = (map as unknown as { roads?: { v: number[][]; h: number[][] } }).roads ?? { v: [], h: [] };
 const onRoad = (tx: number, ty: number) => ROADS.v.some(([a, b]) => tx >= a && tx <= b) || ROADS.h.some(([a, b]) => ty >= a && ty <= b);
 
+// ---- The forest: grass, dirt tracks, a creek, bushes, logs, boulders and trees (drawn from above) ----
+const GRASS = ['#3d5a30', '#3b572e', '#405f33', '#385430', '#3f5c31'];
+const DIRT = ['#6b583b', '#675438', '#6e5b3f', '#65533a', '#6a583c'];
+const tileAt = (tx: number, ty: number) => (ty >= 0 && ty < ROWS.length && tx >= 0 && tx < COLS ? ROWS[ty][tx] : '#');
+function forestGround(ctx: CanvasRenderingContext2D, hash: number, tx: number, ty: number, sx: number, sy: number, dirt = false) {
+  ctx.fillStyle = (dirt ? DIRT : GRASS)[hash % 5];
+  ctx.fillRect(sx, sy, TILE, TILE);
+  const h2 = (tx * 31 + ty * 17) % 11;
+  if (dirt) {
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(sx + 6 + h2, sy + 9, 3, 2); // pebbles and ruts
+    ctx.fillRect(sx + 20 - h2, sy + 22, 2, 2);
+    ctx.fillStyle = 'rgba(255,240,200,0.07)';
+    ctx.fillRect(sx + 3, sy + 25 - h2 / 2, 8, 1);
+  } else {
+    ctx.strokeStyle = 'rgba(20,45,20,0.45)'; // blades of grass
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const gx = sx + ((h2 * 7 + i * 11) % 28) + 2, gy = sy + ((h2 * 5 + i * 13) % 24) + 6;
+      ctx.moveTo(gx, gy);
+      ctx.lineTo(gx - 1, gy - 4);
+      ctx.moveTo(gx + 2, gy);
+      ctx.lineTo(gx + 3, gy - 3);
+    }
+    ctx.stroke();
+    if (h2 === 3) {
+      ctx.fillStyle = '#e8e2a0'; // a little flower
+      ctx.fillRect(sx + 14, sy + 12, 2, 2);
+    }
+  }
+}
+function drawForestTile(ctx: CanvasRenderingContext2D, c: string, tx: number, ty: number, sx: number, sy: number) {
+  const hash = (tx * 7 + ty * 13 + tx * ty) % 9;
+  if (c === 'T') {
+    // the camp floor: trodden earth and boards, with the yellow safety line along its edge
+    ctx.fillStyle = (tx + ty) % 2 ? '#5b4a33' : '#554530';
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(sx, sy + 15, TILE, 1);
+    ctx.fillRect(sx + TILE - 1, sy, 1, TILE);
+    if (tx === 6 || tx === COLS - 7) {
+      ctx.fillStyle = 'rgba(250,204,21,0.7)';
+      ctx.fillRect(tx === 6 ? sx + TILE - 5 : sx + 1, sy, 4, TILE);
+    }
+    return;
+  }
+  if (c === 'd') return forestGround(ctx, hash, tx, ty, sx, sy, true);
+  forestGround(ctx, hash, tx, ty, sx, sy);
+  if (c === 'w') {
+    ctx.fillStyle = hash % 2 ? '#2d6279' : '#2a5c73';
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = 'rgba(160,215,235,0.28)'; // ripples
+    ctx.fillRect(sx + 4 + hash, sy + 8, 10, 1.5);
+    ctx.fillRect(sx + 14 - hash, sy + 21, 9, 1.5);
+    ctx.fillStyle = '#8f8a62'; // sandy bank where the grass meets the water
+    if (tileAt(tx - 1, ty) !== 'w') ctx.fillRect(sx, sy, 3, TILE);
+    if (tileAt(tx + 1, ty) !== 'w') ctx.fillRect(sx + TILE - 3, sy, 3, TILE);
+  } else if (c === 'g') {
+    drawBush(ctx, tx, ty, sx + TILE / 2, sy + TILE / 2, 1);
+  } else if (c === 'Y') {
+    // a boulder: a grey lump with a lit top and a shadow side
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(sx + 18, sy + 21, 15, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#6f7473';
+    ctx.beginPath();
+    ctx.ellipse(sx + 16, sy + 17, 14, 12, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#8c9291';
+    ctx.beginPath();
+    ctx.ellipse(sx + 13, sy + 13, 9, 7, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(sx + 17, sy + 12);
+    ctx.lineTo(sx + 20, sy + 19);
+    ctx.lineTo(sx + 15, sy + 24);
+    ctx.stroke();
+  } else if (c === 'c') {
+    // a fallen log, lying along whichever way its neighbours run
+    const vert = (tileAt(tx, ty - 1) === 'c' || tileAt(tx, ty + 1) === 'c') && tileAt(tx - 1, ty) !== 'c' && tileAt(tx + 1, ty) !== 'c';
+    ctx.save();
+    ctx.translate(sx + TILE / 2, sy + TILE / 2);
+    if (vert) ctx.rotate(Math.PI / 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(-TILE / 2, -9, TILE, 21);
+    ctx.fillStyle = '#6a4a2a';
+    ctx.fillRect(-TILE / 2, -11, TILE, 21);
+    ctx.fillStyle = '#7d5a35';
+    ctx.fillRect(-TILE / 2, -11, TILE, 8);
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = -12; i <= 12; i += 8) { ctx.moveTo(i + (hash % 3), -10); ctx.lineTo(i + (hash % 3) + 2, 9); }
+    ctx.stroke();
+    const endL = (vert ? tileAt(tx, ty - 1) : tileAt(tx - 1, ty)) !== 'c';
+    const endR = (vert ? tileAt(tx, ty + 1) : tileAt(tx + 1, ty)) !== 'c';
+    for (const [on, ex] of [[endL, -TILE / 2 + 3], [endR, TILE / 2 - 3]] as [boolean, number][]) {
+      if (!on) continue;
+      ctx.fillStyle = '#c9a36b'; // the cut end, with its rings
+      ctx.beginPath();
+      ctx.ellipse(ex, 0, 4, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#8a6a3c';
+      ctx.beginPath();
+      ctx.ellipse(ex, 0, 2, 5.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (c === '#' || c === 'B') {
+    ctx.fillStyle = c === '#' ? '#1d3822' : '#2c4a28'; // shade under the canopy (the canopy itself is drawn in a second pass, over the neighbours)
+    ctx.fillRect(sx, sy, TILE, TILE);
+  }
+}
+/** The crowns of trees, drawn after all the ground so they overlap their neighbours into one canopy. */
+function drawTreeTop(ctx: CanvasRenderingContext2D, c: string, tx: number, ty: number, sx: number, sy: number) {
+  const hash = (tx * 7 + ty * 13 + tx * ty) % 9;
+  const cx = sx + TILE / 2 + ((hash % 3) - 1) * 2;
+  const cy = sy + TILE / 2 + (((hash * 5) % 3) - 1) * 2;
+  const edge = c === '#';
+  const r = (edge ? 21 : 19) + (hash % 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.beginPath();
+  ctx.arc(cx + 3, cy + 4, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = edge ? '#1b3a22' : '#234d27';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = edge ? '#245030' : ['#2e6a33', '#2b6130', '#32703a'][hash % 3];
+  ctx.beginPath();
+  ctx.arc(cx - 2, cy - 2, r - 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(190,235,150,0.18)'; // sun on the upper left
+  ctx.beginPath();
+  ctx.arc(cx - 6, cy - 7, r * 0.42, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; // leaf clumps
+  ctx.beginPath();
+  ctx.arc(cx + 5, cy + 3, 4, 0, Math.PI * 2);
+  ctx.arc(cx - 3, cy + 7, 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+/** A bush: a few overlapping leaf clumps. Drawn on the ground, and again over a soldier who is hiding in it. */
+function drawBush(ctx: CanvasRenderingContext2D, tx: number, ty: number, cx: number, cy: number, alpha: number) {
+  const hash = (tx * 7 + ty * 13 + tx * ty) % 9;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 2, cy + 6, 14, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const clumps: [number, number, number, string][] = [[-6, 2, 9, '#2a5a2a'], [6, 3, 9, '#2c5f2b'], [0, -5, 10, '#316a30'], [-1, 5, 8, '#2a5a2a']];
+  for (const [dx, dy, r, col] of clumps) {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(cx + dx + ((hash % 3) - 1), cy + dy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(160,220,120,0.28)';
+  ctx.beginPath();
+  ctx.arc(cx - 3, cy - 8, 4.5, 0, Math.PI * 2);
+  ctx.arc(cx + 7, cy - 1, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  if (hash % 4 === 1) {
+    ctx.fillStyle = '#c0392b'; // berries
+    for (const [bx, by] of [[-5, 0], [4, -4], [7, 5]]) ctx.fillRect(cx + bx, cy + by, 2, 2);
+  }
+  ctx.restore();
+}
+
 function drawTile(ctx: CanvasRenderingContext2D, c: string, tx: number, ty: number, sx: number, sy: number) {
+  if (THEME === 'forest') return drawForestTile(ctx, c, tx, ty, sx, sy);
   const hash = (tx * 7 + ty * 13 + tx * ty) % 9;
   if (c === 'f') {
     // the floor inside a ruined building: cold tiles, grime and plaster dust
@@ -1042,6 +1239,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     let zoom = 1;
     const frame = () => {
       const w = world.current;
+      applyMap(w.mapId);
       const nowT = performance.now();
       const dt = Math.min(0.05, (nowT - lastT) / 1000);
       lastT = nowT;
@@ -1100,6 +1298,15 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       const y0 = Math.floor(camY / TILE);
       for (let ty = y0; ty <= y0 + VH / TILE + 1 && ty < ROWS.length; ty++) {
         for (let tx = x0; tx <= x0 + VW / TILE + 1 && tx < COLS; tx++) drawTile(ctx, ROWS[ty][tx], tx, ty, tx * TILE - camX, ty * TILE - camY);
+      }
+      if (THEME === 'forest') {
+        // the crowns go over the ground of every tile around them, so a grove reads as one canopy
+        for (let ty = y0 - 1; ty <= y0 + VH / TILE + 2 && ty < ROWS.length; ty++) {
+          for (let tx = x0 - 1; tx <= x0 + VW / TILE + 2 && tx < COLS; tx++) {
+            const c = ty >= 0 && tx >= 0 ? ROWS[ty][tx] : '';
+            if (c === 'B' || c === '#') drawTreeTop(ctx, c, tx, ty, tx * TILE - camX, ty * TILE - camY);
+          }
+        }
       }
       // Safe zones: your side's base and the strip in front of it (no enemies in, no damage, no firing out)
       const ZW = 8 * TILE; // matches the server: spawn zone + BASE_PAD
@@ -1244,6 +1451,13 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         drawCorpse(ctx, c, c.x - camX, c.y - camY, now);
       }
       for (const u of alive) drawSoldier(ctx, u, u.x - camX, u.y - camY - (u.elev ? 12 : 0), u.id === w.me, myTeam, now); // a sniper on a tower stands a little higher
+      if (THEME === 'forest') {
+        // a soldier standing in a bush is half-covered by it (an enemy only shows up here once he has been spotted)
+        for (const u of alive) {
+          const btx = Math.floor(u.x / TILE), bty = Math.floor(u.y / TILE);
+          if (ROWS[bty]?.[btx] === 'g') drawBush(ctx, btx, bty, u.x - camX, u.y - camY, u.team === myTeam ? 0.55 : 0.7);
+        }
+      }
       if (you && you.hp > 0 && you.scoped) {
         // scoped: a faint sight line out to the edge of what he can see
         ctx.save();

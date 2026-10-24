@@ -15,7 +15,7 @@ export const CLASSES: { id: ClassId; label: string; mag: number; hp: number; sid
   { id: 'shotgunner', label: 'Shotgunner', mag: 5, hp: 140, sideMag: 12, special: 'Riot shield', blurb: 'Tough brawler, 140 HP. Deadly up close, weak at range. The riot shield stops fire from the front: 5 seconds, 200 damage.' },
   { id: 'squad', label: 'Squad Leader', mag: 15, hp: 100, sideMag: 10, special: 'UAV', blurb: 'AR, pistol, 2 grenades and artillery. The UAV lifts the fog at your cursor for 10 seconds, 60 second recharge.' },
 ];
-export type RoundInfo = { n: number; s: 'live' | 'ended'; l: number; w: string | null };
+export type RoundInfo = { n: number; s: 'live' | 'ended'; l: number; w: string | null; mp: string; mr: number; mt: number; nx: string }; // mp: map id, mr/mt: round on this map of how many, nx: the next map's id once this map's last round is over
 export type FeedLine = { self: boolean; tk: boolean; weapon: string; text: string; kteam: Team; vteam: Team; at: number; killer: string; victim: string };
 export type Score = { id: number; name: string; team: Team; k: number; d: number };
 export type World = {
@@ -25,6 +25,7 @@ export type World = {
   nades: [number, number, number, number][]; // x, y, and how much of the flight is left (0 = on the ground)
   gas: [number, number, number, number][]; // incoming artillery: x, y, 0, fraction of the flight left
   booms: { x: number; y: number; at: number; big?: boolean }[];
+  mapId: string; // which map the server is playing
   corpses: { x: number; y: number; aim: number; team: Team; cls: number; at: number; seed: number }[]; // where soldiers fell, kept on the ground for a minute
   pops: { x: number; y: number; at: number; kind: string }[]; // smoke / flash / flare canisters going off
   crates: number[]; // 1 = ready to use, in the same order as the crates in the map file
@@ -50,7 +51,7 @@ export type ChatLine = { name: string; team: Team; text: string; at: number; mod
 export type Hud = { myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0 });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], corpses: [], pops: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [] });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], mapId: 'city', gas: [], booms: [], corpses: [], pops: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, s: 'live', l: 0, w: null, mp: 'city', mr: 1, mt: 3, nx: '' }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [] });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -183,6 +184,7 @@ export function useGame() {
           const w = world.current;
           if (m.t === 'welcome') {
             w.me = m.id;
+            if (m.map) w.mapId = m.map;
             training.current = !!m.training;
             for (const p of m.players) w.units.set(p.id, newUnit(p.id, p.name, p.team, !!p.bot));
             board.current = m.sb ?? [];
@@ -277,6 +279,7 @@ export function useGame() {
             w.progress = m.c;
             w.points = m.pt ?? [0, 0];
             if (m.r && m.r.n !== w.round.n) w.corpses = []; // a new round wipes the field
+            if (m.r?.mp && m.r.mp !== w.mapId) w.mapId = m.r.mp; // the series moved to the next map
             w.round = m.r;
             w.score = m.ts ?? [0, 0, 0, 0];
           } else if (m.t === 'kill') {

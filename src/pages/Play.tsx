@@ -1,3 +1,4 @@
+import { mapName } from '../game/maps';
 import { useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
@@ -321,7 +322,7 @@ export default function Play() {
             </span>
             <span className="pill score" title={`Kills this round. Rounds won: Green ${h.score[2]}, Red ${h.score[3]}`}>
               <b className="green">{h.score[0]}</b> – <b className="red">{h.score[1]}</b>
-              <small> · Round {h.round.n} · won {h.score[2]}–{h.score[3]}</small>
+              <small> · {mapName(h.round.mp)} · Round {h.round.mr}/{h.round.mt} · won {h.score[2]}–{h.score[3]}</small>
             </span>
             <span className="muted small">
               {h.green} v {h.red} · {fmt(h.round.l)}
@@ -444,7 +445,13 @@ export default function Play() {
             {h.round.s === 'ended' && (
               <div className="overlay big">
                 {h.round.w === 'draw' ? 'Draw' : `${h.round.w === 'green' ? 'Green' : 'Red'} holds the point`}
-                <small>Next round in {h.round.l}s</small>
+                {h.round.nx ? (
+                  <small>
+                    {h.score[2] === h.score[3] ? 'Map drawn' : `${h.score[2] > h.score[3] ? 'Green' : 'Red'} takes ${mapName(h.round.mp)}, ${Math.max(h.score[2], h.score[3])}–${Math.min(h.score[2], h.score[3])}`} · next map: {mapName(h.round.nx)} in {h.round.l}s
+                  </small>
+                ) : (
+                  <small>Round {h.round.mr + 1} of {h.round.mt} in {h.round.l}s</small>
+                )}
               </div>
             )}
             {showBoard && (
