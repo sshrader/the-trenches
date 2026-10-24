@@ -1220,6 +1220,16 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       }
       // Aim marker for where a grenade would land
       if (you && you.hp > 0) {
+        if (you.cls === 5 && you.specCd === 0) {
+          // squad leader with his UAV ready: the circle it would lift
+          const r2 = Math.max(70, Math.min(380, input.current.range));
+          ctx.strokeStyle = 'rgba(134,239,172,0.4)';
+          ctx.setLineDash([8, 8]);
+          ctx.beginPath();
+          ctx.arc(you.x - camX + Math.cos(input.current.aim) * r2, you.y - camY + Math.sin(input.current.aim) * r2, 420, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
         const rg = Math.max(70, Math.min(380, input.current.range));
         const lx = you.x - camX + Math.cos(input.current.aim) * rg;
         const ly = you.y - camY + Math.sin(input.current.aim) * rg;
@@ -1273,23 +1283,33 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
               }
             }
           }
-          if (w.uav[0] > 0) {
-            // UAV: enemies show through the fog, ringed in red
-            for (const u of alive) {
-              if (u.team === myTeam) continue;
-              const ex = u.x - camX;
-              const ey = u.y - camY;
-              const g = fc.createRadialGradient(ex, ey, 14, ex, ey, 48);
-              g.addColorStop(0, 'rgba(0,0,0,1)');
-              g.addColorStop(1, 'rgba(0,0,0,0)');
-              fc.fillStyle = g;
-              fc.beginPath();
-              fc.arc(ex, ey, 48, 0, Math.PI * 2);
-              fc.fill();
-            }
+          for (const [ux, uy, ur] of w.uavAreas) {
+            // UAV: the fog lifts over a big circle
+            const ex = ux - camX;
+            const ey = uy - camY;
+            const g = fc.createRadialGradient(ex, ey, ur * 0.8, ex, ey, ur);
+            g.addColorStop(0, 'rgba(0,0,0,1)');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            fc.fillStyle = g;
+            fc.beginPath();
+            fc.arc(ex, ey, ur, 0, Math.PI * 2);
+            fc.fill();
           }
           ctx.drawImage(fogCv, 0, 0);
-          if (w.uav[0] > 0) {
+          for (const [ux, uy, ur, left] of w.uavAreas) {
+            ctx.strokeStyle = `rgba(134,239,172,${0.35 + 0.25 * Math.sin(Date.now() / 220)})`;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 8]);
+            ctx.beginPath();
+            ctx.arc(ux - camX, uy - camY, ur, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#86efac';
+            ctx.font = '12px system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`UAV ${(left * 10).toFixed(0)}s`, ux - camX, uy - camY - ur + 16);
+          }
+          if (w.uavAreas.length) {
             ctx.strokeStyle = 'rgba(248,113,113,0.85)';
             ctx.lineWidth = 1.5;
             for (const u of alive) {
@@ -1371,6 +1391,13 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       // Spotting ping: enemies a scoped teammate is picking out at long range show as pulsing red dots on the minimap.
       const scopers = alive.filter((q) => q.team === myTeam && q.scoped);
       const uavOn = w.uav[0] > 0;
+      for (const [ux, uy, ur] of w.uavAreas) {
+        ctx.strokeStyle = 'rgba(134,239,172,0.8)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(mx + ux * k, my + uy * k, ur * k, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       if (scopers.length || uavOn) {
         const pulse2 = 0.5 + 0.5 * Math.sin(Date.now() / 200);
         for (const e of alive) {

@@ -28,12 +28,13 @@ export const CFG = {
     squad: { label: 'Squad Leader', weapon: 'rifle', mag: 15, reloadS: 2.2, fireMs: 140, damage: 34, speed: 760, life: 1.1, recoil: { per: 0.2, max: 0.17 }, arty: 1, grenades: 2, side: { weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, special: { id: 'uav', durS: 10, rechargeS: 60 } }, // heals teammates next to him
   },
   RECOIL_DECAY: 0.8, // how fast an AR settles per second when you let off the trigger
-  SMOKE_R: 95, // a smoke grenade's cloud: enemies cannot see in, out of, or through it; its own side can
+  SMOKE_R: 140, // a smoke grenade's cloud: enemies cannot see in, out of, or through it; its own side can
   SMOKE_S: 12,
   SMOKE_POINT_BLANK: 60, // ... except a target this close
   FLASH_R: 170, // a flashbang blinds enemies this close (with a clear line to it) ...
   FLASH_S: 3, // ... for this long: white screen and almost no sight
   BLIND_VISION: 70,
+  UAV_R: 420, // the UAV lifts the fog in a circle this big, called in at the cursor like an artillery strike
   DROP_DELAY_S: 1.5, // medic flare: the air drop lands this long after the flare ...
   DROP_S: 10, // ... and heals friendlies near it for this long
   DROP_R: 75,
@@ -141,7 +142,8 @@ export function createWorld(map, rng = Math.random) {
     arty: [], // incoming artillery strikes
     clouds: [], // smoke: { x, y, r, left, team }
     drops: [], // medic air drops: { x, y, team, delay, left }
-    uav: { green: 0, red: 0 }, // until when each side's UAV shows the enemy
+    uav: { green: 0, red: 0 }, // until when each side has a UAV up (drives the warning)
+    uavAreas: [], // UAV circles: { team, x, y, until }
     towers: [], // sniper towers: { owner, team, x, y, by (the sniper standing on it, or null), awayS }
     teamKills: { green: 0, red: 0 }, // kills this round
     wins: { green: 0, red: 0 }, // rounds won since the server started
@@ -510,6 +512,7 @@ function newRound(w, now) {
   w.clouds = [];
   w.drops = [];
   w.uav = { green: 0, red: 0 };
+  w.uavAreas = [];
   for (const q of w.players.values()) { q.elevated = false; q.specReadyAt = 0; q.shieldUntil = 0; }
   w.bullets = [];
   w.nades = [];
@@ -624,6 +627,10 @@ function useSpecial(w, p, now) {
     p.shieldHp = CFG.SHIELD_HP;
   }
   else if (sp.id === 'uav') {
+    // like an artillery call: it goes where the cursor is (same reach as a grenade throw)
+    const x = clamp(p.x + Math.cos(p.aim) * p.nadeRange, 0, w.W * w.tile);
+    const y = clamp(p.y + Math.sin(p.aim) * p.nadeRange, 0, w.H * w.tile);
+    w.uavAreas.push({ team: p.team, x, y, until: now + sp.durS * 1000 });
     w.uav[p.team] = Math.max(w.uav[p.team], now + sp.durS * 1000);
     w.events.push({ t: 'uav', team: p.team });
   }
@@ -1041,11 +1048,12 @@ export const canSee = (eyes, x, y, extra = 0, clouds = []) =>
 export function snapshot(w, now = Date.now(), team = null) {
   const eyes = team ? eyesFor(w, team, now) : null;
   const walls = team ? w.clouds.filter((c) => c.team !== team) : []; // the other side's smoke blocks our view
-  const vis = (x, y) => !eyes || canSee(eyes, x, y, 0, walls);
-  const uav = !!team && now < w.uav[team]; // our UAV shows every enemy
+  const vis = (x, y) => !eyes || areas.some((a) => Math.hypot(a.x - x, a.y - y) <= CFG.UAV_R) || canSee(eyes, x, y, 0, walls);
+  w.uavAreas = w.uavAreas.filter((a) => now < a.until);
+  const areas = team ? w.uavAreas.filter((a) => a.team === team) : []; // where our UAV has lifted the fog
   const p = [];
   for (const q of w.players.values()) {
-    if (team && q.team !== team && !uav && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
+    if (team && q.team !== team && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
     p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0, Math.max(0, Math.ceil((q.blindUntil - now) / 100)), q.spec, Math.max(0, Math.ceil((q.specReadyAt - now) / 1000)), Math.max(0, Math.ceil((q.shieldUntil - now) / 100)), Math.round(q.heat * 100), now < q.shieldUntil ? Math.max(0, Math.round(q.shieldHp)) : 0]);
   }
   const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
@@ -1064,6 +1072,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     u: w.pickups.filter((q) => !team || q.team === team).map((q) => [q.x, q.y, team && holdsBazooka(w, team) ? 1 : 0]), // your side's crate only; 1 = your side already holds a bazooka, so it cannot be taken yet
     cl: w.clouds.filter((c) => !eyes || c.team === team || canSee(eyes, c.x, c.y, c.r)).map((c) => [Math.round(c.x), Math.round(c.y), c.r, Math.round((c.left / CFG.SMOKE_S) * 100) / 100, c.team === 'green' ? 0 : 1]),
     dr: w.drops.filter((d) => !eyes || d.team === team || canSee(eyes, d.x, d.y)).map((d) => [Math.round(d.x), Math.round(d.y), d.delay > 0 ? 0 : 1, Math.round((d.left / CFG.DROP_S) * 100) / 100, d.delay > 0 ? Math.round((d.delay / CFG.DROP_DELAY_S) * 100) / 100 : 0]),
+    ua: areas.map((a) => [Math.round(a.x), Math.round(a.y), CFG.UAV_R, Math.round(((a.until - now) / 10000) * 100) / 100]),
     uv: team ? [Math.max(0, Math.ceil((w.uav[team] - now) / 100)), Math.max(0, Math.ceil((w.uav[otherTeam(team)] - now) / 100))] : [0, 0], // tenths of a second left: ours, the enemy's
     tw: w.towers.filter((t) => !team || t.team === team || vis(t.x, t.y)).map((t) => [t.team === 'green' ? 0 : 1, t.owner, Math.round(t.x), Math.round(t.y), t.by === null ? 0 : 1, Math.round(t.prog * 100) / 100]),
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],

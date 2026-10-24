@@ -1240,7 +1240,8 @@ test('medic flare: an air drop lands, heals friendlies for 10 s, then goes', () 
 test('squad leader: has the AR, pistol, 2 grenades, artillery, and a UAV that shows the enemy for 10 s', () => {
   const w = fresh();
   const l = mk(w, 'l', 'green', 'squad', 400);
-  const e = mk(w, 'e', 'red', 'rifleman', 1500);
+  const e = mk(w, 'e', 'red', 'rifleman', 900);
+  const far = mk(w, 'far', 'red', 'rifleman', 1700);
   assert.equal(l.grenades, 2);
   assert.equal(l.arty, 1);
   assert.equal(l.sideAmmo, 10, 'has a pistol');
@@ -1250,7 +1251,9 @@ test('squad leader: has the AR, pistol, 2 grenades, artillery, and a UAV that sh
   now = run(w, 0.1, now);
   special(w, l, 1);
   now = run(w, 0.2, now);
-  assert.ok(hasId(snapshot(w, now, 'green'), e.id), 'UAV shows the enemy');
+  assert.ok(hasId(snapshot(w, now, 'green'), e.id), 'UAV shows the enemy inside its circle');
+  assert.ok(!hasId(snapshot(w, now, 'green'), far.id), 'but not one far outside it');
+  assert.equal(snapshot(w, now, 'green').ua.length, 1, 'the lifted area is sent');
   assert.ok(snapshot(w, now, 'red').uv[1] > 0, 'the enemy is told about it');
   assert.ok(!hasId(snapshot(w, now, 'red'), l.id), 'but it is only for the leader\'s side');
   now = run(w, 10, now);

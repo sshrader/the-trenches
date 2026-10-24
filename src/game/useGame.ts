@@ -13,7 +13,7 @@ export const CLASSES: { id: ClassId; label: string; mag: number; hp: number; sid
   { id: 'medic', label: 'Medic', mag: 10, hp: 100, special: 'Air drop flare (C)', blurb: 'Pistol, 10 rounds. Heals teammates standing next to you. Throw a flare (C) to call an air drop: a medical crate lands and heals your side near it for 10 seconds. Resupply gives you another.' },
   { id: 'sniper', label: 'Sniper', mag: 5, sideMag: 8, hp: 100, special: 'E: tower', blurb: 'One hit kills. Hold the right mouse button to scope: your view slides toward where you aim and you spot enemies for your team far down that line (a narrow beam), but you crawl, and each shot gives you away. Rounds punch through barricades and rubble. 5 rounds, plus an 8-round pistol (mouse wheel or Q swaps; you cannot scope with it), no artillery strike, 2 per side.' },
   { id: 'shotgunner', label: 'Shotgunner', mag: 5, hp: 140, sideMag: 12, special: 'Riot shield (C)', blurb: 'Tough: 140 HP. Shotgun with 5 shells, fires faster than the rifle but slower than the SMG, one blast kills up close, but damage drops off quickly with distance. Sprints 1.5x as long. Mouse wheel or Q swaps to your 12-round pistol. Riot shield (C): for 5 seconds bullets from the front are stopped (it soaks 200 damage, then breaks), but you walk slower; 30 second recharge.' },
-  { id: 'squad', label: 'Squad Leader', mag: 15, hp: 100, sideMag: 10, special: 'UAV (C)', blurb: 'The Assault\'s AR, plus a 10-round pistol, 2 grenades and an artillery strike. Call a UAV (C): for 10 seconds your whole side sees every enemy. 60 second recharge, and resupply does not refresh it.' },
+  { id: 'squad', label: 'Squad Leader', mag: 15, hp: 100, sideMag: 10, special: 'UAV (C)', blurb: 'The Assault\'s AR, plus a 10-round pistol, 2 grenades and an artillery strike. Call a UAV (C) like an artillery strike: it lifts the fog in a big circle at your cursor for 10 seconds, and your whole side sees every enemy inside. 60 second recharge, and resupply does not refresh it.' },
 ];
 export type RoundInfo = { n: number; s: 'live' | 'ended'; l: number; w: string | null };
 export type FeedLine = { self: boolean; tk: boolean; weapon: string; text: string; kteam: Team; vteam: Team; at: number; killer: string; victim: string };
@@ -36,6 +36,7 @@ export type World = {
   scopeHalf: number; // half the width of that beam, in radians
   clouds: number[][]; // smoke: x, y, radius, fraction left, team
   drops: number[][]; // air drops: x, y, 1 once landed, fraction left, fraction of the fall left
+  uavAreas: number[][]; // where your UAV has lifted the fog: x, y, radius, fraction of time left
   uav: [number, number]; // tenths of a second left on your UAV and the enemy's
   towers: number[][]; // sniper towers: [team (0 green, 1 red), owner id, x, y, 1 if someone is on it]
   rockets: [number, number, number][]; // x, y, heading
@@ -47,7 +48,7 @@ export type ChatLine = { name: string; team: Team; text: string; at: number; mod
 export type Hud = { myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0 });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0] });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], gas: [], booms: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, s: 'live', l: 0, w: null }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [] });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -254,6 +255,7 @@ export function useGame() {
             w.clouds = m.cl ?? [];
             w.drops = m.dr ?? [];
             w.uav = m.uv ?? [0, 0];
+            w.uavAreas = m.ua ?? [];
             // Gunfire: flash the shooter's muzzle and play a quiet shot, fainter the farther it is from you.
             const me = w.units.get(w.me);
             for (const [sx, sy, sid] of (m.f ?? []) as [number, number, number][]) {
