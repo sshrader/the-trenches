@@ -88,6 +88,8 @@ export const CFG = {
   ARTY_COOLDOWN_MS: 1000,
   CRATE_R: 24, // walk this close to your own crate to resupply
   CRATE_COOLDOWN_S: 30,
+  FRIENDLY_FIRE: true, // TEST SETTING: bullets and rockets hurt your own side too (not yourself). Set false for normal play.
+  FRIENDLY_FLASH: true, // TEST SETTING: flashbangs blind your own side and you. Set false for normal play.
   FRIENDLY_BLASTS: true, // grenades, rockets and artillery hurt your own side and yourself (bullets still do not)
   GRENADES: 2, // per life
   NADE_FLIGHT_S: 0.7, // in the air (flies over cover)
@@ -643,7 +645,7 @@ function land(w, n, now) {
   else if (n.kind === 'flare') w.drops.push({ x: n.x, y: n.y, team: n.team, delay: CFG.DROP_DELAY_S, left: CFG.DROP_S });
   else if (n.kind === 'flash') {
     for (const t of w.players.values()) {
-      if (t.team === n.team || t.hp <= 0 || Math.hypot(t.x - n.x, t.y - n.y) > CFG.FLASH_R || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
+      if ((t.team === n.team && !CFG.FRIENDLY_FLASH) || t.hp <= 0 || Math.hypot(t.x - n.x, t.y - n.y) > CFG.FLASH_R || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
       t.blindUntil = now + CFG.FLASH_S * 1000;
     }
   }
@@ -814,7 +816,7 @@ export function step(w, dt, now = Date.now()) {
         }
       }
       for (const t of w.players.values()) {
-        if (t.team === b.team || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
+        if ((t.team === b.team && !CFG.FRIENDLY_FIRE) || t.id === b.owner || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
         if (Math.hypot(t.x - b.x, t.y - b.y) <= CFG.RADIUS + CFG.BULLET_R) {
           dead = true;
           if (now < t.shieldUntil) {
@@ -864,7 +866,7 @@ export function step(w, dt, now = Date.now()) {
       r.y += (r.vy * dt) / steps;
       if (solidAt(w, r.x, r.y)) boom = true;
       else for (const t of w.players.values()) {
-        if (t.team === r.team || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
+        if ((t.team === r.team && !CFG.FRIENDLY_FIRE) || t.id === r.owner || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
         if (Math.hypot(t.x - r.x, t.y - r.y) <= CFG.RADIUS + 5) {
           boom = true;
           break;

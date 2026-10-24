@@ -109,3 +109,7 @@ Needs a secure page: https (Railway) or localhost. On a plain `http://192.168...
 ## Sounds
 
 Gunfire, reloads and grenade blasts use recordings in `src/assets/sfx` (ar, smg, pistol, shotgun, reload, shotgun_reload, grenade; short mp3s trimmed from the originals). They load after the first click and get quieter and duller with distance. AR and Sniper rifle shots use `ar`, any pistol (Medic, or a sidearm) uses `pistol`, the Shotgunner reloads with `shotgun_reload` and everyone else with `reload`; frag, rocket, artillery, smoke and flash all use `grenade` (artillery pitched down). If a file fails to load, the old synthesized sound plays instead. Replace a file with the same name to change a sound.
+
+## Test settings
+
+`CFG.FRIENDLY_FIRE` (bullets and rockets hurt your own side, never yourself) and `CFG.FRIENDLY_FLASH` (flashbangs blind your side and you) are **on** in `server/sim.mjs` while we test. Grenade, rocket and artillery blasts already hurt friends. Set both to `false` for normal play. Teamkills give no kill credit.

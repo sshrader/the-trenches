@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { CFG, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount } from '../server/sim.mjs';
 
+CFG.FRIENDLY_FIRE = false; // the server ships with these on for testing; the checks below are about normal play
+CFG.FRIENDLY_FLASH = false;
+
 const map = JSON.parse(fs.readFileSync(new URL('../shared/map.json', import.meta.url), 'utf8'));
 let seed = 7;
 const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
