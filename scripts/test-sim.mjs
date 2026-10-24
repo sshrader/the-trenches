@@ -978,9 +978,10 @@ test('sniper tower: E builds one under him and climbs it; rounds fly over low co
   setInput(w, sn.id, { dx: 0, dy: 0, aim: 0, nest: 2 });
   now = run(w, 0.1, now);
   assert.ok(!sn.elevated && w.towers[0].by === null, 'climbed down');
-  place(sn, tx + 600, LANE, 0);
-  now = run(w, 11, now);
-  assert.equal(w.towers.length, 0, 'abandoned tower is removed');
+  now = run(w, 15, now);
+  assert.equal(w.towers.length, 1, 'still up after 15 s without anyone on it');
+  now = run(w, 6, now);
+  assert.equal(w.towers.length, 0, 'taken down after 20 s with nobody on it');
   // build another, then die: gone
   place(sn, 420, LANE, 0);
   sn.lastTower = -1e9;
@@ -991,6 +992,34 @@ test('sniper tower: E builds one under him and climbs it; rounds fly over low co
   now = run(w, 0.1, now);
   assert.equal(w.towers.length, 0, 'dying removes the tower');
   assert.ok(!sn.elevated);
+});
+
+test('if the builder dies while a teammate sniper is on the tower, it stays with him', () => {
+  const w = fresh();
+  const a = addPlayer(w, { name: 'a', want: 'green', cls: 'sniper' });
+  const b = addPlayer(w, { name: 'b', want: 'green', cls: 'sniper' });
+  a.team = 'green';
+  b.team = 'green';
+  place(a, 420, LANE, 0);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 0 });
+  setInput(w, b.id, { dx: 0, dy: 0, aim: 0, nest: 0 });
+  let now = run(w, 0.1);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 1 }); // builds and climbs
+  now = run(w, 0.1, now);
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, nest: 2 }); // climbs down
+  now = run(w, 0.1, now);
+  place(b, 430, LANE, 0);
+  setInput(w, b.id, { dx: 0, dy: 0, aim: 0, nest: 1 }); // teammate climbs
+  now = run(w, 0.1, now);
+  assert.ok(b.elevated);
+  a.hp = 0; // the builder dies
+  now = run(w, 0.2, now);
+  assert.equal(w.towers.length, 1, 'tower stays while the teammate is on it');
+  assert.equal(w.towers[0].owner, b.id, 'and now belongs to him');
+  assert.ok(b.elevated);
+  setInput(w, b.id, { dx: 0, dy: 0, aim: 0, nest: 2 }); // he climbs down: 20 s idle clock starts
+  now = run(w, 21, now);
+  assert.equal(w.towers.length, 0, 'gone 20 s after he stops using it');
 });
 
 test('another sniper of the side can climb a free tower; enemies cannot', () => {

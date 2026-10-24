@@ -11,8 +11,7 @@ export const CFG = {
   STAMINA_RESUME: 25, // after running dry you must recover this much before sprinting again
   RADIUS: 11, // player body
   TOWER_REACH: 70, // a sniper this close to a free tower of his side can climb it (E)
-  TOWER_AWAY_PX: 150, // a tower is taken down once its builder has been farther than this from it ...
-  TOWER_AWAY_S: 10, // ... for this many seconds (while he is not standing on it)
+  TOWER_IDLE_S: 20, // a tower nobody is standing on is taken down after this many seconds
   TOWER_COOLDOWN_MS: 4000,
   TOWER_GAP: 150, // towers are built at least this far apart
   HP: 100,
@@ -404,12 +403,21 @@ function leaveTower(w, p) {
   for (const t of w.towers) if (t.by === p.id) t.by = null;
   p.elevated = false;
 }
+/** The builder is gone (died, left, changed class). A tower with another sniper on it passes to him; an empty one is taken down. */
 function dropTower(w, owner) {
   for (let i = w.towers.length - 1; i >= 0; i--) {
     const t = w.towers[i];
     if (t.owner !== owner) continue;
-    const rider = t.by !== null ? w.players.get(t.by) : null;
-    if (rider) rider.elevated = false;
+    const rider = t.by !== null && t.by !== owner ? w.players.get(t.by) : null;
+    if (rider && rider.hp > 0 && rider.cls === 'sniper') {
+      t.owner = rider.id;
+      t.awayS = 0;
+      continue;
+    }
+    if (t.by !== null) {
+      const r = w.players.get(t.by);
+      if (r) r.elevated = false;
+    }
     w.towers.splice(i, 1);
   }
 }
@@ -657,9 +665,8 @@ export function step(w, dt, now = Date.now()) {
       dropTower(w, t.owner);
       continue;
     }
-    const away = t.by !== o.id && Math.hypot(o.x - t.x, o.y - t.y) > CFG.TOWER_AWAY_PX;
-    t.awayS = away ? t.awayS + dt : 0;
-    if (t.awayS >= CFG.TOWER_AWAY_S) dropTower(w, t.owner);
+    t.awayS = t.by === null ? t.awayS + dt : 0; // counts while nobody is on it
+    if (t.awayS >= CFG.TOWER_IDLE_S) dropTower(w, t.owner);
   }
   for (const p of w.players.values()) {
     if (p.wantNest) {
