@@ -40,6 +40,7 @@ export type World = {
   scopeHalf: number; // half the width of that beam, in radians
   clouds: number[][]; // smoke: x, y, radius, fraction left, team
   drops: number[][]; // air drops: x, y, 1 once landed, fraction left, fraction of the fall left
+  ping: number; // round trip to the server in ms (measured every 2 s)
   ms: number[][]; // missiles and helicopters being flown: kind (0 Predator, 1 helicopter), x, y, heading, pilot id, team (0 green, 1 red)
   uavAreas: number[][]; // where your UAV has lifted the fog: x, y, radius, fraction of time left
   uav: [number, number]; // tenths of a second left on your UAV and the enemy's
@@ -53,7 +54,7 @@ export type ChatLine = { name: string; team: Team; text: string; at: number; mod
 export type Hud = { myReward: number; myRewardN: number; myCtl: number; myCtlLeft: number; myStreak: number; myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0, rw: 0, rwN: 0, ctl: 0, ctlLeft: 0, streak: 0 });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], mapId: 'city', gas: [], booms: [], corpses: [], callouts: [], pops: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, e: 0, s: 'live', l: 0, w: null, mp: 'city', mr: 1, mt: 3, nx: '' }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [], ms: [] });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], mapId: 'city', gas: [], booms: [], corpses: [], callouts: [], pops: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, e: 0, s: 'live', l: 0, w: null, mp: 'city', mr: 1, mt: 3, nx: '' }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [], ms: [], ping: 0 });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -103,6 +104,9 @@ export function useGame() {
     const send = setInterval(() => {
       if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'in', ...input.current }));
     }, 33);
+    const pinger = setInterval(() => {
+      if (ws.current?.readyState === 1) ws.current.send(JSON.stringify({ t: 'ping', n: performance.now() }));
+    }, 2000);
     const refresh = setInterval(() => {
       const w = world.current;
       const units = [...w.units.values()];
@@ -160,6 +164,7 @@ export function useGame() {
     }, 250);
     return () => {
       clearInterval(send);
+      clearInterval(pinger);
       clearInterval(refresh);
     };
   }, [status]);
@@ -196,6 +201,8 @@ export function useGame() {
             for (const p of m.players) w.units.set(p.id, newUnit(p.id, p.name, p.team, !!p.bot));
             board.current = m.sb ?? [];
             setStatus('playing');
+          } else if (m.t === 'pong') {
+            world.current.ping = Math.round(performance.now() - Number(m.n));
           } else if (m.t === 'chat') {
             if (voiceRef.current.isMuted(m.id)) return; // you muted this player
             chat.current = [...chat.current.slice(-7), { name: m.name, team: m.team, text: m.text, at: Date.now(), mode: m.mode }];

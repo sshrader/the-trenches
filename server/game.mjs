@@ -293,6 +293,11 @@ export function attachGame(server) {
         return;
       }
 
+      if (m.t === 'ping') {
+        send(ws, { t: 'pong', n: Number(m.n) || 0 }); // lets the client show its round-trip time
+        return;
+      }
+
       if (m.t === 'class') {
         sim.setClass(world, me.id, m.cls);
         return;

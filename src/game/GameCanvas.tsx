@@ -37,6 +37,50 @@ function applyMap(id: string) {
   THEME = m.theme ?? 'city';
 }
 applyMap('city');
+
+// The ground never changes, so it is drawn once into 512 px chunks and then just copied each frame (this was most of the drawing cost).
+const CHUNK = 512;
+let groundChunks = new Map<string, HTMLCanvasElement>();
+let groundFor = '';
+function drawGround(ctx: CanvasRenderingContext2D, camX: number, camY: number, VW: number, VH: number) {
+  if (groundFor !== curMap) {
+    groundChunks = new Map();
+    groundFor = curMap;
+  }
+  const perT = CHUNK / TILE;
+  for (let cy = Math.max(0, Math.floor(camY / CHUNK)); cy <= Math.floor((camY + VH) / CHUNK) && cy * CHUNK < MAP_H; cy++) {
+    for (let cx = Math.max(0, Math.floor(camX / CHUNK)); cx <= Math.floor((camX + VW) / CHUNK) && cx * CHUNK < MAP_W; cx++) {
+      const key = `${cx},${cy}`;
+      let cv = groundChunks.get(key);
+      if (!cv) {
+        cv = document.createElement('canvas');
+        cv.width = CHUNK;
+        cv.height = CHUNK;
+        const g = cv.getContext('2d');
+        if (g) {
+          const ox = cx * CHUNK;
+          const oy = cy * CHUNK;
+          const t0x = cx * perT;
+          const t0y = cy * perT;
+          for (let ty = t0y; ty < t0y + perT && ty < ROWS.length; ty++) {
+            for (let tx = t0x; tx < t0x + perT && tx < COLS; tx++) drawTile(g, ROWS[ty][tx], tx, ty, tx * TILE - ox, ty * TILE - oy);
+          }
+          if (THEME === 'forest') {
+            // the crowns go over the ground of every tile around them, so a grove reads as one canopy
+            for (let ty = t0y - 1; ty < t0y + perT + 1 && ty < ROWS.length; ty++) {
+              for (let tx = t0x - 1; tx < t0x + perT + 1 && tx < COLS; tx++) {
+                const c = ty >= 0 && tx >= 0 ? ROWS[ty][tx] : '';
+                if (c === 'B' || c === '#') drawTreeTop(g, c, tx, ty, tx * TILE - ox, ty * TILE - oy);
+              }
+            }
+          }
+        }
+        groundChunks.set(key, cv);
+      }
+      ctx.drawImage(cv, Math.round(cx * CHUNK - camX), Math.round(cy * CHUNK - camY));
+    }
+  }
+}
 const solidTile = (px: number, py: number) => {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
   if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS.length) return true;
@@ -1242,6 +1286,9 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     let raf = 0;
     let lastT = performance.now();
     let zoom = 1;
+    let fpsN = 0, fpsAt = performance.now(), fpsShown = 0, showStats = true;
+    const onStatsKey = (e: KeyboardEvent) => { if (e.key === 'F3') { e.preventDefault(); showStats = !showStats; } };
+    window.addEventListener('keydown', onStatsKey);
     const ctlPos = { x: 0, y: 0, on: false }; // where the missile / helicopter we are flying is, eased between server updates
     const frame = () => {
       const w = world.current;
@@ -1311,18 +1358,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       ctx.fillRect(0, 0, VW, VH);
       const x0 = Math.floor(camX / TILE);
       const y0 = Math.floor(camY / TILE);
-      for (let ty = y0; ty <= y0 + VH / TILE + 1 && ty < ROWS.length; ty++) {
-        for (let tx = x0; tx <= x0 + VW / TILE + 1 && tx < COLS; tx++) drawTile(ctx, ROWS[ty][tx], tx, ty, tx * TILE - camX, ty * TILE - camY);
-      }
-      if (THEME === 'forest') {
-        // the crowns go over the ground of every tile around them, so a grove reads as one canopy
-        for (let ty = y0 - 1; ty <= y0 + VH / TILE + 2 && ty < ROWS.length; ty++) {
-          for (let tx = x0 - 1; tx <= x0 + VW / TILE + 2 && tx < COLS; tx++) {
-            const c = ty >= 0 && tx >= 0 ? ROWS[ty][tx] : '';
-            if (c === 'B' || c === '#') drawTreeTop(ctx, c, tx, ty, tx * TILE - camX, ty * TILE - camY);
-          }
-        }
-      }
+      drawGround(ctx, camX, camY, VW, VH);
       // Safe zones: your side's base and the strip in front of it (no enemies in, no damage, no firing out)
       const ZW = 8 * TILE; // matches the server: spawn zone + BASE_PAD
       ctx.fillStyle = 'rgba(74,222,128,0.09)';
@@ -2095,10 +2131,26 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         ctx.strokeStyle = me ? teamColor(u.team) : 'rgba(0,0,0,0.8)';
         ctx.stroke();
       }
+      // Frame rate and round-trip time (F3 hides it)
+      fpsN++;
+      if (nowT - fpsAt >= 1000) {
+        fpsShown = Math.round((fpsN * 1000) / (nowT - fpsAt));
+        fpsN = 0;
+        fpsAt = nowT;
+      }
+      if (showStats) {
+        ctx.font = '11px ui-monospace, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = fpsShown < 30 || w.ping > 150 ? 'rgba(252,165,165,0.9)' : 'rgba(203,213,225,0.55)';
+        ctx.fillText(`${fpsShown} fps · ${w.ping} ms`, 8, VIEW_H - 8);
+      }
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('keydown', onStatsKey);
+    };
   }, [world, input]);
 
   const toCanvas = (e: MouseEvent<HTMLCanvasElement>) => {
