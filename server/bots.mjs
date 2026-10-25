@@ -73,6 +73,15 @@ const STYLE = {
   squad: { engage: 520, keep: 230, on: 0.55, off: 0.3 },
 };
 
+// How good the bots are (an admin setting): how long they take to react to a new enemy, how far off their aim is, how well they lead a moving
+// target, how much they fire, how far out they pick fights, how often they use grenades / artillery, and how fast they walk.
+export const LEVELS = {
+  easy: { react: [750, 1300], miss: 3.5, lead: 0, on: 0.55, engage: 0.7, toys: 0.35, speed: 0.8 },
+  normal: { react: [250, 550], miss: 1, lead: 1, on: 1, engage: 1, toys: 1, speed: 1 },
+  hard: { react: [150, 350], miss: 0.6, lead: 1.3, on: 1.15, engage: 1.1, toys: 1, speed: 1 },
+};
+let L = LEVELS.easy;
+
 function brain(p) {
   return (p.mind ??= { path: [], pi: 0, goal: '', strafe: Math.random() < 0.5 ? 1 : -1, strafeT: 0, burst: 0, tid: 0, seenAt: 0, last: null, lastMoved: 0, lx: p.x, ly: p.y, jiggle: 0, cd: {}, c: { nade: 0, special: 0, arty: 0, reload: 0 }, idleSince: 0, slot: Math.random() });
 }
@@ -80,7 +89,8 @@ function brain(p) {
 /** One decision for one bot. */
 function think(w, p, view, enemies, mates, now, dt) {
   const ai = brain(p);
-  const st = STYLE[p.cls] ?? STYLE.rifleman;
+  const base = STYLE[p.cls] ?? STYLE.rifleman;
+  const st = { ...base, engage: base.engage * L.engage, on: base.on * L.on };
   const cap = w.map.capture;
   const hpMax = sim.maxHp(p);
   const cool = (k, ms) => (now >= (ai.cd[k] ?? 0) ? ((ai.cd[k] = now + ms), true) : false);
@@ -96,7 +106,7 @@ function think(w, p, view, enemies, mates, now, dt) {
     if (d <= st.engage && d < td && sim.lineClear(w, p.x, p.y, e.x, e.y)) { target = e; td = d; }
   }
   if (target) {
-    if (ai.tid !== target.id) { ai.tid = target.id; ai.seenAt = now + 250 + Math.random() * 300; ai.last = null; } // a moment to react to a new face
+    if (ai.tid !== target.id) { ai.tid = target.id; ai.seenAt = now + L.react[0] + Math.random() * (L.react[1] - L.react[0]); ai.last = null; } // a moment to react to a new face
   } else ai.tid = 0;
 
   // ---- where to be
@@ -138,11 +148,11 @@ function think(w, p, view, enemies, mates, now, dt) {
     ai.last = { x: target.x, y: target.y, t: now };
     let tx = target.x, ty = target.y;
     if (prev && now - prev.t > 0 && now - prev.t < 400) {
-      const lead = Math.min(0.5, td / 700) * 0.6; // a little lead on a moving target
+      const lead = Math.min(0.5, td / 700) * 0.6 * L.lead; // a little lead on a moving target
       tx += ((target.x - prev.x) / ((now - prev.t) / 1000)) * lead;
       ty += ((target.y - prev.y) / ((now - prev.t) / 1000)) * lead;
     }
-    const miss = (0.03 + td / 9000) * (0.5 + Math.random()) * (p.cls === 'sniper' ? 0.4 : 1);
+    const miss = (0.03 + td / 9000) * (0.5 + Math.random()) * (p.cls === 'sniper' ? 0.4 : 1) * L.miss;
     input.aim = Math.atan2(ty - p.y, tx - p.x) + (Math.random() * 2 - 1) * miss;
     input.range = td;
     // keep his preferred distance: close in if he is too far, otherwise stand and sidestep
@@ -188,11 +198,11 @@ function think(w, p, view, enemies, mates, now, dt) {
   // ---- the toys
   if (target && now >= ai.seenAt) {
     const at = (x, y) => { input.aim = Math.atan2(y - p.y, x - p.x); };
-    if (td > 140 && td < 320 && p.grenades > 0 && cool('nade', 9000) && Math.random() < 0.5) { input.range = td; at(target.x, target.y); ai.c.nade++; }
+    if (td > 140 && td < 320 && p.grenades > 0 && cool('nade', 9000) && Math.random() < 0.5 * L.toys) { input.range = td; at(target.x, target.y); ai.c.nade++; }
     else if (p.cls === 'rifleman' && seen.length && td > 220 && td < 520 && (seen.length >= 2 || p.hp < hpMax * 0.7) && cool('special', 22000)) { input.range = td * 0.6; at(target.x, target.y); ai.c.special++; } // smoke between us
     else if (p.cls === 'smg' && td > 90 && td < 280 && cool('special', 12000)) { input.range = td; at(target.x, target.y); ai.c.special++; } // flashbang
     else if (p.cls === 'shotgunner' && td < 300 && p.hp < hpMax * 0.9 && cool('special', 9000)) ai.c.special++; // riot shield
-    if (p.arty > 0 && seen.length >= 3 && td > 250 && td < 700 && cool('arty', 20000)) { input.range = td; at(target.x, target.y); ai.c.arty++; }
+    if (p.arty > 0 && seen.length >= 3 && td > 250 && td < 700 && Math.random() < L.toys && cool('arty', 20000)) { input.range = td; at(target.x, target.y); ai.c.arty++; }
   }
   if (p.cls === 'medic') {
     const near = mates.filter((m) => m.hp > 0 && Math.hypot(m.x - p.x, m.y - p.y) < 80 && m.hp < sim.maxHp(m) * 0.75);
@@ -200,6 +210,8 @@ function think(w, p, view, enemies, mates, now, dt) {
   }
   if (p.cls === 'squad' && !target && cool('special', 30000)) { input.aim = Math.atan2(cap.y - p.y, cap.x - p.x); input.range = Math.min(CFG.NADE_MAX, Math.hypot(cap.x - p.x, cap.y - p.y)); ai.c.special++; } // UAV on the plaza
   if (p.ammo < 3 && !target && p.reloadLeft <= 0 && cool('reload', 4000)) ai.c.reload++;
+  input.dx *= L.speed;
+  input.dy *= L.speed;
   return input;
 }
 
@@ -222,7 +234,8 @@ export function tick(w, now, dt) {
  * Add or remove bots so that each side has `size` soldiers counting the people on it. Returns what changed so the server can tell the clients.
  * With the setting off, or nobody online, every bot goes.
  */
-export function sync(w, { enabled, size }, now) {
+export function sync(w, { enabled, size, level }, now) {
+  L = LEVELS[level] ?? LEVELS.easy;
   const added = [], removed = [];
   const humans = [...w.players.values()].filter((p) => !p.isBot);
   const wanted = enabled && humans.length ? Math.max(0, Math.min(CFG.MAX_PER_TEAM, Math.floor(size))) : 0;

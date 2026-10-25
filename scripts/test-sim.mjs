@@ -1628,4 +1628,12 @@ test('attack helicopter: flies 15 s, its minigun kills, it ends on time', () => 
   assert.equal(a.control, null, 'the 15 seconds are up');
 });
 
+
+test('bot levels: easy reacts slower, aims worse and fights less than normal, hard the reverse', () => {
+  const { easy, normal, hard } = bots.LEVELS;
+  assert.ok(easy.react[0] > normal.react[1] && hard.react[1] <= normal.react[1]);
+  assert.ok(easy.miss > normal.miss && normal.miss > hard.miss);
+  assert.ok(easy.lead < normal.lead && easy.on < normal.on && easy.engage < normal.engage && easy.toys < normal.toys && easy.speed < normal.speed);
+});
+
 console.log(`\n${n} checks passed`);

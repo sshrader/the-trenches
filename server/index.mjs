@@ -45,7 +45,7 @@ const adminOk = (req) => {
 app.get('/api/admin/bots', (req, res) => (adminOk(req) ? res.json(getBotSettings()) : res.status(404).json({ error: 'not found' })));
 app.post('/api/admin/bots', express.json({ limit: '1kb' }), (req, res) => {
   if (!adminOk(req)) return res.status(404).json({ error: 'not found' });
-  res.json(setBotSettings({ enabled: typeof req.body?.enabled === 'boolean' ? req.body.enabled : undefined, size: req.body?.size }));
+  res.json(setBotSettings({ enabled: typeof req.body?.enabled === 'boolean' ? req.body.enabled : undefined, size: req.body?.size, level: req.body?.level }));
 });
 
 // The built client. Anything that is not a file falls back to the app.

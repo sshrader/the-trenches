@@ -47,9 +47,10 @@ export const onlineCount = () => [...world.players.values()].filter((p) => !p.is
 
 // Fill-in bots (an admin setting). BOTS=1 turns them on at start-up, BOT_TEAM_SIZE (default 5) is how many soldiers each side is topped up to,
 // counting the people on it. Admins can also change it while the server runs (see /api/admin/bots in index.mjs).
-const botSettings = { enabled: process.env.BOTS === '1', size: Math.max(1, Math.min(15, Number(process.env.BOT_TEAM_SIZE) || 5)) };
+const botSettings = { enabled: process.env.BOTS === '1', size: Math.max(1, Math.min(15, Number(process.env.BOT_TEAM_SIZE) || 5)), level: bots.LEVELS[process.env.BOT_LEVEL] ? process.env.BOT_LEVEL : 'easy' }; // level: easy, normal or hard
 export const getBotSettings = () => ({ ...botSettings, bots: [...world.players.values()].filter((p) => p.fill).length });
-export function setBotSettings({ enabled, size }) {
+export function setBotSettings({ enabled, size, level }) {
+  if (bots.LEVELS[level]) botSettings.level = level;
   if (typeof enabled === 'boolean') botSettings.enabled = enabled;
   if (Number.isFinite(Number(size))) botSettings.size = Math.max(1, Math.min(15, Math.floor(Number(size))));
   return getBotSettings();
@@ -244,14 +245,17 @@ export function attachGame(server) {
             return reply('Admin unlocked. /bots 5 (fill each side to 5), /bots 0 (no bots), /map forest or /map city, /restart (round wins 0:0, new timer), /reward uav|missile|heli|all (test a kill-streak reward on Z).');
           }
           if (cmd.toLowerCase() === 'bots' && me.admin) {
-            if (arg !== '') {
-              const n = Number(arg);
-              if (!Number.isInteger(n) || n < 0 || n > 15) return reply('Use /bots followed by a number from 0 to 15.');
-              setBotSettings(n === 0 ? { enabled: false } : { enabled: true, size: n });
-              console.log(`[admin] ${me.name} set bots to ${n}`);
+            const parts = arg.toLowerCase().split(/\s+/).filter(Boolean);
+            const lvl = parts.find((x) => bots.LEVELS[x]);
+            const num = parts.find((x) => !bots.LEVELS[x]);
+            if (num !== undefined || lvl) {
+              const n = num === undefined ? undefined : Number(num);
+              if (n !== undefined && (!Number.isInteger(n) || n < 0 || n > 15)) return reply('Use /bots 5 (a number from 0 to 15), /bots easy, /bots normal or /bots hard, or both: /bots 5 easy.');
+              setBotSettings({ ...(n === undefined ? {} : n === 0 ? { enabled: false } : { enabled: true, size: n }), level: lvl });
+              console.log(`[admin] ${me.name} set bots to ${arg}`);
             }
             const st = getBotSettings();
-            return reply(st.enabled ? `Bots on: each side is filled to ${st.size} soldiers (${st.bots} bots in play now).` : 'Bots off.');
+            return reply(st.enabled ? `Bots on (${st.level}): each side is filled to ${st.size} soldiers (${st.bots} bots in play now).` : `Bots off (level ${st.level}).`);
           }
           if (cmd.toLowerCase() === 'map' && me.admin) {
             const id = arg.toLowerCase();
