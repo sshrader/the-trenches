@@ -1317,8 +1317,12 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
           u.x += (u.tx - u.x) * 0.1;
           u.y += (u.ty - u.y) * 0.1;
         } else {
-          u.x += (u.tx - u.x) * 0.4; // glide toward the latest server position
-          u.y += (u.ty - u.y) * 0.4;
+          // Everyone else: aim a little ahead of the last server position (his own speed, for up to a quarter second), and glide
+          // there at a rate that does not depend on the frame rate. A late update then looks like steady walking, not a freeze and a jump.
+          const ahead = u.hp > 0 && u.snapAt ? Math.min(0.25, (nowT - u.snapAt) / 1000) : 0;
+          const ease = 1 - Math.exp(-dt * 16);
+          u.x += (u.tx + u.vx * ahead - u.x) * ease;
+          u.y += (u.ty + u.vy * ahead - u.y) * ease;
         }
         u.walk += Math.hypot(u.x - px, u.y - py); // drives the walking animation
       }

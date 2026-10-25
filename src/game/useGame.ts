@@ -5,7 +5,7 @@ import { useVoice } from './useVoice';
 import { playBoom, playCannon, playPickup, playPop, playReload, playShot, playStreak, playWhistle, heliGun, heliRotor } from './audio';
 
 export type Team = 'green' | 'red';
-export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean; blind: number; spec: number; specCd: number; shield: number; heat: number; shieldHp: number; rw: number; rwN: number; ctl: number; ctlLeft: number; streak: number };
+export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean; blind: number; spec: number; specCd: number; shield: number; heat: number; shieldHp: number; vx: number; vy: number; snapAt: number; rw: number; rwN: number; ctl: number; ctlLeft: number; streak: number };
 export type ClassId = 'rifleman' | 'smg' | 'medic' | 'sniper' | 'shotgunner' | 'squad';
 export const CLASSES: { id: ClassId; label: string; mag: number; hp: number; sideMag?: number; special?: string; blurb: string }[] = [
   { id: 'rifleman', label: 'Assault', mag: 15, hp: 100, special: 'Smoke grenade', blurb: 'All-rounder. 15-round AR, 3 hits kill. It kicks on full auto, so fire in bursts. Smoke hides your push from the enemy.' },
@@ -53,7 +53,7 @@ export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type ChatLine = { name: string; team: Team; text: string; at: number; mode?: 'all' | 'team' };
 export type Hud = { myReward: number; myRewardN: number; myCtl: number; myCtlLeft: number; myStreak: number; myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
-const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0, rw: 0, rwN: 0, ctl: 0, ctlLeft: 0, streak: 0 });
+const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0, vx: 0, vy: 0, snapAt: 0, rw: 0, rwN: 0, ctl: 0, ctlLeft: 0, streak: 0 });
 const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], mapId: 'city', gas: [], booms: [], corpses: [], callouts: [], pops: [], crates: [], progress: 0, points: [0, 0], round: { n: 1, e: 0, s: 'live', l: 0, w: null, mp: 'city', mr: 1, mt: 3, nx: '' }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [], ms: [], ping: 0 });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
@@ -228,6 +228,19 @@ export function useGame() {
                 u.x = x; // first sighting or a respawn: appear in place instead of gliding across the map
                 u.y = y;
                 u.seen = true;
+              }
+              {
+                // How fast is he moving? (from the last two updates; used to keep him gliding on if one is late)
+                const nowMs = performance.now();
+                const gap = (nowMs - u.snapAt) / 1000;
+                const jump = Math.hypot(x - u.tx, y - u.ty);
+                if (u.snapAt && gap > 0.02 && gap < 0.6 && jump < 100 && hp > 0) {
+                  u.vx = u.vx * 0.4 + ((x - u.tx) / gap) * 0.6;
+                  u.vy = u.vy * 0.4 + ((y - u.ty) / gap) * 0.6;
+                } else {
+                  u.vx = u.vy = 0;
+                }
+                u.snapAt = nowMs;
               }
               u.tx = x;
               u.ty = y;
