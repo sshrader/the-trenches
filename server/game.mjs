@@ -175,6 +175,7 @@ export function attachGame(server) {
         me = p;
         p.joinedAt = Date.now();
         if (wallet) p.wallet = wallet;
+        else if (/^[a-f0-9]{32}$/.test(String(m.guest ?? ''))) p.wallet = `g:${m.guest}`; // a guest's browser id: their stats are kept under it
         sockets.set(p.id, ws);
         send(ws, { t: 'welcome', training: TRAINING, map: world.mapId, id: p.id, team: p.team, players: sim.roster(world), sb: sim.scoreboard(world) });
         broadcast({ t: 'join', id: p.id, name: p.name, team: p.team });

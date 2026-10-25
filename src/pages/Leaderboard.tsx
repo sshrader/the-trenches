@@ -3,7 +3,7 @@ import { WALLET_LOGIN } from '../config';
 
 type Row = { rank: number; name: string; k: number; d: number; kd: number; r: number; w: number };
 
-// Top soldiers, from the saved stats of players who signed in with a wallet.
+// Top soldiers: everyone is ranked, wallet or not.
 export default function Leaderboard() {
   const [sort, setSort] = useState<'kills' | 'wins'>('kills');
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -54,7 +54,7 @@ export default function Leaderboard() {
       ) : (
         <p className="muted small">{rows ? 'No scores yet. Be the first on the board.' : 'Loading…'}</p>
       )}
-      <p className="muted small">{WALLET_LOGIN ? 'Sign in with your wallet (free, no transaction) to save your stats here. Guests are not ranked.' : 'Only players who sign in with a wallet are ranked.'}</p>
+      <p className="muted small">{WALLET_LOGIN ? 'Everyone is ranked. Guests are saved under their name in this browser; sign in with your wallet (free, no transaction) to keep your stats on any device.' : 'Everyone is ranked. Your stats are saved in this browser under the name you played with.'}</p>
     </section>
   );
 }

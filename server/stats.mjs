@@ -1,5 +1,5 @@
-// Saved player stats and the leaderboard. Only players who signed in with a wallet are tracked (guests have no stable
-// identity). The data is a small JSON file in DATA_DIR (put DATA_DIR on a Railway volume or it resets on every deploy).
+// Saved player stats and the leaderboard. Wallet players are tracked by their wallet; guests by a random id their browser keeps
+// (shown under the name they last played with). The data is a small JSON file in DATA_DIR (put DATA_DIR on a Railway volume or it resets on every deploy).
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -17,10 +17,11 @@ try {
   /* first run, or an unreadable file: start empty */
 }
 
-const row = (wallet) => {
+const row = (wallet, name) => {
   let r = rows.get(wallet);
   if (!r) rows.set(wallet, (r = { k: 0, d: 0, r: 0, w: 0, seen: 0 }));
   r.seen = Date.now();
+  if (wallet.startsWith('g:') && name) r.n = name;
   dirty = true;
   return r;
 };
@@ -31,19 +32,19 @@ const real = (p) => !!p && !!p.wallet && !p.isBot;
 /** A soldier died. `killer` and `victim` are sim players (the killer may be gone); team kills and suicides do not count. */
 export function recordKill(killer, victim, now = Date.now()) {
   if (!victim || (killer && killer.team === victim.team)) return;
-  if (real(victim)) row(victim.wallet).d++;
+  if (real(victim)) row(victim.wallet, victim.name).d++;
   if (!real(killer) || !victim || victim.isBot) return;
   const key = `${killer.wallet}>${victim.wallet || victim.id}`;
   if (now - (pairs.get(key) || 0) < PAIR_GAP_MS) return;
   pairs.set(key, now);
-  row(killer.wallet).k++;
+  row(killer.wallet, killer.name).k++;
 }
 
 /** A round ended. Everyone signed in who has been playing a while gets a round, and the winners get a win. */
 export function recordRound(players, winner, now = Date.now()) {
   for (const p of players) {
     if (!real(p) || now - (p.joinedAt || now) < MIN_ROUND_MS) continue;
-    const r = row(p.wallet);
+    const r = row(p.wallet, p.name);
     r.r++;
     if (winner && p.team === winner) r.w++;
   }
@@ -55,7 +56,7 @@ export function leaderboard(sort = 'kills', limit = 10) {
     .filter(([, v]) => v[key] > 0)
     .sort((a, b) => b[1][key] - a[1][key] || b[1].w - a[1].w || b[1].k - a[1].k)
     .slice(0, Math.min(Math.max(1, limit), 50))
-    .map(([wallet, v], i) => ({ rank: i + 1, name: shortName(wallet), k: v.k, d: v.d, kd: v.d ? Math.round((v.k / v.d) * 100) / 100 : v.k, r: v.r, w: v.w }));
+    .map(([wallet, v], i) => ({ rank: i + 1, name: wallet.startsWith('g:') ? v.n || 'Guest' : shortName(wallet), k: v.k, d: v.d, kd: v.d ? Math.round((v.k / v.d) * 100) / 100 : v.k, r: v.r, w: v.w }));
 }
 
 export const statsFor = (wallet) => rows.get(wallet) || null;

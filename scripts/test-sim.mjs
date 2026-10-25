@@ -1636,4 +1636,20 @@ test('bot levels: easy reacts slower, aims worse and fights less than normal, ha
   assert.ok(easy.lead < normal.lead && easy.on < normal.on && easy.engage < normal.engage && easy.toys < normal.toys && easy.speed < normal.speed);
 });
 
+
+process.env.DATA_DIR = fs.mkdtempSync('/tmp/stats-');
+const st = await import('../server/stats.mjs');
+test('leaderboard: guests are ranked by their browser id and name, bots and team kills are not', () => {
+  const mkp = (wallet, name, team, extra = {}) => ({ wallet, name, team, joinedAt: 1, ...extra });
+  const a = mkp('g:' + 'a'.repeat(32), 'Ann', 'green');
+  const b = mkp('g:' + 'b'.repeat(32), 'Bob', 'red');
+  st.recordKill(a, b, 1e6);
+  st.recordKill(a, b, 1e6 + 1000); // same victim again within 10 s: not counted
+  st.recordKill(a, mkp('', 'x', 'green'), 2e6); // team kill: not counted
+  st.recordKill(a, mkp('', 'bot', 'red', { isBot: true }), 3e6); // a bot victim: not counted
+  st.recordRound([a, b], 'green', 1e8);
+  const rows = st.leaderboard('kills');
+  assert.deepEqual(rows.map((r) => [r.name, r.k, r.d, r.w]), [['Ann', 1, 0, 1]]);
+});
+
 console.log(`\n${n} checks passed`);

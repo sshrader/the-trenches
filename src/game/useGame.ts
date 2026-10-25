@@ -4,6 +4,20 @@ import { WALLET_LOGIN } from '../config';
 import { useVoice } from './useVoice';
 import { playBoom, playCannon, playPickup, playPop, playReload, playShot, playStreak, playWhistle, heliGun, heliRotor } from './audio';
 
+/** A random id this browser keeps, so a guest's kills and wins are saved and ranked without a wallet. */
+function guestId(): string {
+  try {
+    let id = localStorage.getItem('ruins-guest-id');
+    if (!id || !/^[a-f0-9]{32}$/.test(id)) {
+      id = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem('ruins-guest-id', id);
+    }
+    return id;
+  } catch {
+    return ''; // storage blocked: this visit is not ranked
+  }
+}
+
 export type Team = 'green' | 'red';
 export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean; blind: number; spec: number; specCd: number; shield: number; heat: number; shieldHp: number; vx: number; vy: number; snapAt: number; rw: number; rwN: number; ctl: number; ctlLeft: number; streak: number };
 export type ClassId = 'rifleman' | 'smg' | 'medic' | 'sniper' | 'shotgunner' | 'squad';
@@ -184,7 +198,7 @@ export function useGame() {
         setStatus('connecting');
         const sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
         ws.current = sock;
-        sock.onopen = () => sock.send(JSON.stringify({ t: 'join', team, name, cls, ...(auth ?? {}) }));
+        sock.onopen = () => sock.send(JSON.stringify({ t: 'join', team, name, cls, ...(auth ?? { guest: guestId() }) }));
         sock.onmessage = (ev) => {
           let m;
           try {
