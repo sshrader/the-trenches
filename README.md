@@ -140,7 +140,7 @@ curl -X POST -H "x-admin-token: $ADMIN_TOKEN" -H "content-type: application/json
      -d '{"enabled":true,"size":5}' https://your-site/api/admin/bots
 ```
 
-**From the game's chat** (needs the same `ADMIN_TOKEN`): type `/admin your-token` once (only you see the reply, and the line is never shown to other players), then `/bots 5` for 5v5, `/bots 0` for no bots, `/bots` to see the current setting, `/map forest` or `/map city` to switch map (round wins reset to 0:0), and `/restart` to start the match again (round wins 0:0, round 1, fresh timer, same map). The map and restart commands are announced to everyone in chat. Five wrong passwords lock the sender's address out for a minute.
+**From the game's chat** (needs the same `ADMIN_TOKEN`): type `/admin your-token` once (only you see the reply, and the line is never shown to other players), then `/bots 5` for 5v5, `/bots 0` for no bots, `/bots` to see the current setting, `/map forest` or `/map city` to switch map (round wins reset to 0:0), and `/restart` to start the match again (round wins 0:0, round 1, fresh timer, same map). `/reward uav`, `/reward missile`, `/reward heli` or `/reward all` puts that kill-streak reward on your own Z key for testing (private, and lost when you die like a normal one). The map and restart commands are announced to everyone in chat. Five wrong passwords lock the sender's address out for a minute.
 
 The change lasts until the server restarts (then `BOTS` / `BOT_TEAM_SIZE` apply again). Without `ADMIN_TOKEN` the route does not exist.
 
