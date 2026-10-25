@@ -1841,32 +1841,72 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
               ctx.fillRect(-6, -7, 5, 4);
               ctx.fillRect(-6, 3, 5, 4);
             } else {
+              // Attack helicopter (top-down, nose to the right): slim fuselage, tandem cockpit, stub wings with rocket pods, tail boom, chin gun
+              const body = pid === w.me ? '#3d4a38' : '#3a4656';
+              const dark = pid === w.me ? '#2a3326' : '#273140';
               ctx.fillStyle = 'rgba(0,0,0,0.25)';
               ctx.beginPath();
-              ctx.ellipse(10, 14, 22, 10, 0, 0, Math.PI * 2);
+              ctx.ellipse(16, 22, 38, 12, 0, 0, Math.PI * 2);
               ctx.fill();
               ctx.rotate(ma);
-              ctx.fillStyle = pid === w.me ? '#3f4f3a' : '#334155';
+              ctx.scale(1.6, 1.6);
+              ctx.fillStyle = dark; // tail boom, tail fin and stabilizers
+              ctx.fillRect(-36, -1.6, 24, 3.2);
+              ctx.fillRect(-40, -2.4, 7, 4.8);
+              ctx.fillRect(-38, -7, 5, 14);
+              ctx.fillStyle = dark; // stub wings with rocket pods
+              ctx.fillRect(-6, -17, 8, 34);
+              ctx.fillStyle = '#1f2937';
+              for (const sy2 of [-1, 1]) {
+                ctx.fillRect(-8, sy2 * 12 - 2.5, 14, 5);
+                ctx.fillStyle = '#9ca3af';
+                ctx.fillRect(6, sy2 * 12 - 1.5, 2, 3);
+                ctx.fillStyle = '#1f2937';
+              }
+              ctx.fillStyle = body; // fuselage, narrow and pointed
               ctx.beginPath();
-              ctx.ellipse(0, 0, 20, 9, 0, 0, Math.PI * 2);
+              ctx.moveTo(19, 0);
+              ctx.quadraticCurveTo(12, -6, 0, -6);
+              ctx.lineTo(-14, -3);
+              ctx.lineTo(-14, 3);
+              ctx.lineTo(0, 6);
+              ctx.quadraticCurveTo(12, 6, 19, 0);
               ctx.fill();
-              ctx.fillRect(-34, -2, 16, 4); // tail boom
-              ctx.fillStyle = '#7dd3fc';
+              ctx.fillStyle = '#7dd3fc'; // gunner and pilot canopies, one behind the other
               ctx.beginPath();
-              ctx.ellipse(10, 0, 8, 5, 0, 0, Math.PI * 2);
+              ctx.ellipse(12, 0, 4.5, 2.6, 0, 0, Math.PI * 2);
               ctx.fill();
-              ctx.fillStyle = '#94a3b8';
-              ctx.fillRect(16, -1.5, 16, 3); // the minigun
-              ctx.rotate(-ma);
-              ctx.rotate((tnow / 40) % (Math.PI * 2));
-              ctx.strokeStyle = 'rgba(226,232,240,0.7)'; // spinning rotor
-              ctx.lineWidth = 3;
+              ctx.fillStyle = '#38bdf8';
               ctx.beginPath();
-              ctx.moveTo(-38, 0);
-              ctx.lineTo(38, 0);
-              ctx.moveTo(0, -38);
-              ctx.lineTo(0, 38);
+              ctx.ellipse(4, 0, 4.5, 2.8, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#9ca3af'; // chin minigun
+              ctx.fillRect(18, -1, 9, 2);
+              ctx.save();
+              ctx.translate(-37, 0); // tail rotor
+              ctx.rotate(-(tnow / 25) % (Math.PI * 2));
+              ctx.strokeStyle = 'rgba(226,232,240,0.55)';
+              ctx.lineWidth = 1.6;
+              ctx.beginPath();
+              ctx.moveTo(0, -6);
+              ctx.lineTo(0, 6);
               ctx.stroke();
+              ctx.restore();
+              ctx.rotate(-ma);
+              ctx.scale(1 / 1.6, 1 / 1.6);
+              ctx.rotate((tnow / 35) % (Math.PI * 2)); // main rotor: four blades, spinning
+              ctx.strokeStyle = 'rgba(226,232,240,0.6)';
+              ctx.lineWidth = 3.5;
+              ctx.beginPath();
+              for (const a of [0, Math.PI / 2]) {
+                ctx.moveTo(-46 * Math.cos(a), -46 * Math.sin(a));
+                ctx.lineTo(46 * Math.cos(a), 46 * Math.sin(a));
+              }
+              ctx.stroke();
+              ctx.fillStyle = '#e5e7eb';
+              ctx.beginPath();
+              ctx.arc(0, 0, 3, 0, Math.PI * 2);
+              ctx.fill();
             }
             ctx.restore();
           }
