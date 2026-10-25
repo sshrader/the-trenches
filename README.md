@@ -112,7 +112,7 @@ Gunfire, reloads and grenade blasts use recordings in `src/assets/sfx` (ar, smg,
 
 ## Test settings
 
-`CFG.FRIENDLY_FIRE` (bullets and rockets hurt your own side, never yourself) and `CFG.FRIENDLY_FLASH` (flashbangs blind your side and you) are **on** in `server/sim.mjs` while we test (set both false for normal play). Grenade, rocket and artillery blasts already hurt friends. Teamkills give no kill credit.
+`CFG.FRIENDLY_FIRE` (bullets and rockets in flight hurt your own side, never yourself) is now **off**; `CFG.FRIENDLY_FLASH` (flashbangs blind your side and you) is still **on** in `server/sim.mjs` while we test. Grenade, rocket and artillery blasts still hurt friends (`CFG.FRIENDLY_BLASTS`), but the Predator's blast spares your side. Teamkills give no kill credit.
 
 ## Rounds fade in the fog
 

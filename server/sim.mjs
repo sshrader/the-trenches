@@ -116,7 +116,7 @@ export const CFG = {
   FADE_START: 420, // every gun but the sniper rifle: past this distance (your sight range) its rounds start losing power ...
   FADE_STEP: 64, // ... and lose FADE_LOSS of their damage every this many px (2 tiles) ...
   FADE_LOSS: 0.25, // ... until they do nothing and vanish, so you cannot spray down the street blind
-  FRIENDLY_FIRE: true, // TEST SETTING: bullets and rockets hurt your own side too (not yourself). Keep false for normal play.
+  FRIENDLY_FIRE: false, // bullets and rockets in flight hurt your own side too (not yourself) when true; off for normal play.
   FRIENDLY_FLASH: true, // TEST SETTING: flashbangs blind your own side and you. Keep false for normal play.
   FRIENDLY_BLASTS: true, // grenades, rockets and artillery hurt your own side and yourself (bullets still do not)
   GRENADES: 2, // per life
@@ -718,7 +718,7 @@ function bulletDamage(b) {
 function explode(w, n, now, spec = NADE_SPEC(), weapon = 'grenade') {
   w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y), big: weapon === 'rocket' || weapon === 'artillery' || weapon === 'predator' });
   for (const t of w.players.values()) {
-    if ((!CFG.FRIENDLY_BLASTS && t.team === n.team) || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
+    if (((!CFG.FRIENDLY_BLASTS || spec.spare) && t.team === n.team) || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
     const d = Math.hypot(t.x - n.x, t.y - n.y);
     if (d > spec.r || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
     const dmg = d <= spec.lethal ? 999 : spec.hi - ((spec.hi - spec.lo) * (d - spec.lethal)) / (spec.r - spec.lethal);
@@ -856,7 +856,7 @@ function controlStep(w, p, now, dt) {
       }
     }
     if (boom) {
-      explode(w, { x: c.x, y: c.y, owner: p.id, team: p.team }, now, { r: CFG.MISSILE_RADIUS, lethal: CFG.MISSILE_LETHAL, hi: CFG.ROCKET_OUTER_MAX, lo: CFG.ROCKET_OUTER_MIN }, 'predator');
+      explode(w, { x: c.x, y: c.y, owner: p.id, team: p.team }, now, { spare: true, r: CFG.MISSILE_RADIUS, lethal: CFG.MISSILE_LETHAL, hi: CFG.ROCKET_OUTER_MAX, lo: CFG.ROCKET_OUTER_MIN }, 'predator');
       p.control = null;
     }
     return;
