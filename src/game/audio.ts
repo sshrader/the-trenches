@@ -16,6 +16,8 @@ const SFX_URLS: Record<string, string> = {
   reload: new URL('../assets/sfx/reload.mp3', import.meta.url).href,
   shotgun_reload: new URL('../assets/sfx/shotgun_reload.mp3', import.meta.url).href,
   grenade: new URL('../assets/sfx/grenade.mp3', import.meta.url).href,
+  helicopter: new URL('../assets/sfx/helicopter.mp3', import.meta.url).href,
+  minigun: new URL('../assets/sfx/minigun.mp3', import.meta.url).href,
 };
 const samples: Record<string, AudioBuffer> = {};
 
@@ -315,4 +317,59 @@ export function playStreak(n: number, mine = false) {
     o.start(t);
     o.stop(t + 0.5);
   }
+}
+
+// ---------- attack helicopter: a rotor loop while one is flying, and a minigun loop while it fires ----------
+type Loop = { src: AudioBufferSourceNode; g: GainNode };
+const loops: Record<string, Loop | undefined> = {};
+const lastHeard: Record<string, number> = {};
+let watchdog: ReturnType<typeof setInterval> | null = null;
+
+function stopLoop(name: string) {
+  const l = loops[name];
+  if (!l) return;
+  loops[name] = undefined;
+  try {
+    if (ctx) l.g.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+    l.src.stop((ctx?.currentTime ?? 0) + 0.3);
+  } catch {
+    /* already stopped */
+  }
+}
+
+/** Keep a looping recording going at the level that `dist` px away and `level` give; it stops by itself when it is no longer refreshed. */
+function keepLoop(name: string, dist: number, level: number) {
+  const b = samples[name];
+  if (muted || !ctx || !b || ctx.state !== 'running') return stopLoop(name);
+  lastHeard[name] = performance.now();
+  const v = Math.min(1, ((volume * level) / (1 + dist / 380)) * 1.6);
+  let l = loops[name];
+  if (!l) {
+    const src = ctx.createBufferSource();
+    src.buffer = b;
+    src.loop = true;
+    src.loopStart = 0.05; // mp3 padding at either end would click
+    src.loopEnd = Math.max(0.2, b.duration - 0.05);
+    const g = ctx.createGain();
+    g.gain.value = 0;
+    src.connect(g).connect(ctx.destination);
+    src.start(0, 0.05);
+    l = loops[name] = { src, g };
+  }
+  l.g.gain.setTargetAtTime(v, ctx.currentTime, 0.06);
+  watchdog ??= setInterval(() => {
+    const t = performance.now();
+    for (const n of Object.keys(loops)) if (loops[n] && t - (lastHeard[n] ?? 0) > (n === 'minigun' ? 200 : 600)) stopLoop(n);
+  }, 100);
+}
+
+/** Call with how far away the nearest flying helicopter is (px), or null when none is in sight. */
+export function heliRotor(dist: number | null) {
+  if (dist === null) stopLoop('helicopter');
+  else keepLoop('helicopter', dist, 1.5);
+}
+
+/** A helicopter minigun shot was heard `dist` px away. */
+export function heliGun(dist: number) {
+  keepLoop('minigun', dist, 1.1);
 }

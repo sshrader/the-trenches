@@ -874,7 +874,7 @@ function controlStep(w, p, now, dt) {
     const a = c.aim + (w.rng() * 2 - 1) * CFG.HELI_SPREAD;
     const sp = 800;
     w.bullets.push({ x: c.x + ca * 18, y: c.y + sa * 18, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, speed: sp, damage: CFG.HELI_DAMAGE, weapon: 'heli', life: 0.8, owner: p.id, team: p.team, pierce: 0, air: true, sx: c.x, sy: c.y });
-    w.shots.push([Math.round(c.x), Math.round(c.y), p.id]);
+    w.shots.push([Math.round(c.x), Math.round(c.y), p.id, 1]); // the 1 marks a helicopter minigun
   }
   if (p.wantNadeHeli && now - c.lastRocket >= CFG.HELI_ROCKET_MS) {
     c.lastRocket = now;

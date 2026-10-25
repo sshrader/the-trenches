@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WALLET_LOGIN } from '../config';
 import { useVoice } from './useVoice';
-import { playBoom, playCannon, playPickup, playPop, playReload, playShot, playStreak, playWhistle } from './audio';
+import { playBoom, playCannon, playPickup, playPop, playReload, playShot, playStreak, playWhistle, heliGun, heliRotor } from './audio';
 
 export type Team = 'green' | 'red';
 export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean; blind: number; spec: number; specCd: number; shield: number; heat: number; shieldHp: number; rw: number; rwN: number; ctl: number; ctlLeft: number; streak: number };
@@ -280,7 +280,14 @@ export function useGame() {
             w.ms = m.ms ?? [];
             // Gunfire: flash the shooter's muzzle and play a quiet shot, fainter the farther it is from you.
             const me = w.units.get(w.me);
-            for (const [sx, sy, sid] of (m.f ?? []) as [number, number, number][]) {
+            // Where we are listening from: our own helicopter's camera while we fly one, otherwise our soldier.
+            const mine = w.ms.find((h) => h[4] === w.me);
+            const ear = mine ? { x: mine[1], y: mine[2] } : me ? { x: me.tx, y: me.ty } : null;
+            let heliD: number | null = null;
+            for (const h of w.ms) if (h[0] === 1 && ear) heliD = Math.min(heliD ?? 1e9, Math.hypot(h[1] - ear.x, h[2] - ear.y));
+            heliRotor(heliD);
+            for (const [sx, sy, sid, air] of (m.f ?? []) as [number, number, number, number?][]) {
+              if (air) { heliGun(ear ? Math.hypot(sx - ear.x, sy - ear.y) : 600); continue; }
               const shooter = w.units.get(sid);
               if (shooter) shooter.flash = Date.now() + 90;
               playShot(me ? Math.hypot(sx - me.tx, sy - me.ty) : 600, shooter?.cls ?? 0, shooter?.sidearm ?? false);
