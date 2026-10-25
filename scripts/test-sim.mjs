@@ -1536,21 +1536,21 @@ const earn = (w, a, n) => {
   }
 };
 
-test('streak rewards: 3 / 5 / 7 kills earn a UAV / Predator / helicopter, Z spends the best one, death loses them', () => {
+test('streak rewards: 3 / 5 / 7 kills earn a UAV / attack drone / helicopter, Z spends the best one, death loses them', () => {
   const w = fresh();
   const a = mk(w, 'a', 'green', 'rifleman', 400);
   earn(w, a, 3);
   assert.deepEqual(a.rewards, ['uav']);
   earn(w, a, 2);
-  assert.deepEqual(a.rewards, ['uav', 'missile']);
+  assert.deepEqual(a.rewards, ['uav', 'drone']);
   assert.equal(snapshot(w, 2000, 'green').p.find((r) => r[0] === a.id)[29], 2, 'the hotkey bar shows the best one');
   earn(w, a, 2);
-  assert.deepEqual(a.rewards, ['uav', 'missile', 'heli']);
+  assert.deepEqual(a.rewards, ['uav', 'drone', 'heli']);
   zkey(w, a, 0);
   zkey(w, a, 1);
   step(w, 0.05, 2000);
   assert.ok(a.control && a.control.kind === 'heli', 'the best reward is used first');
-  assert.deepEqual(a.rewards, ['uav', 'missile']);
+  assert.deepEqual(a.rewards, ['uav', 'drone']);
   a.hp = 100; a.protectUntil = 0;
   hurt(w, a, 999, 0, 'red', 2100, 'rifle');
   assert.deepEqual(a.rewards, [], 'lost on death');
@@ -1574,38 +1574,51 @@ test('streak UAV: the whole map and every enemy show for 8 seconds', () => {
   assert.ok(!hasId(snapshot(w, 1050 + 8200, 'green'), e.id), 'gone after 8 s');
 });
 
-test('Predator: steered by the aim, invisible to the enemy, explodes on a soldier', () => {
+test('attack drone: flown with WASD for 15 s, invisible to the enemy, sees like a UAV, left click explodes it', () => {
   const w = fresh();
   const a = mk(w, 'a', 'green', 'rifleman', 400);
   const e = mk(w, 'e', 'red', 'rifleman', 900, Math.PI);
   e.protectUntil = 0;
-  a.rewards = ['missile'];
+  a.rewards = ['drone'];
   zkey(w, a, 0); zkey(w, a, 1);
   let now = 1000;
   now += 50; step(w, 0.05, now);
-  assert.equal(a.control.kind, 'missile');
-  assert.equal(snapshot(w, now, 'red').ms.length, 0, 'the enemy sees nothing');
+  assert.equal(a.control.kind, 'drone');
+  assert.equal(snapshot(w, now, 'red').ms.length, 0, 'the enemy sees no drone');
   assert.equal(snapshot(w, now, 'green').ms.length, 1, 'our side does');
   const x0 = a.control.x;
-  let guard = 0;
-  while (a.control && guard++ < 200) { now += 50; step(w, 0.05, now); }
-  assert.ok(a.control === null, 'it ended');
-  assert.ok(a.control === null && e.hp <= 0, 'the target is dead');
+  setInput(w, a.id, { dx: 1, dy: 0, aim: 0, fire: false, streak: 1 });
+  for (let i = 0; i < 40; i++) { now += 50; step(w, 0.05, now); }
+  assert.ok(a.control.x > x0 + 250, 'WASD flies it');
+  assert.equal(a.x, 400, 'the soldier stands still');
+  assert.ok(hasId(snapshot(w, now, 'green'), e.id), 'it lights the fog around it, so our side sees the enemy there');
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true, streak: 1 }); // left click
+  now += 50; step(w, 0.05, now);
+  assert.equal(a.control, null, 'it blew up');
+  assert.ok(e.hp <= 0, 'the target is dead');
   assert.ok(x0 < 900);
 });
 
-test('Predator can be steered: it turns toward the aim, not instantly', () => {
+test('attack drone: runs out after 15 s without a bang, and its blast spares the owner side', () => {
   const w = fresh();
   const a = mk(w, 'a', 'green', 'rifleman', 400);
-  a.rewards = ['missile'];
+  const f = mk(w, 'f', 'green', 'rifleman', 430);
+  f.protectUntil = 0;
+  a.rewards = ['drone', 'drone'];
   zkey(w, a, 0); zkey(w, a, 1);
   let now = 1000;
   now += 50; step(w, 0.05, now);
-  setInput(w, a.id, { dx: 0, dy: 0, aim: Math.PI / 2, fire: false });
+  for (let i = 0; i < 330; i++) { now += 50; step(w, 0.05, now); }
+  assert.equal(a.control, null, 'it ran out');
+  assert.equal(f.hp, 100);
+  zkey(w, a, 2);
   now += 50; step(w, 0.05, now);
-  assert.ok(a.control.aim > 0 && a.control.aim < Math.PI / 2, 'turning, rate limited');
-  for (let i = 0; i < 20; i++) { now += 50; step(w, 0.05, now); }
-  assert.ok(!a.control || Math.abs(a.control.aim - Math.PI / 2) < 0.05, 'now pointing the new way');
+  for (let i = 0; i < 12; i++) { now += 50; step(w, 0.05, now); }
+  setInput(w, a.id, { dx: 0, dy: 0, aim: 0, fire: true, streak: 2 });
+  now += 50; step(w, 0.05, now);
+  assert.equal(a.control, null);
+  assert.equal(f.hp, 100, 'a teammate beside it is not hurt');
+  assert.ok(a.hp > 0, 'nor is the pilot');
 });
 
 test('attack helicopter: flies 15 s, its minigun kills, it ends on time', () => {

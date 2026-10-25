@@ -55,7 +55,7 @@ export type World = {
   clouds: number[][]; // smoke: x, y, radius, fraction left, team
   drops: number[][]; // air drops: x, y, 1 once landed, fraction left, fraction of the fall left
   ping: number; // round trip to the server in ms (measured every 2 s)
-  ms: number[][]; // missiles and helicopters being flown: kind (0 Predator, 1 helicopter), x, y, heading, pilot id, team (0 green, 1 red)
+  ms: number[][]; // missiles and helicopters being flown: kind (0 attack drone, 1 helicopter), x, y, heading, pilot id, team (0 green, 1 red)
   uavAreas: number[][]; // where your UAV has lifted the fog: x, y, radius, fraction of time left
   uav: [number, number]; // tenths of a second left on your UAV and the enemy's
   towers: number[][]; // sniper towers: [team (0 green, 1 red), owner id, x, y, 1 if someone is on it]

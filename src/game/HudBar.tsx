@@ -25,13 +25,13 @@ const drawings: Record<string, ReactNode> = {
   flare: (<><rect x="14" y="10" width="4" height="18" fill="#94a3b8" /><path d="M16 2 C21 8 21 12 16 12 C11 12 11 8 16 2Z" fill="#ef4444" /><rect x="8" y="24" width="16" height="6" rx="1" fill="#e2e8f0" /><rect x="14.5" y="25" width="3" height="4" fill="#dc2626" /></>),
   shield: (<path d="M16 3 L28 7 L27 18 C26 24 21 28 16 30 C11 28 6 24 5 18 L4 7Z" fill="#94a3b8" stroke="#e2e8f0" strokeWidth="2" />),
   uav: (<><rect x="12" y="13" width="8" height="5" rx="2" fill="#cbd5e1" /><path d="M3 12 L12 15 M29 12 L20 15" stroke="#94a3b8" strokeWidth="2" /><circle cx="4" cy="11" r="3" fill="#64748b" /><circle cx="28" cy="11" r="3" fill="#64748b" /><path d="M10 24 q6 4 12 0" stroke="#4ade80" strokeWidth="2" fill="none" /></>),
-  predator: (<><g transform="rotate(-35 16 16)"><rect x="6" y="12" width="17" height="7" rx="3" fill="#e2e8f0" /><polygon points="23,12 30,15.5 23,19" fill="#ef4444" /><rect x="6" y="8" width="5" height="4" fill="#64748b" /><rect x="6" y="19" width="5" height="4" fill="#64748b" /><path d="M6 14 L0 15.5 L6 17" fill="#fbbf24" /></g></>),
+  drone: (<><path d="M7 7 L25 25 M25 7 L7 25" stroke="#64748b" strokeWidth="3" /><circle cx="6" cy="6" r="5" fill="#cbd5e1" opacity="0.6" /><circle cx="26" cy="6" r="5" fill="#cbd5e1" opacity="0.6" /><circle cx="6" cy="26" r="5" fill="#cbd5e1" opacity="0.6" /><circle cx="26" cy="26" r="5" fill="#cbd5e1" opacity="0.6" /><rect x="11" y="12" width="10" height="8" rx="2" fill="#1f2937" /><circle cx="18" cy="16" r="2" fill="#ef4444" /></>),
   heli: (<><ellipse cx="14" cy="18" rx="10" ry="6" fill="#64748b" /><rect x="22" y="16.5" width="9" height="3" fill="#64748b" /><ellipse cx="10" cy="17" rx="4" ry="3" fill="#7dd3fc" /><rect x="3" y="8" width="26" height="2" rx="1" fill="#e2e8f0" /><rect x="13" y="9" width="2" height="4" fill="#94a3b8" /><rect x="3" y="26" width="14" height="2" fill="#94a3b8" /></>),
   heart: (<path d="M16 28 C2 18 4 7 11 7 C14 7 16 9 16 11 C16 9 18 7 21 7 C28 7 30 18 16 28Z" fill="#ef4444" />),
 };
 
 // If there is no art for an exact name, these generic files stand in (your ammo icon for weapons, the special icon for class abilities).
-const FALLBACK: Record<string, string> = { rifle: 'ammo', smg: 'ammo', pistol: 'ammo', shotgun: 'ammo', sniper: 'ammo', rocket: 'special', tower: 'special', medkit: 'special', tent: 'special', smoke: 'special', flash: 'special', flare: 'special', shield: 'special', uav: 'special', predator: 'special', heli: 'special' };
+const FALLBACK: Record<string, string> = { rifle: 'ammo', smg: 'ammo', pistol: 'ammo', shotgun: 'ammo', sniper: 'ammo', rocket: 'special', tower: 'special', medkit: 'special', tent: 'special', smoke: 'special', flash: 'special', flare: 'special', shield: 'special', uav: 'special', drone: 'special', heli: 'special' };
 
 function Icon({ name, size = 42 }: { name: string; size?: number }) {
   const url = art[name] ?? (FALLBACK[name] ? art[FALLBACK[name]] : undefined);
@@ -69,16 +69,16 @@ const SPECIALS: Record<string, { icon: string; sub: string; title: string; charg
 const REWARDS = [
   null,
   { icon: 'uav', sub: 'UAV', title: 'Kill-streak UAV (Z): for 8 seconds the whole map is lit and every enemy shows, on the screen and the minimap.' },
-  { icon: 'predator', sub: 'Predator', title: 'Predator missile (Z): you steer it with the mouse; the enemy gets no warning. Click or Z again to detonate. You stand still while you fly it.' },
+  { icon: 'drone', sub: 'Drone', title: 'Attack drone (Z): fly it with WASD for 15 seconds; it lights the fog and shows enemies like a UAV, and the enemy cannot see it. Left click (or Z) explodes it. You stand still while you fly it.' },
   { icon: 'heli', sub: 'Heli', title: 'Attack helicopter (Z): fly it for 15 seconds with WASD, mouse to aim, click for the minigun, right click (or G) for rockets. You stand still while you fly it.' },
 ];
 
-/** The kill-streak reward you have earned (3 kills: UAV, 5: Predator, 7: helicopter). Z spends the best one; dying loses them. */
+/** The kill-streak reward you have earned (3 kills: UAV, 5: attack drone, 7: helicopter). Z spends the best one; dying loses them. */
 function RewardSlot({ h }: { h: Hud }) {
   const flying = h.myCtl > 0;
   const r = REWARDS[h.myReward];
   if (!r && !flying) return null;
-  if (flying) return <Slot icon={h.myCtl === 2 ? 'heli' : 'predator'} value={`${Math.ceil(h.myCtlLeft / 10)}s`} sub={h.myCtl === 2 ? 'flying' : 'steering'} keyHint="Z" active title={h.myCtl === 2 ? 'Flying the attack helicopter.' : 'Steering the Predator. Click or Z detonates it.'} />;
+  if (flying) return <Slot icon={h.myCtl === 2 ? 'heli' : 'drone'} value={`${Math.ceil(h.myCtlLeft / 10)}s`} sub={h.myCtl === 2 ? 'flying' : 'piloting'} keyHint="Z" active title={h.myCtl === 2 ? 'Flying the attack helicopter.' : 'Flying the attack drone. Left click or Z explodes it.'} />;
   return <Slot icon={r!.icon} value={h.myRewardN > 1 ? `x${h.myRewardN}` : 'ready'} sub={r!.sub} keyHint="Z" active title={r!.title} />;
 }
 

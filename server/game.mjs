@@ -243,7 +243,7 @@ export function attachGame(server) {
             adminTries.delete(key);
             me.admin = true;
             console.log(`[admin] ${me.name} unlocked admin commands`);
-            return reply('Admin unlocked. /bots 5 (fill each side to 5), /bots 0 (no bots), /map forest or /map city, /restart (round wins 0:0, new timer), /reward uav|missile|heli|all (test a kill-streak reward on Z).');
+            return reply('Admin unlocked. /bots 5 (fill each side to 5), /bots 0 (no bots), /map forest or /map city, /restart (round wins 0:0, new timer), /reward uav|drone|heli|all (test a kill-streak reward on Z).');
           }
           if (cmd.toLowerCase() === 'bots' && me.admin) {
             const parts = arg.toLowerCase().split(/\s+/).filter(Boolean);
@@ -271,10 +271,10 @@ export function attachGame(server) {
             return announce(`${me.name} restarted the match: round wins 0:0, new timer.`);
           }
           if (cmd.toLowerCase() === 'reward' && me.admin) {
-            const kinds = { uav: 'uav', '3': 'uav', missile: 'missile', predator: 'missile', '5': 'missile', heli: 'heli', helicopter: 'heli', '7': 'heli' };
+            const kinds = { uav: 'uav', '3': 'uav', drone: 'drone', missile: 'drone', predator: 'drone', '5': 'drone', heli: 'heli', helicopter: 'heli', '7': 'heli' };
             const a = arg.toLowerCase();
-            const list = a === 'all' ? ['uav', 'missile', 'heli'] : kinds[a] ? [kinds[a]] : null;
-            if (!list) return reply('Use /reward uav, /reward missile, /reward heli or /reward all. It goes on your Z key (only you get it, and it is lost when you die).');
+            const list = a === 'all' ? ['uav', 'drone', 'heli'] : kinds[a] ? [kinds[a]] : null;
+            if (!list) return reply('Use /reward uav, /reward drone, /reward heli or /reward all. It goes on your Z key (only you get it, and it is lost when you die).');
             if (me.hp <= 0) return reply('Wait until you have respawned.');
             me.rewards.push(...list);
             console.log(`[admin] ${me.name} gave themself ${list.join(', ')}`);

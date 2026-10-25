@@ -82,14 +82,13 @@ export const CFG = {
   ROUND_S: 360,
   END_S: 10,
   AUTO_BALANCE_S: 15, // sides that stay two or more people apart this long are evened out by moving someone over (0 = off)
-  STREAK_REWARDS: { 3: 'uav', 5: 'missile', 7: 'heli' }, // kills in a row that earn a reward, used with Z (lost on death)
+  STREAK_REWARDS: { 3: 'uav', 5: 'drone', 7: 'heli' }, // kills in a row that earn a reward, used with Z (lost on death)
   BIGUAV_S: 8, // the streak UAV: the whole map's fog lifts and every enemy shows, for this long
-  MISSILE_SPEED: 330, // Predator missile: steered with the mouse, invisible to the enemy until it lands
-  MISSILE_TURN: 2.4, // radians per second it can turn
-  MISSILE_LIFE: 9,
-  MISSILE_RADIUS: 170,
-  MISSILE_LETHAL: 90,
-  MISSILE_VISION: 260, // the owner's side sees this far around the missile
+  DRONE_S: 15, // attack drone: flown with WASD over everything, click (or Z) to blow it up; invisible to the enemy
+  DRONE_SPEED: 240,
+  DRONE_RADIUS: 170,
+  DRONE_LETHAL: 90,
+  DRONE_VISION: 320, // like a UAV: the owner's side sees this far around the drone
   HELI_S: 15, // attack helicopter flight time
   HELI_SPEED: 210,
   HELI_VISION: 340,
@@ -716,7 +715,7 @@ function bulletDamage(b) {
 }
 
 function explode(w, n, now, spec = NADE_SPEC(), weapon = 'grenade') {
-  w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y), big: weapon === 'rocket' || weapon === 'artillery' || weapon === 'predator' });
+  w.events.push({ t: 'boom', x: Math.round(n.x), y: Math.round(n.y), big: weapon === 'rocket' || weapon === 'artillery' || weapon === 'drone' });
   for (const t of w.players.values()) {
     if (((!CFG.FRIENDLY_BLASTS || spec.spare) && t.team === n.team) || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
     const d = Math.hypot(t.x - n.x, t.y - n.y);
@@ -803,15 +802,15 @@ function useSpecial(w, p, now) {
   }
 }
 
-const REWARD_RANK = { uav: 1, missile: 2, heli: 3 };
-/** The best reward he holds (3 heli, 2 missile, 1 UAV, 0 none). */
+const REWARD_RANK = { uav: 1, drone: 2, heli: 3 };
+/** The best reward he holds (3 heli, 2 drone, 1 UAV, 0 none). */
 export const rewardCode = (p) => p.rewards.reduce((m, r) => Math.max(m, REWARD_RANK[r]), 0);
 
 /** The Z key: spend the best streak reward, or (while flying one) end it early. */
 function useStreak(w, p, now) {
   if (p.hp <= 0) return;
   if (p.control) {
-    if (p.control.kind === 'missile') p.control.detonate = true; // Z again: blow it where it is
+    if (p.control.kind === 'drone') p.control.detonate = true; // Z again: blow it where it is
     return;
   }
   const code = rewardCode(p);
@@ -823,10 +822,10 @@ function useStreak(w, p, now) {
     w.uavAreas.push({ team: p.team, x: (w.W * w.tile) / 2, y: (w.H * w.tile) / 2, r: 1e5, until, big: true });
     w.uav[p.team] = Math.max(w.uav[p.team], until);
     w.events.push({ t: 'uav', team: p.team, big: true });
-  } else if (kind === 'missile') {
+  } else if (kind === 'drone') {
     p.dx = p.dy = 0;
     p.fire = false;
-    p.control = { kind: 'missile', x: p.x + Math.cos(p.aim) * 20, y: p.y + Math.sin(p.aim) * 20, aim: p.aim, left: CFG.MISSILE_LIFE };
+    p.control = { kind: 'drone', x: p.x, y: p.y, aim: p.aim, left: CFG.DRONE_S };
   } else {
     p.dx = p.dy = 0;
     p.fire = false;
@@ -835,28 +834,24 @@ function useStreak(w, p, now) {
   }
 }
 
-/** Fly the missile or helicopter a player is controlling for one tick (he stands still and is open to fire meanwhile). */
+/** Fly the drone or helicopter a player is controlling for one tick (he stands still and is open to fire meanwhile). */
 function controlStep(w, p, now, dt) {
   const c = p.control;
   p.wantNade = p.wantReload = p.wantArty = p.wantSwap = p.wantNest = p.wantSpecial = false;
   c.left -= dt;
-  if (c.kind === 'missile') {
-    let da = p.aim - c.aim;
-    da = Math.atan2(Math.sin(da), Math.cos(da));
-    c.aim += clamp(da, -CFG.MISSILE_TURN * dt, CFG.MISSILE_TURN * dt);
-    const steps = Math.max(1, Math.ceil((CFG.MISSILE_SPEED * dt) / 6));
-    let boom = !!c.detonate || c.left <= 0 || (p.fire && c.left < CFG.MISSILE_LIFE - 0.5); // click (or Z again) to blow it early
-    for (let i = 0; i < steps && !boom; i++) {
-      c.x += (Math.cos(c.aim) * CFG.MISSILE_SPEED * dt) / steps;
-      c.y += (Math.sin(c.aim) * CFG.MISSILE_SPEED * dt) / steps;
-      if (solidAt(w, c.x, c.y)) boom = true;
-      else for (const t of w.players.values()) {
-        if (t.team === p.team || t.hp <= 0 || now < t.protectUntil || isSafe(w, t)) continue;
-        if (Math.hypot(t.x - c.x, t.y - c.y) <= CFG.RADIUS + 6) { boom = true; break; }
-      }
+  if (c.kind === 'drone') {
+    const len = Math.hypot(p.dx, p.dy);
+    if (len > 0) {
+      c.x = clamp(c.x + (p.dx / Math.max(1, len)) * CFG.DRONE_SPEED * dt, 0, w.W * w.tile);
+      c.y = clamp(c.y + (p.dy / Math.max(1, len)) * CFG.DRONE_SPEED * dt, 0, w.H * w.tile);
     }
-    if (boom) {
-      explode(w, { x: c.x, y: c.y, owner: p.id, team: p.team }, now, { spare: true, r: CFG.MISSILE_RADIUS, lethal: CFG.MISSILE_LETHAL, hi: CFG.ROCKET_OUTER_MAX, lo: CFG.ROCKET_OUTER_MIN }, 'predator');
+    c.aim = p.aim;
+    const expired = c.left <= 0;
+    if (c.detonate || (p.fire && c.left < CFG.DRONE_S - 0.4)) { // left click (or Z again) blows it up where it hovers
+      explode(w, { x: c.x, y: c.y, owner: p.id, team: p.team }, now, { spare: true, r: CFG.DRONE_RADIUS, lethal: CFG.DRONE_LETHAL, hi: CFG.ROCKET_OUTER_MAX, lo: CFG.ROCKET_OUTER_MIN }, 'drone');
+      p.control = null;
+    } else if (expired) {
+      w.events.push({ t: 'pop', x: Math.round(c.x), y: Math.round(c.y), kind: 'break' }); // battery spent: it just drops
       p.control = null;
     }
     return;
@@ -1275,7 +1270,7 @@ export function eyesFor(w, team, now = Date.now()) {
   const mates = [...w.players.values()].filter((q) => q.team === team);
   const live = mates.filter((q) => q.hp > 0);
   // Everyone sees a circle around them; a scoped sniper also sees a long, narrow beam along his aim: [x, y, radius, aim, halfWidth, range].
-  const flying = live.filter((q) => q.control).map((q) => [q.control.x, q.control.y, q.control.kind === 'heli' ? CFG.HELI_VISION : CFG.MISSILE_VISION]);
+  const flying = live.filter((q) => q.control).map((q) => [q.control.x, q.control.y, q.control.kind === 'heli' ? CFG.HELI_VISION : CFG.DRONE_VISION]);
   return flying.concat((live.length ? live : mates).flatMap((q) => (now < q.blindUntil ? [[q.x, q.y, CFG.BLIND_VISION]] : q.scoped ? [[q.x, q.y, CFG.VISION], [q.x, q.y, 0, q.aim, CFG.SCOPE_HALF, CFG.SCOPE_VISION]] : [[q.x, q.y, CFG.VISION]])));
 }
 /** Does a smoke cloud sit between (ex,ey) and (x,y)? A target at point-blank range is still seen. */

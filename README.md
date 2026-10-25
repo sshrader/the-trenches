@@ -112,7 +112,7 @@ Gunfire, reloads and grenade blasts use recordings in `src/assets/sfx` (ar, smg,
 
 ## Test settings
 
-`CFG.FRIENDLY_FIRE` (bullets and rockets in flight hurt your own side, never yourself) is now **off**; `CFG.FRIENDLY_FLASH` (flashbangs blind your side and you) is still **on** in `server/sim.mjs` while we test. Grenade, rocket and artillery blasts still hurt friends (`CFG.FRIENDLY_BLASTS`), but the Predator's blast spares your side. Teamkills give no kill credit.
+`CFG.FRIENDLY_FIRE` (bullets and rockets in flight hurt your own side, never yourself) is now **off**; `CFG.FRIENDLY_FLASH` (flashbangs blind your side and you) is still **on** in `server/sim.mjs` while we test. Grenade, rocket and artillery blasts still hurt friends (`CFG.FRIENDLY_BLASTS`), but the attack drone's blast spares your side. Teamkills give no kill credit.
 
 ## Rounds fade in the fog
 
@@ -140,7 +140,7 @@ curl -X POST -H "x-admin-token: $ADMIN_TOKEN" -H "content-type: application/json
      -d '{"enabled":true,"size":5}' https://your-site/api/admin/bots
 ```
 
-**From the game's chat** (needs the same `ADMIN_TOKEN`): type `/admin your-token` once (only you see the reply, and the line is never shown to other players), then `/bots 5` for 5v5, `/bots 0` for no bots, `/bots` to see the current setting, `/map forest` or `/map city` to switch map (round wins reset to 0:0), and `/restart` to start the match again (round wins 0:0, round 1, fresh timer, same map). `/reward uav`, `/reward missile`, `/reward heli` or `/reward all` puts that kill-streak reward on your own Z key for testing (private, and lost when you die like a normal one). The map and restart commands are announced to everyone in chat. Five wrong passwords lock the sender's address out for a minute.
+**From the game's chat** (needs the same `ADMIN_TOKEN`): type `/admin your-token` once (only you see the reply, and the line is never shown to other players), then `/bots 5` for 5v5, `/bots 0` for no bots, `/bots` to see the current setting, `/map forest` or `/map city` to switch map (round wins reset to 0:0), and `/restart` to start the match again (round wins 0:0, round 1, fresh timer, same map). `/reward uav`, `/reward drone`, `/reward heli` or `/reward all` puts that kill-streak reward on your own Z key for testing (private, and lost when you die like a normal one). The map and restart commands are announced to everyone in chat. Five wrong passwords lock the sender's address out for a minute.
 
 The change lasts until the server restarts (then `BOTS` / `BOT_TEAM_SIZE` apply again). Without `ADMIN_TOKEN` the route does not exist.
 
@@ -148,12 +148,12 @@ The change lasts until the server restarts (then `BOTS` / `BOT_TEAM_SIZE` apply 
 
 **Kill streaks:** every soldier (bots too) keeps a count of kills since he last died. At 3, 5 and 7 the server announces it to everyone (`CFG.STREAK_CALLOUTS`): a banner at the top of the screen ("Wolf is on a 5 kill streak!", yellow, orange, red) and a short rising sting, louder when it is you. Dying ends the streak, and a new round starts everyone at zero. 
 
-**Rewards (Z key):** people (not bots) who reach 3, 5 or 7 kills in a row earn a reward, shown as a slot on the hotkey bar. Z spends the best one held; an unused reward is lost when you die or a round restarts. While you fly a missile or helicopter your soldier stands still and can be shot.
+**Rewards (Z key):** people (not bots) who reach 3, 5 or 7 kills in a row earn a reward, shown as a slot on the hotkey bar. Z spends the best one held; an unused reward is lost when you die or a round restarts. While you fly a drone or helicopter your soldier stands still and can be shot.
 
 | Kills | Reward | What it does |
 |---|---|---|
 | 3 | UAV | 8 s: the whole map's fog lifts and every enemy shows on screen and the minimap (`CFG.BIGUAV_S`) |
-| 5 | Predator | the camera rides the missile; the mouse steers it (turn rate `CFG.MISSILE_TURN`); click or Z detonates. The enemy sees no missile, marker or warning, only the blast |
+| 5 | Attack drone | 15 s (`CFG.DRONE_S`): WASD flies it over everything, the camera rides it, and it lights the fog and shows enemies (screen and minimap) like a UAV. Left click or Z explodes it (blast spares your side). The enemy sees no drone, marker or warning |
 | 7 | Attack helicopter | 15 s (`CFG.HELI_S`): WASD to fly over everything, mouse to aim, hold click for the minigun, right click (or G) for rockets. Enemies who can see it see it |
 
 **Idle kick:** a person who has not moved, fired, scoped, pressed an action key or moved the mouse for 60 s is removed (15 s before that, a "Move or you will be removed" warning appears in chat). They land back in the lobby with a message saying why. `IDLE_KICK_S` changes the time (0 turns it off). Bots are never kicked.
