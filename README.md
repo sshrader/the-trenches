@@ -154,7 +154,7 @@ The change lasts until the server restarts (then `BOTS` / `BOT_TEAM_SIZE` apply 
 |---|---|---|
 | 3 | UAV | 8 s: the whole map's fog lifts and every enemy shows on screen and the minimap (`CFG.BIGUAV_S`) |
 | 5 | Predator | the camera rides the missile; the mouse steers it (turn rate `CFG.MISSILE_TURN`); click or Z detonates. The enemy sees no missile, marker or warning, only the blast |
-| 7 | Attack helicopter | 15 s (`CFG.HELI_S`): WASD to fly over everything, mouse to aim, hold click for the minigun, G for rockets. Enemies who can see it see it |
+| 7 | Attack helicopter | 15 s (`CFG.HELI_S`): WASD to fly over everything, mouse to aim, hold click for the minigun, right click (or G) for rockets. Enemies who can see it see it |
 
 **Idle kick:** a person who has not moved, fired, scoped, pressed an action key or moved the mouse for 60 s is removed (15 s before that, a "Move or you will be removed" warning appears in chat). They land back in the lobby with a message saying why. `IDLE_KICK_S` changes the time (0 turns it off). Bots are never kicked.
 

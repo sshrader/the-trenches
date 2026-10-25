@@ -1199,6 +1199,10 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
     const onMouseDown = (e: globalThis.MouseEvent) => {
       if (e.button === 2 && (e.target as HTMLElement | null)?.tagName === 'CANVAS') {
         right = true;
+        if (world.current.units.get(world.current.me)?.ctl === 2) {
+          input.current.nade += 1; // flying the helicopter: right click fires a rocket
+          return;
+        }
         // A sniper uses the right button to scope; everyone else sprints with it.
         if (world.current.units.get(world.current.me)?.cls === 3) input.current.scope = true;
         else input.current.sprint = true;
@@ -1913,7 +1917,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         ctx.font = 'bold 18px system-ui, sans-serif';
         ctx.fillText(heli ? `ATTACK HELICOPTER  ${(you.ctlLeft / 10).toFixed(1)}s` : `PREDATOR  ${(you.ctlLeft / 10).toFixed(1)}s`, VIEW_W / 2, 84);
         ctx.font = '13px system-ui, sans-serif';
-        ctx.fillText(heli ? 'WASD fly · hold click: minigun · G: rocket · your soldier is standing still, so stay hidden' : 'Move the mouse to steer · click or Z to detonate · your soldier is standing still', VIEW_W / 2, 104);
+        ctx.fillText(heli ? 'WASD fly · hold click: minigun · right click: rocket · your soldier is standing still, so stay hidden' : 'Move the mouse to steer · click or Z to detonate · your soldier is standing still', VIEW_W / 2, 104);
       }
       // UAV status
       if (w.uav[0] > 0 || w.uav[1] > 0) {
