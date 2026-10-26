@@ -1,11 +1,12 @@
-// On-screen controls for phones and tablets: a left stick to move, and the rest of the screen is the battlefield: touch where you want to shoot (hold to keep firing),
-// or arm a grenade / artillery strike with its button and tap where it should land. Buttons cover the other actions.
+// On-screen controls for phones and tablets: a left stick to move, a right stick to aim (the soldier shoots by itself when the aim points at an enemy, see GameCanvas),
+// and buttons for the rest. For a grenade or an artillery strike, press its button and then tap the battlefield where it should land.
 // They write into the same `input` the keyboard does, so the server sees no difference.
 import { useRef, useState } from 'react';
 import type { MutableRefObject, PointerEvent as RPointerEvent, ReactNode } from 'react';
 import type { Input, World } from './useGame';
 
-export type TouchAim = { on: boolean; px: number; py: number }; // where the last touch was, in page pixels; the canvas turns it into an aim point
+// The aim stick (ax, ay: direction, mag: how far it is pushed, held: finger down), the last facing, and a tapped target (px, py in page pixels) that overrides the stick for a moment while a throw is placed.
+export type TouchAim = { on: boolean; held: boolean; ax: number; ay: number; mag: number; px: number; py: number; tapAt: number };
 
 const R = 56; // stick radius in px
 
@@ -83,53 +84,15 @@ export default function TouchControls({ input, aim, world, onScores, onMenu }: {
   const cls = () => world.current.units.get(world.current.me)?.cls ?? 0;
   const [scope, setScope] = useState(false);
   const [sprint, setSprint] = useState(false);
-  const [auto, setAuto] = useState(false); // keep firing at the last point you touched
   const [tool, setTool] = useState<Tool>('fire');
   const toolRef = useRef<Tool>('fire');
   const setToolBoth = (t: Tool) => { toolRef.current = t; setTool(t); };
-  const autoRef = useRef(false);
-  const fireTimer = useRef(0);
-  const down = useRef<number | null>(null);
   const sniper = cls() === 3;
-
-  const point = (e: RPointerEvent) => { aim.current.on = true; aim.current.px = e.clientX; aim.current.py = e.clientY; };
-  // The server reads the aim and the throw together, so the throw waits a moment for the canvas to turn the touch into an aim point.
+  // The server reads the aim and the throw together, so the throw waits a moment for the canvas to turn the tap into an aim point.
   const later = (fn: () => void) => window.setTimeout(fn, 90);
 
   return (
     <div className="touch-ui" onContextMenu={(e) => e.preventDefault()}>
-      <div
-        className="tc-zone aim"
-        aria-label="Tap to shoot or place a throw"
-        onPointerDown={(e) => {
-          if (down.current !== null) return;
-          e.currentTarget.setPointerCapture(e.pointerId);
-          down.current = e.pointerId;
-          point(e);
-          if (toolRef.current === 'fire') {
-            window.clearTimeout(fireTimer.current);
-            input.current.fire = true;
-          } else if (toolRef.current === 'nade') {
-            later(() => { input.current.nade += 1; });
-            setToolBoth('fire');
-          } else {
-            later(() => { input.current.arty += 1; });
-            setToolBoth('fire');
-          }
-        }}
-        onPointerMove={(e) => { if (e.pointerId === down.current) point(e); }}
-        onPointerUp={(e) => {
-          if (e.pointerId !== down.current) return;
-          down.current = null;
-          if (autoRef.current) return;
-          fireTimer.current = window.setTimeout(() => { input.current.fire = false; }, 140); // a quick tap still counts as a shot
-        }}
-        onPointerCancel={(e) => {
-          if (e.pointerId !== down.current) return;
-          down.current = null;
-          if (!autoRef.current) input.current.fire = false;
-        }}
-      />
       <Stick
         className="left"
         label="Move"
@@ -141,9 +104,36 @@ export default function TouchControls({ input, aim, world, onScores, onMenu }: {
         }}
         onEnd={() => { input.current.dx = input.current.dy = 0; if (!sprint) input.current.sprint = false; }}
       />
+      <Stick
+        className="right"
+        label="Aim"
+        onVec={(vx, vy, mag) => {
+          const a = aim.current;
+          a.on = true;
+          a.held = mag > 0.2;
+          if (mag > 0.2) { a.ax = vx; a.ay = vy; }
+          a.mag = mag;
+        }}
+        onEnd={() => { aim.current.held = false; }}
+      />
+      {tool !== 'fire' && (
+        <div
+          className="tc-zone aim"
+          aria-label="Tap the target"
+          onPointerDown={(e) => {
+            const a = aim.current;
+            a.on = true;
+            a.px = e.clientX;
+            a.py = e.clientY;
+            a.tapAt = performance.now();
+            const t = toolRef.current;
+            later(() => { if (t === 'nade') input.current.nade += 1; else input.current.arty += 1; });
+            setToolBoth('fire');
+          }}
+        />
+      )}
       {tool !== 'fire' && <div className="tc-hint">{tool === 'nade' ? 'Tap where to throw the grenade' : 'Tap where to call the artillery strike'}</div>}
       <div className="tc-btns">
-        <Btn title="Keep firing" className={auto ? 'latched' : ''} onDown={() => { const a = !autoRef.current; autoRef.current = a; setAuto(a); input.current.fire = a && aim.current.on; }}>⟳<small>auto</small></Btn>
         <Btn title="Grenade: then tap where to throw" className={tool === 'nade' ? 'latched' : ''} onDown={() => setToolBoth(toolRef.current === 'nade' ? 'fire' : 'nade')}>G<small>grenade</small></Btn>
         <Btn title="Artillery: then tap the target" className={tool === 'arty' ? 'latched' : ''} onDown={() => setToolBoth(toolRef.current === 'arty' ? 'fire' : 'arty')}>T<small>artillery</small></Btn>
         <Btn title="Reload" onDown={() => { input.current.reload += 1; }}>R<small>reload</small></Btn>

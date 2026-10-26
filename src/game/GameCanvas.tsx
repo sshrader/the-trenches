@@ -1349,7 +1349,18 @@ function drawCorpse(ctx: CanvasRenderingContext2D, c: World['corpses'][number], 
   ctx.restore();
 }
 
-export default function GameCanvas({ world, input, typing, touch }: { world: MutableRefObject<World>; input: MutableRefObject<Input>; typing?: () => boolean; touch?: MutableRefObject<{ on: boolean; px: number; py: number }> }) {
+/** Is there open ground (no wall or cover that stops bullets) between two points? Used by the touch aim assist. */
+function clearLine(x0: number, y0: number, x1: number, y1: number) {
+  const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (TILE / 2));
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    const c = tileAt(Math.floor((x0 + (x1 - x0) * t) / TILE), Math.floor((y0 + (y1 - y0) * t) / TILE));
+    if (c === '#' || c === 'c' || c === 'B' || c === 'K' || c === 'Y') return false;
+  }
+  return true;
+}
+
+export default function GameCanvas({ world, input, typing, touch }: { world: MutableRefObject<World>; input: MutableRefObject<Input>; typing?: () => boolean; touch?: MutableRefObject<{ on: boolean; held: boolean; ax: number; ay: number; mag: number; px: number; py: number; tapAt: number }> }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const mouse = useRef({ x: VIEW_W / 2 + 40, y: VIEW_H / 2 });
   // Keep the latest typing check in a ref so the input effect below is not torn down (and held keys reset) on every re-render.
@@ -1526,9 +1537,38 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
       w.cam.x = camX;
       w.cam.y = camY;
       if (you && touch?.current.on) {
-        // touch: the last touched point on the screen is the aim point, like a mouse pointer
+        // touch: a tapped target (for a grenade or strike) wins for a moment; otherwise the aim stick; otherwise he faces the way he walks
+        const tc = touch.current;
         const r = cv.getBoundingClientRect();
-        mouse.current = { x: ((touch.current.px - r.left) * VIEW_W) / r.width, y: ((touch.current.py - r.top) * VIEW_H) / r.height };
+        if (performance.now() - tc.tapAt < 450) {
+          mouse.current = { x: ((tc.px - r.left) * VIEW_W) / r.width, y: ((tc.py - r.top) * VIEW_H) / r.height };
+        } else {
+          if (!tc.held && (input.current.dx || input.current.dy)) {
+            const l = Math.hypot(input.current.dx, input.current.dy);
+            tc.ax = input.current.dx / l;
+            tc.ay = input.current.dy / l;
+          }
+          let a = Math.atan2(tc.ay, tc.ax);
+          const flyingNow = !!you.ctl;
+          if (!flyingNow && you.hp > 0) {
+            // a gentle aim assist: if an enemy he can see is almost in line, the aim leans halfway to him, and he shoots by himself while the stick holds the aim on one
+            let best: Unit | null = null, bd = 1e9, bdiff = 1;
+            for (const e of w.units.values()) {
+              if (e.team === you.team || e.hp <= 0) continue;
+              const dist = Math.hypot(e.tx - you.tx, e.ty - you.ty);
+              if (dist > 460 || dist >= bd) continue;
+              let diff = Math.atan2(e.ty - you.ty, e.tx - you.tx) - a;
+              diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+              if (Math.abs(diff) > 0.2) continue;
+              if (!clearLine(you.tx, you.ty, e.tx, e.ty)) continue;
+              best = e; bd = dist; bdiff = diff;
+            }
+            if (best && tc.held) a += bdiff * 0.5;
+            input.current.fire = !!best && tc.held;
+          } else input.current.fire = tc.held && tc.mag > 0.6; // flying: shoot (or explode) when the stick is pushed out
+          const d = 160;
+          mouse.current = { x: (focusX - camX + Math.cos(a) * d) * zoom, y: (focusY - camY + Math.sin(a) * d) * zoom };
+        }
       }
       if (you) {
         const mdx = mouse.current.x / zoom - (focusX - camX);
