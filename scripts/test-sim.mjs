@@ -369,7 +369,7 @@ test('a resupply crate refills only its own side, then needs 30 s', () => {
   assert.equal(a.ammo, CFG.CLASSES.rifleman.mag, 'ready again after 30 s');
 });
 
-test('SMG: five hits to kill and much faster fire; medic pistol; class weapon on the kill', () => {
+test('SMG: five hits to kill and much faster fire; medic SMG; class weapon on the kill', () => {
   const w = fresh();
   const a = addPlayer(w, { name: 'a', want: 'green', cls: 'smg' });
   const e = addPlayer(w, { name: 'e', want: 'red' });
@@ -390,7 +390,7 @@ test('SMG: five hits to kill and much faster fire; medic pistol; class weapon on
   assert.deepEqual([row[15], row[16]], [1, 0], 'kills and deaths are in the snapshot');
   assert.ok(a.ammo < 20 && a.ammo >= 10, 'smg uses its own 20-round magazine');
   const m = addPlayer(w, { name: 'm', want: 'green', cls: 'medic' });
-  assert.equal(m.ammo, 10);
+  assert.equal(m.ammo, 16, 'the medic carries a 16-round SMG');
   assert.equal(snapshot(w, now).p.find((q) => q[0] === m.id)[10], 2, 'class is in the snapshot');
 });
 
@@ -471,7 +471,7 @@ test('class change: at once in your trench, next life elsewhere; cooldown betwee
   a.respawnAt = 20001;
   run(w, 1, 20100);
   assert.equal(a.cls, 'medic', 'applied on respawn');
-  assert.equal(a.ammo, 10);
+  assert.equal(a.ammo, 16);
 });
 
 test('teams are rebalanced when one side gets ahead', () => {

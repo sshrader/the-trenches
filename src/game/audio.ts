@@ -197,7 +197,7 @@ export function playShot(dist: number, cls = 0, sidearm = false) {
   recent = recent.filter((t) => now - t < 150);
   if (recent.length >= 8) return; // a crowd firing at once must not turn into a wall of noise
   recent.push(now);
-  const gun = sidearm || cls === 2 ? 'pistol' : cls === 1 ? 'smg' : cls === 4 ? 'shotgun' : 'ar';
+  const gun = sidearm ? 'pistol' : cls === 1 || cls === 2 ? 'smg' : cls === 4 ? 'shotgun' : 'ar';
   if (sample(gun, dist, { pistol: 0.8, smg: 0.75, shotgun: 0.6, ar: cls === 3 ? 1.3 : 1 }[gun], cls === 3 && !sidearm ? 0.85 : 1)) return;
   const kind = sidearm ? 2 : cls > 4 ? 0 : cls;
 

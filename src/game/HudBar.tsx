@@ -56,7 +56,7 @@ function Slot({ icon, value, sub, keyHint, keyHint2, active, dim, fill, title }:
   );
 }
 
-const WEAPON_ICON: Record<string, string> = { rifleman: 'rifle', smg: 'smg', medic: 'pistol', sniper: 'sniper', shotgunner: 'shotgun', squad: 'rifle' };
+const WEAPON_ICON: Record<string, string> = { rifleman: 'rifle', smg: 'smg', medic: 'smg', sniper: 'sniper', shotgunner: 'shotgun', squad: 'rifle' };
 
 const SPECIALS: Record<string, { icon: string; sub: string; title: string; charges?: boolean; dur?: number; recharge?: number }> = {
   rifleman: { icon: 'smoke', sub: 'smoke', charges: true, title: 'Smoke grenade (C): enemies cannot see into or through the cloud; your side can. Resupply refills it.' },

@@ -24,7 +24,7 @@ export type ClassId = 'rifleman' | 'smg' | 'medic' | 'sniper' | 'shotgunner' | '
 export const CLASSES: { id: ClassId; label: string; mag: number; hp: number; sideMag?: number; special?: string; blurb: string }[] = [
   { id: 'rifleman', label: 'Assault', mag: 15, hp: 100, special: 'Smoke grenade', blurb: 'All-rounder. 15-round AR, 3 hits kill. It kicks on full auto, so fire in bursts. Smoke hides your push from the enemy.' },
   { id: 'smg', label: 'SMG', mag: 20, hp: 100, special: 'Flashbang', blurb: 'Fast and close. 20 rounds, 5 hits kill, short reach. Flashbang blinds enemies for 2 seconds.' },
-  { id: 'medic', label: 'Medic', mag: 10, hp: 100, special: 'Air drop flare', blurb: 'Heals teammates next to you. 10-round pistol. The flare calls a medical crate that heals your side for 10 seconds.' },
+  { id: 'medic', label: 'Medic', mag: 16, hp: 100, special: 'Air drop flare', blurb: 'Heals teammates next to you. 16-round SMG, a little weaker than the SMG class. The flare calls a medical crate that heals your side for 10 seconds.' },
   { id: 'sniper', label: 'Sniper', mag: 5, hp: 100, sideMag: 8, special: 'Tower', blurb: 'One shot, one kill, through light cover. Right-click to scope, but every shot reveals you. Build a tower to shoot over cover. 8-round pistol.' },
   { id: 'shotgunner', label: 'Shotgunner', mag: 5, hp: 140, sideMag: 12, special: 'Riot shield', blurb: 'Tough brawler, 140 HP. Deadly up close, weak at range. The riot shield stops fire from the front: 5 seconds, 200 damage.' },
   { id: 'squad', label: 'Squad Leader', mag: 15, hp: 100, sideMag: 10, special: 'UAV', blurb: 'AR, pistol, 2 grenades and artillery. The UAV lifts the fog at your cursor for 10 seconds, 60 second recharge.' },
