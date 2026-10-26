@@ -120,7 +120,7 @@ export const CFG = {
   FRIENDLY_BLASTS: true, // grenades, rockets and artillery hurt your own side and yourself (bullets still do not)
   GRENADES: 2, // per life
   NADE_FLIGHT_S: 0.7, // in the air (flies over cover)
-  NADE_FUSE_S: 2.0, // from the throw to the bang
+  NADE_FUSE_S: 1.6, // from the throw to the bang
   NADE_COOLDOWN_MS: 800,
   NADE_MIN: 70, // throw range limits in px
   NADE_MAX: 380,
