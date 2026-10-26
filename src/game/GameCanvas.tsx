@@ -1858,37 +1858,61 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
             ctx.save();
             ctx.translate(sx, sy);
             if (kind === 0) {
-              // attack drone: a small quadcopter, rotors blurring, a red eye
-              ctx.fillStyle = 'rgba(0,0,0,0.25)';
+              // attack drone: a quadcopter seen from above, bigger now, with arms, motors, spinning rotors, a battery and a camera pod at the front
+              ctx.fillStyle = 'rgba(0,0,0,0.28)';
               ctx.beginPath();
-              ctx.ellipse(6, 12, 13, 7, 0, 0, Math.PI * 2);
+              ctx.ellipse(8, 18, 24, 11, 0, 0, Math.PI * 2);
               ctx.fill();
-              ctx.strokeStyle = '#475569';
-              ctx.lineWidth = 3;
+              ctx.rotate(ma);
+              ctx.scale(1.5, 1.5);
+              ctx.strokeStyle = '#1f2937'; // the four arms
+              ctx.lineWidth = 3.4;
+              ctx.lineCap = 'round';
               ctx.beginPath();
-              ctx.moveTo(-11, -11); ctx.lineTo(11, 11);
-              ctx.moveTo(11, -11); ctx.lineTo(-11, 11);
+              ctx.moveTo(-12, -12); ctx.lineTo(12, 12);
+              ctx.moveTo(12, -12); ctx.lineTo(-12, 12);
               ctx.stroke();
-              for (const [rx, ry] of [[-11, -11], [11, -11], [-11, 11], [11, 11]]) {
-                ctx.fillStyle = 'rgba(203,213,225,0.35)';
+              for (const [rx, ry] of [[-12, -12], [12, -12], [-12, 12], [12, 12]]) {
+                ctx.fillStyle = '#111827'; // motor
                 ctx.beginPath();
-                ctx.arc(rx, ry, 7.5, 0, Math.PI * 2);
+                ctx.arc(rx, ry, 3.2, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.strokeStyle = 'rgba(226,232,240,0.8)';
-                ctx.lineWidth = 1.6;
-                const ra = (tnow / 30 + rx) % (Math.PI * 2);
+                ctx.fillStyle = 'rgba(203,213,225,0.22)'; // blur of the spinning blades
                 ctx.beginPath();
-                ctx.moveTo(rx - Math.cos(ra) * 7, ry - Math.sin(ra) * 7);
-                ctx.lineTo(rx + Math.cos(ra) * 7, ry + Math.sin(ra) * 7);
+                ctx.arc(rx, ry, 8.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(241,245,249,0.85)';
+                ctx.lineWidth = 1.4;
+                const ra = (tnow / 25 + rx * 3 + ry) % (Math.PI * 2);
+                ctx.beginPath();
+                ctx.moveTo(rx - Math.cos(ra) * 8.5, ry - Math.sin(ra) * 8.5);
+                ctx.lineTo(rx + Math.cos(ra) * 8.5, ry + Math.sin(ra) * 8.5);
+                ctx.moveTo(rx - Math.sin(ra) * 8.5, ry + Math.cos(ra) * 8.5);
+                ctx.lineTo(rx + Math.sin(ra) * 8.5, ry - Math.cos(ra) * 8.5);
                 ctx.stroke();
               }
-              ctx.fillStyle = '#1f2937';
+              ctx.fillStyle = '#374151'; // body
               ctx.beginPath();
-              ctx.roundRect(-6, -5, 12, 10, 3);
+              ctx.roundRect(-8, -6, 16, 12, 4);
               ctx.fill();
-              ctx.fillStyle = `rgba(248,113,113,${0.6 + 0.4 * Math.sin(tnow / 120)})`;
+              ctx.fillStyle = '#4b5563'; // battery strip
+              ctx.fillRect(-6, -3, 8, 6);
+              ctx.fillStyle = '#0f172a'; // camera pod at the front
               ctx.beginPath();
-              ctx.arc(3, 0, 2.2, 0, Math.PI * 2);
+              ctx.arc(9, 0, 3.6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#7dd3fc';
+              ctx.beginPath();
+              ctx.arc(10, 0, 1.5, 0, Math.PI * 2);
+              ctx.fill();
+              const blink = Math.sin(tnow / 140) > 0;
+              ctx.fillStyle = blink ? '#ef4444' : '#7f1d1d'; // nav lights
+              ctx.beginPath();
+              ctx.arc(-9, -5, 1.4, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = blink ? '#22c55e' : '#14532d';
+              ctx.beginPath();
+              ctx.arc(-9, 5, 1.4, 0, Math.PI * 2);
               ctx.fill();
             } else {
               // Attack helicopter (top-down, nose to the right): slim fuselage, tandem cockpit, stub wings with rocket pods, tail boom, chin gun
