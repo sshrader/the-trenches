@@ -277,3 +277,44 @@ body { background: radial-gradient(1200px 500px at 50% -120px, #2a2417 0%, trans
 .board th.team-head { width: auto !important; }
 .train-warn { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); padding: 6px 16px; border-radius: 8px; background: rgba(250,204,21,0.92); color: #1a1500; font-weight: 800; letter-spacing: 0.05em; font-size: 15px; animation: trainflash 0.5s steps(2) infinite; pointer-events: none; z-index: 5; }
 @keyframes trainflash { 50% { background: rgba(120,100,10,0.92); color: #fde68a; } }
+
+/* ---- Touch (mobile / tablet) ---- */
+.device-ask { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(6,8,8,0.88); padding: 16px; }
+.device-card { max-width: 520px; width: 100%; background: #14171a; border: 1px solid var(--line); border-radius: 14px; padding: 22px; text-align: center; }
+.device-card h2 { margin: 0 0 4px; }
+.device-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.device-opts .btn.big { display: flex; flex-direction: column; gap: 4px; padding: 18px 10px; font-size: 18px; }
+.device-opts .btn.big span { font-size: 12px; opacity: 0.75; font-weight: 400; }
+.device-opts .btn.big em { font-size: 11px; color: #fbbf24; font-style: normal; }
+.device-opts .btn.big.suggested { border-color: #fbbf24; }
+.linkbtn { background: none; border: 0; padding: 0; color: #fbbf24; cursor: pointer; font: inherit; text-decoration: underline; }
+.device-line { margin: 8px 0 0; }
+.touch-ui { position: absolute; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.tc-zone { position: absolute; bottom: 0; height: 72%; pointer-events: auto; touch-action: none; }
+.tc-zone.left { left: 0; width: 36%; }
+.tc-zone.right { right: 0; width: 40%; }
+.tc-base { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.08); }
+.tc-knob { position: absolute; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(255,255,255,0.45); border: 2px solid rgba(255,255,255,0.7); }
+.tc-btns { position: absolute; right: 10px; top: 68px; display: grid; grid-template-columns: repeat(2, 46px); gap: 6px; pointer-events: none; }
+.tc-btn { pointer-events: auto; touch-action: none; width: 46px; height: 46px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45); background: rgba(20,24,28,0.62); color: #fff; font-weight: 800; font-size: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; padding: 0; -webkit-tap-highlight-color: transparent; }
+.tc-btn small { font-size: 7px; font-weight: 600; opacity: 0.8; margin-top: 2px; text-transform: uppercase; }
+.tc-btn.on, .tc-btn.latched { background: rgba(251,191,36,0.55); border-color: #fbbf24; }
+.tc-top { position: absolute; left: 10px; top: 10px; display: flex; gap: 8px; }
+.tc-top .tc-btn { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; }
+.touch-score { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; padding: 4px 14px; border-radius: 999px; background: rgba(10,14,16,0.7); font-weight: 800; font-size: 18px; pointer-events: none; }
+.touch-score span { font-size: 14px; opacity: 0.85; font-weight: 600; }
+.touch-menu { position: absolute; left: 10px; top: 62px; z-index: 6; display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 12px; background: rgba(10,14,16,0.94); border: 1px solid var(--line); max-width: 240px; pointer-events: auto; }
+.touch-menu .btn.on { border-color: #fbbf24; }
+.rotate-ask { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; background: rgba(6,8,8,0.9); font-size: 20px; font-weight: 700; text-align: center; padding: 20px; }
+html, body { overscroll-behavior: none; }
+/* playing on touch: the battlefield takes the whole screen (iPhones have no full screen API for pages), the top bar and key legend go */
+.touchplay .hud-top, .touchplay .keys, .touchplay .stage > .toolbar { display: none !important; }
+.touchplay .stage { position: static; }
+.touchplay .canvas-wrap { position: fixed; inset: 0; z-index: 50; background: #000; display: flex; align-items: center; justify-content: center; }
+.touchplay .game-canvas { width: min(100vw, calc(100dvh * 1152 / 720)); height: auto; max-height: 100dvh; border: 0; border-radius: 0; }
+.touchplay .touch-ui { inset: 0; }
+.touchplay .hudbar { flex-direction: row; width: auto; transform: translateX(-50%) scale(0.62); transform-origin: bottom center; bottom: 2px; opacity: 0.9; }
+.touchplay .hud-slots { justify-content: flex-start; }
+.touchplay .hud-slot { flex: none; }
+.touchplay .feed { top: 54px; transform: scale(0.8); transform-origin: top right; }
+.touchplay .chatlog { display: none; }

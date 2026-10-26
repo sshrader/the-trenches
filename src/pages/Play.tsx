@@ -41,6 +41,10 @@ function Banner({ team }: { team: 'green' | 'red' }) {
   );
 }
 import type { ClassId, Score, Team } from '../game/useGame';
+import TouchControls from '../game/TouchControls';
+import type { TouchAim } from '../game/TouchControls';
+import { detectDevice, saveDevice, savedDevice } from '../game/device';
+import type { Device } from '../game/device';
 import { WALLET_LOGIN } from '../config';
 import Leaderboard from './Leaderboard';
 import { isMuted, setMuted, unlockAudio } from '../game/audio';
@@ -146,6 +150,22 @@ export default function Play() {
   const [chatText, setChatText] = useState('');
   const chatInputRef = useRef<HTMLInputElement>(null);
   const [showKeys, setShowKeys] = useState(true);
+  // Controls: asked on the first visit (keyboard and mouse, or touch), remembered, and changeable from the lobby.
+  const [device, setDeviceState] = useState<Device | null>(savedDevice);
+  const [guess] = useState<Device>(detectDevice);
+  const chooseDevice = (d: Device) => {
+    saveDevice(d);
+    setDeviceState(d);
+  };
+  const touchMode = device === 'touch';
+  const touchAim = useRef<TouchAim>({ on: false, ax: 1, ay: 0, mag: 0.5 });
+  const [touchMenu, setTouchMenu] = useState(false);
+  const [portrait, setPortrait] = useState(() => window.innerHeight > window.innerWidth);
+  useEffect(() => {
+    const on = () => setPortrait(window.innerHeight > window.innerWidth);
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, []);
   const playing = game.status === 'playing';
   // Full screen: the battlefield, its overlays (feed, chat, score) and nothing else. F toggles it, Esc leaves it.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -233,14 +253,36 @@ export default function Play() {
     } catch {
       /* private window: the name just is not remembered */
     }
+    if (touchMode) touchAim.current = { on: true, ax: team === 'red' ? -1 : 1, ay: 0, mag: 0.5 }; // face the enemy to start
     void game.join(team, name.trim(), useWalletLogin && connected, cls);
+    if (touchMode) toggleFull(); // a phone or tablet plays full screen (done inside the tap, which the browser requires)
   };
 
   const busy = game.status === 'signing' || game.status === 'connecting';
   const h = game.hud;
 
   return (
-    <div className={`wrap${game.status === 'playing' ? ' wide' : ''}`}>
+    <div className={`wrap${game.status === 'playing' ? ' wide' : ''}${touchMode && game.status === 'playing' ? ' touchplay' : ''}`}>
+      {device === null && game.status !== 'playing' && (
+        <div className="device-ask" role="dialog" aria-modal="true" aria-label="How are you playing?">
+          <div className="device-card">
+            <h2>How are you playing?</h2>
+            <p className="muted small">This sets the controls. You can change it later in the lobby.</p>
+            <div className="device-opts">
+              <button className={`btn big${guess === 'pc' ? ' suggested' : ''}`} onClick={() => chooseDevice('pc')}>
+                <b>PC</b>
+                <span>Keyboard and mouse</span>
+                {guess === 'pc' && <em>looks like your device</em>}
+              </button>
+              <button className={`btn big${guess === 'touch' ? ' suggested' : ''}`} onClick={() => chooseDevice('touch')}>
+                <b>Mobile / Tablet</b>
+                <span>Touch screen controls</span>
+                {guess === 'touch' && <em>looks like your device</em>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {game.status !== 'playing' && (
         <section className="hero">
           <div className="lobby-hero" style={{ backgroundImage: `url(${heroArt})` }}>
@@ -255,6 +297,8 @@ export default function Play() {
             </div>
             <Banner team="red" />
           </div>
+
+          <p className="muted small device-line">Controls: <b>{touchMode ? 'Touch (mobile / tablet)' : 'Keyboard and mouse'}</b> · <button type="button" className="linkbtn" onClick={() => chooseDevice(touchMode ? 'pc' : 'touch')}>switch to {touchMode ? 'keyboard and mouse' : 'touch'}</button></p>
 
           <div className="field">
             <label htmlFor="callsign">Callsign (optional)</label>
@@ -383,7 +427,27 @@ export default function Play() {
 
           <div className="play-row">
           <div className="canvas-wrap" ref={wrapRef}>
-            <GameCanvas world={game.world} input={game.input} typing={() => typingRef.current} />
+            <GameCanvas world={game.world} input={game.input} typing={() => typingRef.current} touch={touchMode ? touchAim : undefined} />
+            {touchMode && (
+              <>
+                <div className="touch-score" aria-hidden="true">
+                  <b className="green">{h.points[0]}</b> <span>{fmt(h.round.l)}</span> <b className="red">{h.points[1]}</b>
+                </div>
+                <TouchControls input={game.input} aim={touchAim} world={game.world} onScores={() => setShowBoard((s) => !s)} onMenu={() => setTouchMenu((m) => !m)} />
+                {touchMenu && (
+                  <div className="touch-menu" role="menu">
+                    <p className="muted small">Change class (works at once in your base, otherwise next life)</p>
+                    {CLASSES.map((c) => (
+                      <button key={c.id} className={`btn${h.myClassId === c.id ? ' on' : ''}`} onClick={() => { game.setClass(c.id); setCls(c.id); setTouchMenu(false); }}>{c.label}</button>
+                    ))}
+                    <button className="btn" onClick={() => { setMuted(!muted); setMutedState(!muted); }}>{muted ? 'Sound off' : 'Sound on'}</button>
+                    <button className="btn" onClick={() => { setTouchMenu(false); game.leave(); }}>Leave match</button>
+                    <button className="btn" onClick={() => setTouchMenu(false)}>Close</button>
+                  </div>
+                )}
+                {portrait && <div className="rotate-ask">Turn your device sideways to play</div>}
+              </>
+            )}
             {typing && (
               <form
                 className="chatbox"

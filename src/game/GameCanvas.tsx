@@ -1349,7 +1349,7 @@ function drawCorpse(ctx: CanvasRenderingContext2D, c: World['corpses'][number], 
   ctx.restore();
 }
 
-export default function GameCanvas({ world, input, typing }: { world: MutableRefObject<World>; input: MutableRefObject<Input>; typing?: () => boolean }) {
+export default function GameCanvas({ world, input, typing, touch }: { world: MutableRefObject<World>; input: MutableRefObject<Input>; typing?: () => boolean; touch?: MutableRefObject<{ on: boolean; ax: number; ay: number; mag: number }> }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const mouse = useRef({ x: VIEW_W / 2 + 40, y: VIEW_H / 2 });
   // Keep the latest typing check in a ref so the input effect below is not torn down (and held keys reset) on every re-render.
@@ -1525,6 +1525,11 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       const camY = Math.max(0, Math.min(MAP_H - VH, focusY + panY - VH / 2));
       w.cam.x = camX;
       w.cam.y = camY;
+      if (you && touch?.current.on) {
+        // touch: the aim stick sets a direction and a distance from the soldier (or from the drone / helicopter being flown)
+        const d = 60 + touch.current.mag * 300;
+        mouse.current = { x: (focusX - camX + touch.current.ax * d) * zoom, y: (focusY - camY + touch.current.ay * d) * zoom };
+      }
       if (you) {
         const mdx = mouse.current.x / zoom - (focusX - camX);
         const mdy = mouse.current.y / zoom - (focusY - camY);
@@ -2457,7 +2462,7 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       cancelAnimationFrame(raf);
       window.removeEventListener('keydown', onStatsKey);
     };
-  }, [world, input]);
+  }, [world, input, touch]);
 
   const toCanvas = (e: MouseEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();

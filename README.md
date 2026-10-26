@@ -134,6 +134,8 @@ To add a map: write a generator that outputs `shared/<id>.json` (same 120×68 gr
 
 The Hardpoint zones stay clear of the clinic tents, so a tent's healing never sits inside a zone.
 
+**Touch controls (phone / tablet).** The first visit asks "How are you playing?" (PC, or Mobile / Tablet; the choice is guessed from the hardware and remembered in `localStorage`, and the lobby has a switch). In touch mode the battlefield fills the screen and `src/game/TouchControls.tsx` draws a floating left stick (move; push it all the way out to sprint), a right stick (aim; the soldier fires while it is pushed out, and how far it is pushed sets the grenade / artillery distance) and buttons for grenade, reload, special, artillery, streak reward, weapon swap, sprint latch and (snipers) scope, plus a scoreboard button and a menu (change class, sound, leave). The sticks write into the same input the keyboard does, so the server is unchanged. Chat and voice are not on touch yet. `src/game/device.ts` holds the choice.
+
 **The forest** (`node scripts/make-forest.mjs` -> `shared/forest.json`): grass and dirt tracks, a creek you can wade, trees (solid, stop every bullet), boulders and fallen logs (solid cover; sniper rounds punch through them, and a sniper on a tower shoots over them), and **bushes**. A soldier standing in a bush is hidden from the enemy until an enemy soldier gets within `CFG.BUSH_REVEAL` (110 px), a UAV covers him, or he fires (revealed for `CFG.BUSH_FIRE_REVEAL_S`, 1.5 s). His own side always sees him. Bullets pass through bushes.
 
 ## Fill-in bots (5v5)
