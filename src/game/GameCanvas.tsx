@@ -1515,12 +1515,14 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
       }
       const you = w.units.get(w.me);
       // Sniper scope: while scoped the view pulls back so you can see the whole of your scope's reach, past the normal window.
-      const wantZoom = you?.cls === 3 && input.current.scope && you.hp > 0 ? SCOPE_ZOOM : 1;
+      // On a phone the battlefield is drawn small, so everything looks slow and tiny: zoom in until it reads like it does on a computer (a tablet needs little or none).
+      const zb = touch ? Math.max(1, Math.min(1.7, 0.8 / Math.max(0.2, cv.clientHeight / VIEW_H))) : 1;
+      const wantZoom = (you?.cls === 3 && input.current.scope && you.hp > 0 ? SCOPE_ZOOM : 1) * zb;
       zoom += (wantZoom - zoom) * 0.18;
       if (Math.abs(wantZoom - zoom) < 0.002) zoom = wantZoom;
       const VW = VIEW_W / zoom;
       const VH = VIEW_H / zoom;
-      const blend = (1 - zoom) / (1 - SCOPE_ZOOM); // 0 = normal view, 1 = fully scoped
+      const blend = Math.max(0, Math.min(1, (1 - zoom / zb) / (1 - SCOPE_ZOOM))); // 0 = normal view, 1 = fully scoped
       const panX = Math.cos(input.current.aim) * SCOPE_PAN * blend;
       const panY = Math.sin(input.current.aim) * SCOPE_PAN * blend;
       // Flying a drone or helicopter: the camera rides it (WASD flies it, the mouse aims).

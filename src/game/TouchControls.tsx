@@ -100,7 +100,7 @@ export default function TouchControls({ input, aim, world, onScores, onMenu }: {
           const m = mag < 0.18 ? 0 : 1; // a small dead zone, then full speed
           input.current.dx = vx * m;
           input.current.dy = vy * m;
-          if (!sprint) input.current.sprint = mag > 0.97; // push the stick right out to run
+          if (!sprint) input.current.sprint = mag > 0.88; // push the stick well out to run
         }}
         onEnd={() => { input.current.dx = input.current.dy = 0; if (!sprint) input.current.sprint = false; }}
       />
