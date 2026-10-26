@@ -1206,7 +1206,7 @@ test('rounds fade out in the fog; sniper rounds do not', () => {
   assert.equal(damageAt('sniper', 450), 100, 'a sniper round keeps full power (his rifle reaches ' + Math.round(CFG.CLASSES.sniper.speed * CFG.CLASSES.sniper.life) + ' px)');
 });
 
-test('riot shield: stops shots from the front for 5 s, then a 30 s recharge', () => {
+test('riot shield: stops shots from the front for 5 s, then a 20 s recharge', () => {
   const w = fresh();
   const s = mk(w, 's', 'green', 'shotgunner', 520, Math.PI); // faces west
   const r = mk(w, 'r', 'red', 'rifleman', 400, 0);
@@ -1260,7 +1260,7 @@ test('riot shield soaks 200 damage, then breaks and starts its recharge', () => 
   assert.equal(s.hp, 140, 'two sniper rounds are soaked');
   assert.ok(now >= s.shieldUntil || s.shieldUntil === 0, 'the shield broke');
   assert.equal(s.shieldUntil, 0);
-  assert.ok(s.specReadyAt > now + 25000, 'recharge started at the break');
+  assert.ok(s.specReadyAt > now + 15000, 'recharge started at the break');
   r.lastFire = -1e6;
   setInput(w, r.id, { dx: 0, dy: 0, aim: 0, fire: true });
   now = run(w, 0.5, now);

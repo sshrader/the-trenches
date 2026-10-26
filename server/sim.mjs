@@ -21,8 +21,8 @@ export const CFG = {
     // Assault (id 'rifleman'): a modern AR. Three hits kill; held on full auto it climbs and the shots spread (tap or burst to stay accurate).
     rifleman: { label: 'Assault', weapon: 'rifle', mag: 15, reloadS: 2.2, fireMs: 140, damage: 34, speed: 760, life: 1.1, recoil: { per: 0.2, max: 0.17 }, special: { id: 'smoke', charges: 1 } },
     smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6, special: { id: 'flash', charges: 1 } }, // five hits kill, short reach
-    sniper: { label: 'Sniper', weapon: 'sniper', mag: 5, reloadS: 3, fireMs: 1300, damage: 100, speed: 2600, life: 0.65, grenades: 1, arty: 0, side: { weapon: 'pistol', mag: 8, reloadS: 1.5, fireMs: 350, damage: 20, speed: 600, life: 0.5 } }, // one hit kills; hold scope to see far, but slow, only 5 rounds, a weak 8-round pistol to swap to, no artillery strike, and each shot gives him away
-    shotgunner: { label: 'Shotgunner', weapon: 'shotgun', mag: 5, reloadS: 2.5, fireMs: 450, damage: 25, falloff: [80, 200, 0.2], speed: 700, life: 0.28, pellets: 8, spread: 0.2, hp: 140, staminaX: 1.5, side: { weapon: 'pistol', mag: 12, reloadS: 1.5, fireMs: 280, damage: 20, speed: 600, life: 0.55 }, special: { id: 'shield', durS: 5, rechargeS: 30 } }, // 140 HP, 8-pellet shotgun (deadly up close, 5 shells, quicker than the rifle, slower than the SMG) and a pistol to swap to
+    sniper: { label: 'Sniper', weapon: 'sniper', mag: 5, reloadS: 3.5, fireMs: 1800, damage: 100, speed: 2600, life: 0.65, grenades: 1, arty: 0, side: { weapon: 'pistol', mag: 8, reloadS: 1.5, fireMs: 350, damage: 20, speed: 600, life: 0.5 } }, // one hit kills; hold scope to see far, but slow, only 5 rounds, a weak 8-round pistol to swap to, no artillery strike, and each shot gives him away
+    shotgunner: { label: 'Shotgunner', weapon: 'shotgun', mag: 5, reloadS: 2.5, fireMs: 450, damage: 25, falloff: [100, 240, 0.25], speed: 700, life: 0.34, pellets: 8, spread: 0.2, hp: 140, staminaX: 1.5, side: { weapon: 'pistol', mag: 12, reloadS: 1.5, fireMs: 280, damage: 20, speed: 600, life: 0.55 }, special: { id: 'shield', durS: 5, rechargeS: 20 } }, // 140 HP, 8-pellet shotgun (deadly up close, 5 shells, quicker than the rifle, slower than the SMG) and a pistol to swap to
     medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5, special: { id: 'drop', charges: 1 } },
     // Squad leader: the Assault's AR plus a pistol, and a UAV that shows the whole team where the enemy is. Not refilled by resupply.
     squad: { label: 'Squad Leader', weapon: 'rifle', mag: 15, reloadS: 2.2, fireMs: 140, damage: 34, speed: 760, life: 1.1, recoil: { per: 0.2, max: 0.17 }, arty: 1, grenades: 2, side: { weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, special: { id: 'uav', durS: 10, rechargeS: 60 } }, // heals teammates next to him
@@ -44,7 +44,7 @@ export const CFG = {
   DROP_RATE: 22, // HP per second
   SHIELD_ARC: 1.15, // riot shield: stops bullets arriving within this many radians of where he faces
   SHIELD_HP: 200, // damage the shield can soak before it breaks (then the recharge starts)
-  SHIELD_SPEED: 0.7, // ... and slows him
+  SHIELD_SPEED: 0.85, // ... and slows him
   HEAL_RADIUS: 60, // a medic heals teammates this close ...
   HEAL_RATE: 18, // ... at this many HP per second
   HEAL_POOL: 100, // a medic's medkit: total HP he can give out before it runs dry ...
@@ -60,8 +60,8 @@ export const CFG = {
   SCOPE_VISION: 1000, // a scoped sniper sees this far, but only along a narrow beam in the direction he is aiming ...
   SCOPE_HALF: 0.3, // ... half the beam's width in radians (about 17 degrees each side). His normal sight circle stays.
   SCOPE_SPEED: 0.35, // ... but walks at this fraction of normal speed and cannot sprint while scoped
-  SNIPER_REVEAL_S: 1.6, // after a sniper fires, the enemy sees him (through the fog) for this long
-  MAX_SNIPERS: 2, // per side
+  SNIPER_REVEAL_S: 3, // after a sniper fires, the enemy sees him (through the fog) for this long
+  MAX_SNIPERS: 1, // per side
   PICKUP_RESPAWN_S: 30, // each side has one bazooka crate near its base; when it is taken, a new one appears elsewhere on that side this long after
   PICKUP_NEAR: [10, 28], // ... between this many tiles from its own edge (just outside the safe zone) and this
   PICKUP_R: 26, // walk this close to take it
