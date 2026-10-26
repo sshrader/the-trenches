@@ -1,0 +1,181 @@
+{
+ "name": "Industry",
+ "theme": "industry",
+ "tile": 32,
+ "rows": [
+  "########################################################################################################################",
+  "#TTTTTTc........................................................................................................cTTTTTT#",
+  "#TTTTTT..........BBBBB.BBBBBB.BBBBBBB...BBBBBB.BBBBBB.BBBBB..BBBBB.BBBBBB.BBBBBB...BBBBBBB.BBBBBB.BBBBB..........TTTTTT#",
+  "#TTTTTT..........BBBBB.BBBBBB.BBBBBBB...BBBBBB.BBBBBB.BBBBB..BBBBB.BBBBBB.BBBBBB...BBBBBBB.BBBBBB.BBBBB..........TTTTTT#",
+  "#TTTTTT....................................Y................................Y....................................TTTTTT#",
+  "#TTTTTT.............BBBBBB...BBBBBB.BBBBBBB.BBBBB.BBBBBB........BBBBBB.BBBBB.BBBBBBB.BBBBBB...BBBBBB.............TTTTTT#",
+  "#TTTTTTc............BBBBBB...BBBBBBcBBBBBBB.BBBBB.BBBBBB........BBBBBB.BBBBB.BBBBBBBcBBBBBB...BBBBBB............cTTTTTT#",
+  "#TTTTTTc.........Y....................................................................................Y.........cTTTTTT#",
+  "#TTTTTT............BBBBBB...BBBBBBB...BBBBB.BBBBBB..Y..............Y..BBBBBB.BBBBB...BBBBBBB...BBBBBB............TTTTTT#",
+  "#TTTTTT...........YBBBBBB...BBBBBBB...BBBBB.BBBBBB....................BBBBBB.BBBBB...BBBBBBB...BBBBBBY...........TTTTTT#",
+  "#TTTTTT............................................c.Y............Y.c............................................TTTTTT#",
+  "#TTTTTT..........BBBBBBB...BBBBBBB.BBBBBBB...BBBBBB.BBBBBB....BBBBBB.BBBBBB...BBBBBBB.BBBBBBB...BBBBBBB..........TTTTTT#",
+  "#TTTTTTc.........BBBBBBB...BBBBBBB.BBBBBBB...BBBBBB.BBBBBB....BBBBBB.BBBBBB...BBBBBBB.BBBBBBB...BBBBBBB.........cTTTTTT#",
+  "#TTTTTTc.....................cY..........................................................Yc.....................cTTTTTT#",
+  "#TTTTTT......c........YY....c.......YY............YY.Y............Y.YY............YY.......c....YY........c......TTTTTT#",
+  "#TTTTTT..aaa.acccccaaaaccaaaaaaaaaaaaaaaaYaaaaaccaaaaaccaaaaaaaaccaaaaaccaaaaaYaaaaaaaaaaaaaaaaccaaaaccccca.aaa..TTTTTT#",
+  "#TTTTTT..aaa.rcrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrcr.aaa..TTTTTT#",
+  "#TTTTTT..aaa.rcrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrcr.aaa..TTTTTT#",
+  "#TTTTTTc.aaa.aaaaaaaaaaaaaaaaaaYaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaYaaaaaaaaaaaaaaaaaa.aaa.cTTTTTT#",
+  "#TTTTTTc.........BBB..YY...........YYY.YBBBBB...BBYYBB...BB..BB...BBYYBB...BBBBBY.YYY...........YY..BBB.........cTTTTTT#",
+  "#TTTTTT..........BBB.######fff#########.BBBBB...BBBBBBcc.BB..BB.ccBBBBBB...BBBBB.#########fff######.BBB..........TTTTTT#",
+  "#TTTTTT..............#ffffffffffffffff#..........................................#ffffffffffffffff#..............TTTTTT#",
+  "#TTTTTT..........BBB.#ffccccfffccccYYf#.BBBB.BBBBBBB.BBBBBB..BBBBBB.BBBBBBB.BBBB.#fYYccccfffccccff#.BBB..........TTTTTT#",
+  "#TTTTTT..........BBB.#fffffffffffffYYf#.BBBB.BBBBBBB.BBBBBB..BBBBBB.BBBBBBB.BBBB.#fYYfffffffffffff#.BBB..........TTTTTT#",
+  "#TTTTTTc.............ffffffffffffffffff.............Y.....Y..Y.....Y.............ffffffffffffffffff.............cTTTTTT#",
+  "#TTTTTTc........BBBB.fffccccfffccccffff.BBBB........BaaBB......BBaaB........BBBB.ffffccccfffccccfff.BBBB........cTTTTTT#",
+  "#TTTTTT.........BBBB.ffffffffffffffffff.BBBB.....cY.aaaBB......BBaaa.Yc.....BBBB.ffffffffffffffffff.BBBB.........TTTTTT#",
+  "#TTTTTT..............#ffffffffffffffff#..........................................#ffffffffffffffff#..............TTTTTT#",
+  "#TTTTTT..........BBB.#ffffffffffffffff#......cBBBBa....Y.c....c.Y....aBBBBc......#ffffffffffffffff#.BBB..........TTTTTT#",
+  "#TTTTTT..........BBB.#ffffffffffffffff#.......BBBBac................caBBBB.......#ffffffffffffffff#.BBB..........TTTTTT#",
+  "#TTTTTTc............Y######fff#########....c.......c....YY....YY....c.......c....#########fff######Y............cTTTTTT#",
+  "#TTTTTTc........Y.............c..........Y......KKKa................aKKK......Y..........c.............Y........cTTTTTT#",
+  "#TTTTTT..aaa....aYaaaaaaaaaccaaaaaaacca......aaaKKKaaaaaaaaaaaaaaaaaaKKKaaa......accaaaaaaaccaaaaaaaaaYa....aaa..TTTTTT#",
+  "#TTTTTT..aaa.aaaaaaaaaaaaaaaaaaaaaaaaaa......aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa......aaaaaaaaaaaaaaaaaaaaaaaaaa.aaa..TTTTTT#",
+  "#TTTTTT..aaa.aaaaaaaaaaaaaaaaaaaaaaaaaa......aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa......aaaaaaaaaaaaaaaaaaaaaaaaaa.aaa..TTTTTT#",
+  "#TTTTTT..aaa.aaaaaaaaaaaaaaaaaaaaaaaaaa......accaaaaaaaaaaaaaaaaaaaaaaaacca......aaaaaaaaaaaaaaaaaaaaaaaaaa.aaa..TTTTTT#",
+  "#TTTTTTc........BBBBBBB.BB....c.............BBBBKKKa................aKKKBBBB.............c....BB.BBBBBBB........cTTTTTT#",
+  "#TTTTTTc........BBBBBBB.BB.#####fff######...BBBBKKKa.Y............Y.aKKKBBBB...######fff#####.BB.BBBBBBB........cTTTTTT#",
+  "#TTTTTT...............cc...#ffffffffffff#........c.c....YY....YY....c.c........#ffffffffffff#...cc...............TTTTTT#",
+  "#TTTTTT.........BBBBBBB....#ffccccfffYYf#.......BBaca..............acaBB.......#fYYfffccccff#....BBBBBBB.........TTTTTT#",
+  "#TTTTTT.........BBBBBBB....#fffffffffYYf#.......BBaca.a..........a.acaBB.......#fYYfffffffff#....BBBBBBB.........TTTTTT#",
+  "#TTTTTT...............Y....ffffffffffffff..............c........c..............ffffffffffffff....Y...............TTTTTT#",
+  "#TTTTTTc......Y.......BBBBcfffccccfffffff.BBBB.BBBBB.aaaaaa..aaaaaa.BBBBB.BBBB.fffffffccccfffcBBBB.......Y......cTTTTTT#",
+  "#TTTTTTc..............BBBB.ffffffffffffff.BBBB.BBBBB.aaBBaa..aaBBaa.BBBBB.BBBB.ffffffffffffff.BBBB..............cTTTTTT#",
+  "#TTTTTT....................#ffffffffffff#..............BB......BB..............#ffffffffffff#....................TTTTTT#",
+  "#TTTTTT.......BBBBB.BBBBBB.#ffffffffffff#....BBBBBBB...BBBB..BBBB...BBBBBBB....#ffffffffffff#.BBBBBB.BBBBB.......TTTTTT#",
+  "#TTTTTT.......BBBBB.BBBBBB.#ffffffffffff#....BBBBBBB...BBBB..BBBB...BBBBBBB....#ffffffffffff#.BBBBBB.BBBBB.......TTTTTT#",
+  "#TTTTTT.......c...........c#####fff######.................Y..Y.................######fff#####c...........c.......TTTTTT#",
+  "#TTTTTTc..............YY...........cYY............YY................YY............YYc...........YY..............cTTTTTT#",
+  "#TTTTTTc.aaa.aaaaKKKaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaKKKaaaa.aaa.cTTTTTT#",
+  "#TTTTTT..aa...crrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrc...aa..TTTTTT#",
+  "#TTTTTT..aa...crrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrc...aa..TTTTTT#",
+  "#TTTTTT..aa...cccaaaaaaaaYaaaaaaaaaYaaaaaaaaaccaaaaaaKKKaaaaaaaaKKKaaaaaaccaaaaaaaaaYaaaaaaaaaYaaaaaaaaccc...aa..TTTTTT#",
+  "#TTTTTT.........BBBBB.YYBBB.BBBBBB..YY....BBBBBBB.YYBKKKB......BKKKBYY.BBBBBBB....YY..BBBBBB.BBBYY.BBBBB.........TTTTTT#",
+  "#TTTTTTc........BBBBB.BBBBB.BBBBBB.Y......BBBBBBBY..BBBBB......BBBBB..YBBBBBBB......Y.BBBBBB.BBBBB.BBBBB........cTTTTTT#",
+  "#TTTTTTc....................................c......Y................Y......c....................................cTTTTTT#",
+  "#TTTTTT.......BBBBBBB...BBBBBB.BBBBBB...BBBBBBB.BBBBBB.BBBB..BBBB.BBBBBB.BBBBBBB...BBBBBB.BBBBBB...BBBBBBB.......TTTTTT#",
+  "#TTTTTT.......BBBBBBBY..BBBBBB.BBBBBB...BBBBBBB.BBBBBB.BBBB..BBBB.BBBBBB.BBBBBBB...BBBBBB.BBBBBB..YBBBBBBB.......TTTTTT#",
+  "#TTTTTT......Y......c............................Y....................Y............................c......Y......TTTTTT#",
+  "#TTTTTT..........BBBBBBB.c......................BBBBB...BBB..BBB...BBBBB......................c.BBBBBBB..........TTTTTT#",
+  "#TTTTTTc.........BBBBBBB........................BBBBB...BBB..BBB...BBBBB........................BBBBBBB.........cTTTTTT#",
+  "#TTTTTTc.........................c....................................................c.........................cTTTTTT#",
+  "#TTTTTT..............BBBBBBB.c.BBBBB...BBBBBBB...BBBBB............BBBBB...BBBBBBB...BBBBB.c.BBBBBBB..............TTTTTT#",
+  "#TTTTTT..............BBBBBBB...BBBBB...BBBBBBB..YBBBBB..Y......Y..BBBBBY..BBBBBBB...BBBBB...BBBBBBB..............TTTTTT#",
+  "#TTTTTT................c................................Y......Y................................c................TTTTTT#",
+  "#TTTTTT......................................c...c....................c...c......................................TTTTTT#",
+  "#TTTTTTc........................................................................................................cTTTTTT#",
+  "########################################################################################################################"
+ ],
+ "props": [
+  {
+   "kind": "tent",
+   "x": 40,
+   "y": 33,
+   "w": 4,
+   "h": 2
+  },
+  {
+   "kind": "tent",
+   "x": 76,
+   "y": 33,
+   "w": 4,
+   "h": 2,
+   "flip": true
+  }
+ ],
+ "roads": {
+  "v": [],
+  "h": []
+ },
+ "crates": [
+  {
+   "x": 464,
+   "y": 1008,
+   "team": "green"
+  },
+  {
+   "x": 432,
+   "y": 912,
+   "team": "green"
+  },
+  {
+   "x": 400,
+   "y": 1648,
+   "team": "green"
+  },
+  {
+   "x": 3376,
+   "y": 1008,
+   "team": "red"
+  },
+  {
+   "x": 3408,
+   "y": 912,
+   "team": "red"
+  },
+  {
+   "x": 3440,
+   "y": 1648,
+   "team": "red"
+  }
+ ],
+ "tents": [
+  {
+   "x": 1344,
+   "y": 1088,
+   "team": "green"
+  },
+  {
+   "x": 2496,
+   "y": 1088,
+   "team": "red"
+  }
+ ],
+ "nests": [
+  {
+   "x": 496,
+   "y": 544,
+   "team": "green"
+  },
+  {
+   "x": 496,
+   "y": 1632,
+   "team": "green"
+  },
+  {
+   "x": 3344,
+   "y": 544,
+   "team": "red"
+  },
+  {
+   "x": 3344,
+   "y": 1632,
+   "team": "red"
+  }
+ ],
+ "capture": {
+  "x": 1920,
+  "y": 1088,
+  "r": 112
+ },
+ "spawns": {
+  "green": {
+   "x0": 32,
+   "x1": 224,
+   "y0": 64,
+   "y1": 2112
+  },
+  "red": {
+   "x0": 3616,
+   "x1": 3808,
+   "y0": 64,
+   "y1": 2112
+  }
+ }
+}

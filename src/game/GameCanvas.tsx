@@ -281,8 +281,182 @@ function drawBush(ctx: CanvasRenderingContext2D, tx: number, ty: number, cx: num
   ctx.restore();
 }
 
+
+const CONTAINER_COLORS = ['#a8432f', '#2f5d8a', '#3f7a4a', '#c8962e', '#8b8f94', '#b9622a', '#4f4a7a', '#6e2f2f'];
+/** The ground and solid pieces of the container yard. */
+function drawIndustryTile(ctx: CanvasRenderingContext2D, c: string, tx: number, ty: number, sx: number, sy: number) {
+  const hash = (tx * 7 + ty * 13 + tx * ty) % 9;
+  if (c === 'T') {
+    // the base floor: bare steel plate with the yellow safety line along its edge
+    ctx.fillStyle = (tx + ty) % 2 ? '#3a3d3a' : '#363936';
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(sx, sy, TILE, 1);
+    ctx.fillRect(sx, sy, 1, TILE);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    for (const [rx, ry] of [[4, 4], [TILE - 6, 4], [4, TILE - 6], [TILE - 6, TILE - 6]]) ctx.fillRect(sx + rx, sy + ry, 2, 2); // plate bolts
+    if (tx === 6 || tx === COLS - 7) {
+      ctx.fillStyle = 'rgba(250,204,21,0.75)';
+      ctx.fillRect(tx === 6 ? sx + TILE - 5 : sx + 1, sy, 4, TILE);
+    }
+    return;
+  }
+  if (c === 'f') {
+    // warehouse floor: polished concrete with a faded safety lane
+    ctx.fillStyle = (tx + ty) % 2 ? '#4a4c4f' : '#46484b';
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(sx, sy, TILE, 1);
+    ctx.fillRect(sx, sy, 1, TILE);
+    if (hash === 4) { ctx.fillStyle = 'rgba(20,20,20,0.3)'; ctx.beginPath(); ctx.ellipse(sx + 14, sy + 18, 8, 5, 0.4, 0, Math.PI * 2); ctx.fill(); } // oil stain
+    if (ty % 4 === 0) { ctx.fillStyle = 'rgba(234,179,8,0.35)'; ctx.fillRect(sx + 2, sy + 14, TILE - 4, 3); }
+    return;
+  }
+  // everything else sits on the ground: yard concrete, lane asphalt, or rail bed
+  if (c === 'a') {
+    ctx.fillStyle = ['#34373a', '#323538', '#36393c', '#313437', '#353a3d'][hash % 5];
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    if (hash === 1) ctx.fillRect(sx + 6, sy + 10, 14, 1);
+    if (tileAt(tx, ty - 1) !== 'a' && tileAt(tx, ty - 1) !== 'r') { ctx.fillStyle = 'rgba(234,179,8,0.6)'; ctx.fillRect(sx, sy, TILE, 2); } // yellow edge line
+    if (tileAt(tx, ty + 1) !== 'a' && tileAt(tx, ty + 1) !== 'r') { ctx.fillStyle = 'rgba(234,179,8,0.6)'; ctx.fillRect(sx, sy + TILE - 2, TILE, 2); }
+    if (tileAt(tx, ty - 1) === 'a' && tileAt(tx, ty + 1) === 'a' && tileAt(tx, ty - 2) !== 'a' === false && tx % 2 === 0 && ((tileAt(tx, ty - 2) !== 'a') !== (tileAt(tx, ty + 2) !== 'a'))) { ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(sx + 4, sy + TILE - 2, TILE - 8, 3); } // dashed centre line
+  } else if (c === 'r') {
+    ctx.fillStyle = hash % 2 ? '#4b463f' : '#47423b'; // gravel bed
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#3a2f26'; // sleepers
+    ctx.fillRect(sx + 4, sy, 5, TILE);
+    ctx.fillRect(sx + 18, sy, 5, TILE);
+    ctx.fillStyle = '#a9aeb4'; // the two steel rails
+    ctx.fillRect(sx, sy + 7, TILE, 3);
+    ctx.fillRect(sx, sy + TILE - 10, TILE, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillRect(sx, sy + 7, TILE, 1);
+    ctx.fillRect(sx, sy + TILE - 10, TILE, 1);
+  } else {
+    // yard concrete: slabs with expansion joints, stains and cracks
+    ctx.fillStyle = ['#5a5c5e', '#585a5c', '#5c5e60', '#575a5b', '#5b5d5f'][hash % 5];
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(sx, sy + TILE - 1, TILE, 1);
+    ctx.fillRect(sx + TILE - 1, sy, 1, TILE);
+    if (hash === 2) { ctx.fillStyle = 'rgba(20,20,20,0.25)'; ctx.beginPath(); ctx.ellipse(sx + 16, sy + 16, 9, 6, 0.3, 0, Math.PI * 2); ctx.fill(); }
+    if (hash === 6) { ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(sx + 5, sy + 3); ctx.lineTo(sx + 15, sy + 15); ctx.lineTo(sx + 11, sy + 28); ctx.stroke(); }
+  }
+  if (c === '#') {
+    // perimeter fence block and warehouse wall: dark concrete with a lit edge and rivet row
+    ctx.fillStyle = '#17191b';
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#3b4046';
+    ctx.fillRect(sx + 1, sy + 1, TILE - 2, TILE - 2);
+    ctx.fillStyle = '#555b63';
+    ctx.fillRect(sx + 1, sy + 1, TILE - 2, 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(sx + 1, sy + TILE / 2, TILE - 2, 1);
+    ctx.fillStyle = '#20242a';
+    for (let i = 0; i < 4; i++) ctx.fillRect(sx + 4 + i * 7, sy + 8, 2, 2);
+  } else if (c === 'B') {
+    // a shipping container seen from above: its colour belongs to the whole run of containers it is part of
+    let x0 = tx;
+    while (tileAt(x0 - 1, ty) === 'B') x0--;
+    let y0 = ty;
+    while (tileAt(tx, y0 - 1) === 'B') y0--;
+    const horiz = tileAt(tx - 1, ty) === 'B' || tileAt(tx + 1, ty) === 'B';
+    const seg = horiz ? Math.floor((tx - x0) / 6) : Math.floor((ty - y0) / 6);
+    const body = CONTAINER_COLORS[(x0 * 5 + y0 * 11 + seg * 3 + (horiz ? ty - y0 : tx - x0) * 0) % CONTAINER_COLORS.length];
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(sx + 1, sy + 3, TILE, TILE); // shadow
+    ctx.fillStyle = body;
+    ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; // corrugated roof
+    if (horiz) for (let i = 4; i < TILE; i += 5) ctx.fillRect(sx + i, sy, 2, TILE);
+    else for (let i = 4; i < TILE; i += 5) ctx.fillRect(sx, sy + i, TILE, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.14)'; // lit edge
+    ctx.fillRect(sx, sy, TILE, 2);
+    ctx.fillRect(sx, sy, 2, TILE);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; // the seam between two containers
+    if (horiz && (tx - x0) % 6 === 5) ctx.fillRect(sx + TILE - 2, sy, 2, TILE);
+    if (!horiz && (ty - y0) % 6 === 5) ctx.fillRect(sx, sy + TILE - 2, TILE, 2);
+    if (tileAt(tx, ty + 1) !== 'B') { ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(sx, sy + TILE - 3, TILE, 3); }
+    if (tileAt(tx + 1, ty) !== 'B') { ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(sx + TILE - 3, sy, 3, TILE); }
+  } else if (c === 'c') {
+    const kind = (tx * 3 + ty) % 3;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(sx + 2, sy + 5, TILE - 2, TILE - 6);
+    if (kind === 0) {
+      // jersey barrier with hazard chevrons
+      ctx.fillStyle = '#a2a29c';
+      ctx.fillRect(sx + 1, sy + 4, TILE - 2, TILE - 8);
+      ctx.fillStyle = '#bcbcb4';
+      ctx.fillRect(sx + 3, sy + 6, TILE - 6, 6);
+      ctx.fillStyle = '#d97706';
+      for (let k = 0; k < 3; k++) ctx.fillRect(sx + 4 + k * 9, sy + TILE - 13, 5, 6);
+    } else if (kind === 1) {
+      // stacked pallets with boxes
+      ctx.fillStyle = '#8a6a3f';
+      ctx.fillRect(sx + 1, sy + 4, TILE - 2, TILE - 8);
+      ctx.fillStyle = '#a98558';
+      ctx.fillRect(sx + 3, sy + 6, 12, 10);
+      ctx.fillRect(sx + 17, sy + 6, 11, 10);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(sx + 1, sy + TILE - 12, TILE - 2, 2);
+      ctx.fillRect(sx + 9, sy + 6, 1, 10);
+    } else {
+      // crate stack
+      ctx.fillStyle = '#6b5a45';
+      ctx.fillRect(sx + 1, sy + 4, TILE - 2, TILE - 8);
+      ctx.fillStyle = '#8b7a62';
+      ctx.fillRect(sx + 3, sy + 6, TILE - 6, TILE / 2 - 5);
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath();
+      ctx.moveTo(sx + 3, sy + 6);
+      ctx.lineTo(sx + TILE - 3, sy + TILE / 2 + 1);
+      ctx.moveTo(sx + TILE - 3, sy + 6);
+      ctx.lineTo(sx + 3, sy + TILE / 2 + 1);
+      ctx.stroke();
+    }
+  } else if (c === 'Y') {
+    // machinery and drums: a steel drum with a rolled rim, or a gantry-crane foot
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(sx + 18, sy + 20, 13, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = hash % 2 ? '#a3322a' : '#2f6f86';
+    ctx.beginPath();
+    ctx.ellipse(sx + 16, sy + 16, 13, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(sx + 16, sy + 16, 9, 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(sx + 12, sy + 11, 5, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#d4a017';
+    ctx.fillRect(sx + 14, sy + 14, 4, 4);
+  } else if (c === 'K') {
+    // a wrecked truck / forklift: rusted body, a cab, a dead engine bay
+    const left = tileAt(tx - 1, ty) === 'K';
+    const right = tileAt(tx + 1, ty) === 'K';
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(sx + 1, sy + 4, TILE, TILE - 2);
+    ctx.fillStyle = '#6b4a2f';
+    ctx.fillRect(sx, sy + 2, TILE, TILE - 6);
+    ctx.fillStyle = '#80583a';
+    ctx.fillRect(sx + 2, sy + 4, TILE - 4, 8);
+    ctx.fillStyle = '#2b2d30';
+    if (!left) ctx.fillRect(sx + 1, sy + 4, 5, TILE - 10);
+    if (!right) { ctx.fillStyle = '#4b5057'; ctx.fillRect(sx + TILE - 14, sy + 4, 13, TILE - 10); ctx.fillStyle = '#8fb6c4'; ctx.fillRect(sx + TILE - 11, sy + 7, 8, 7); }
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(sx, sy + TILE - 6, TILE, 2);
+  }
+}
+
 function drawTile(ctx: CanvasRenderingContext2D, c: string, tx: number, ty: number, sx: number, sy: number) {
   if (THEME === 'forest') return drawForestTile(ctx, c, tx, ty, sx, sy);
+  if (THEME === 'industry') return drawIndustryTile(ctx, c, tx, ty, sx, sy);
   const hash = (tx * 7 + ty * 13 + tx * ty) % 9;
   if (c === 'f') {
     // the floor inside a ruined building: cold tiles, grime and plaster dust

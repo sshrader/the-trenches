@@ -122,9 +122,11 @@ Every gun except the Sniper rifle loses power once a round flies past your sight
 
 ## Maps and rounds
 
-The server plays a **best of three** on each map, then moves to the next one (the order is `city,forest` and loops; set `MAP_ORDER=forest,city` to start elsewhere). A side that wins two rounds ends the map early. Round wins start again on the new map, everyone respawns in their base, and the pause after the last round names the next map. `CFG.ROUNDS_PER_MAP`, `CFG.MAP_EARLY_END` and `CFG.END_MAP_S` in `server/sim.mjs` control it. The server names the current map in every snapshot (`r.mp`; `r.mr`/`r.mt` are the round on the map and the series length; `r.nx` is the next map during the final pause) and the client has all maps bundled (`src/game/maps.ts`).
+The server plays a **best of three** on each map, then moves to the next one (the order is `city,forest,industry` and loops; set `MAP_ORDER=forest,city` to start elsewhere). A side that wins two rounds ends the map early. Round wins start again on the new map, everyone respawns in their base, and the pause after the last round names the next map. `CFG.ROUNDS_PER_MAP`, `CFG.MAP_EARLY_END` and `CFG.END_MAP_S` in `server/sim.mjs` control it. The server names the current map in every snapshot (`r.mp`; `r.mr`/`r.mt` are the round on the map and the series length; `r.nx` is the next map during the final pause) and the client has all maps bundled (`src/game/maps.ts`).
 
 To add a map: write a generator that outputs `shared/<id>.json` (same 120×68 grid, bases, tents, crates, nests and capture point as the others), add it to `MAPS` in `server/game.mjs` and `src/game/maps.ts`, and give it a `theme` so the client knows how to paint it.
+
+**The industry yard** (`node scripts/make-industry.mjs` -> `shared/industry.json`): a container port. Rows of shipping containers (solid, stop bullets), concrete barriers, pallet stacks, drums and wrecked trucks make the cover; asphalt lanes and rail tracks run across the yard, and a warehouse in the middle has open floor inside.
 
 **The forest** (`node scripts/make-forest.mjs` -> `shared/forest.json`): grass and dirt tracks, a creek you can wade, trees (solid, stop every bullet), boulders and fallen logs (solid cover; sniper rounds punch through them, and a sniper on a tower shoots over them), and **bushes**. A soldier standing in a bush is hidden from the enemy until an enemy soldier gets within `CFG.BUSH_REVEAL` (110 px), a UAV covers him, or he fires (revealed for `CFG.BUSH_FIRE_REVEAL_S`, 1.5 s). His own side always sees him. Bullets pass through bushes.
 
@@ -140,7 +142,7 @@ curl -X POST -H "x-admin-token: $ADMIN_TOKEN" -H "content-type: application/json
      -d '{"enabled":true,"size":5}' https://your-site/api/admin/bots
 ```
 
-**From the game's chat** (needs the same `ADMIN_TOKEN`): type `/admin your-token` once (only you see the reply, and the line is never shown to other players), then `/bots 5` for 5v5, `/bots 0` for no bots, `/bots` to see the current setting, `/map forest` or `/map city` to switch map (round wins reset to 0:0), and `/restart` to start the match again (round wins 0:0, round 1, fresh timer, same map). `/reward uav`, `/reward drone`, `/reward heli` or `/reward all` puts that kill-streak reward on your own Z key for testing (private, and lost when you die like a normal one). The map and restart commands are announced to everyone in chat. Five wrong passwords lock the sender's address out for a minute.
+**From the game's chat** (needs the same `ADMIN_TOKEN`): type `/admin your-token` once (only you see the reply, and the line is never shown to other players), then `/bots 5` for 5v5, `/bots 0` for no bots, `/bots` to see the current setting, `/map forest`, `/map city` or `/map industry` to switch map (round wins reset to 0:0), and `/restart` to start the match again (round wins 0:0, round 1, fresh timer, same map). `/reward uav`, `/reward drone`, `/reward heli` or `/reward all` puts that kill-streak reward on your own Z key for testing (private, and lost when you die like a normal one). The map and restart commands are announced to everyone in chat. Five wrong passwords lock the sender's address out for a minute.
 
 The change lasts until the server restarts (then `BOTS` / `BOT_TEAM_SIZE` apply again). Without `ADMIN_TOKEN` the route does not exist.
 

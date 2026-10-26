@@ -1410,6 +1410,19 @@ test('soldiers hiding in a bush are hidden from the enemy until one gets close, 
   assert.ok(!has(snapshot(w, now, 'green'), hider.id), 'hidden again a moment after he stops');
 });
 
+const industry = JSON.parse(fs.readFileSync(new URL('../shared/industry.json', import.meta.url), 'utf8'));
+test('the industry map is playable: bases joined, only known tile letters', () => {
+  assert.equal(industry.rows.length, map.rows.length);
+  assert.equal(industry.rows[0].length, map.rows[0].length);
+  assert.ok(/^[#TarfcBYK.]+$/.test(industry.rows.join('')), 'only industry tile letters');
+  const w = createWorld(industry, rng);
+  applyMap(w, industry, 'industry');
+  assert.ok(!solidAt(w, industry.capture.x, industry.capture.y), 'the point is in the open');
+  for (const t of industry.tents) assert.ok(!solidAt(w, t.x, t.y), 'clinic tents stand on open ground');
+  for (const c of industry.crates) assert.ok(!solidAt(w, c.x, c.y), 'crates are reachable');
+  for (const nst of industry.nests) assert.ok(!solidAt(w, nst.x, nst.y), 'nests are open inside');
+});
+
 test('the forest map is playable: bases joined, no tile letters the simulation does not know', () => {
   assert.equal(forest.rows.length, map.rows.length);
   assert.equal(forest.rows[0].length, map.rows[0].length);

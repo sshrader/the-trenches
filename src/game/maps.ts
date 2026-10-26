@@ -1,6 +1,7 @@
 // The maps the server rotates through (it names the current one in every snapshot; the ground itself is bundled here).
 import city from '../../shared/map.json';
 import forest from '../../shared/forest.json';
+import industry from '../../shared/industry.json';
 
 export type MapData = {
   name?: string;
@@ -18,5 +19,6 @@ export type MapData = {
 export const MAPS: Record<string, MapData> = {
   city: { name: 'The Ruins', theme: 'city', ...(city as unknown as MapData) },
   forest: { ...(forest as unknown as MapData) },
+  industry: { ...(industry as unknown as MapData) },
 };
 export const mapName = (id: string) => MAPS[id]?.name ?? 'The Ruins';

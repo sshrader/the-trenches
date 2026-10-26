@@ -21,8 +21,9 @@ import * as bots from './bots.mjs';
 const MAPS = {
   city: JSON.parse(fs.readFileSync(new URL('../shared/map.json', import.meta.url), 'utf8')),
   forest: JSON.parse(fs.readFileSync(new URL('../shared/forest.json', import.meta.url), 'utf8')),
+  industry: JSON.parse(fs.readFileSync(new URL('../shared/industry.json', import.meta.url), 'utf8')),
 };
-const ORDER = (process.env.MAP_ORDER || 'city,forest').split(',').map((s) => s.trim()).filter((id) => MAPS[id]);
+const ORDER = (process.env.MAP_ORDER || 'city,forest,industry').split(',').map((s) => s.trim()).filter((id) => MAPS[id]);
 if (!ORDER.length) ORDER.push('city');
 const world = sim.createWorld(MAPS[ORDER[0]], Math.random, { id: ORDER[0], maps: MAPS, order: ORDER });
 const TICK_MS = 50;
@@ -243,7 +244,7 @@ export function attachGame(server) {
             adminTries.delete(key);
             me.admin = true;
             console.log(`[admin] ${me.name} unlocked admin commands`);
-            return reply('Admin unlocked. /bots 5 (fill each side to 5), /bots 0 (no bots), /map forest or /map city, /restart (round wins 0:0, new timer), /reward uav|drone|heli|all (test a kill-streak reward on Z).');
+            return reply('Admin unlocked. /bots 5 (fill each side to 5), /bots 0 (no bots), /map forest, /map city or /map industry, /restart (round wins 0:0, new timer), /reward uav|drone|heli|all (test a kill-streak reward on Z).');
           }
           if (cmd.toLowerCase() === 'bots' && me.admin) {
             const parts = arg.toLowerCase().split(/\s+/).filter(Boolean);
