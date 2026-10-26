@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WALLET_LOGIN } from '../config';
 import { useVoice } from './useVoice';
-import { playBoom, playCannon, playPickup, playPop, playReload, playShot, playStreak, playWhistle, heliGun, heliRotor } from './audio';
+import { playBoom, playCannon, playPickup, playPop, playReload, playShot, playStreak, playTrainHorn, playTrainPass, playWhistle, heliGun, heliRotor } from './audio';
 
 /** A random id this browser keeps, so a guest's kills and wins are saved and ranked without a wallet. */
 function guestId(): string {
@@ -45,6 +45,7 @@ export type World = {
   pops: { x: number; y: number; at: number; kind: string }[]; // smoke / flash / flare canisters going off
   crates: number[]; // 1 = ready to use, in the same order as the crates in the map file
   progress: number;
+  train: number[]; // the train: state (0 none, 1 warning, 2 running), track, way (1 east, -1 west), head x, seconds to arrival
   zone: number[]; // the live scoring zone: x, y, radius, seconds until it moves (0 = it stays), next x, next y
   points: [number, number]; // round points, green and red (first to 100 wins the round)
   round: RoundInfo;
@@ -66,10 +67,10 @@ export type World = {
 export type Input = { streak: number; special: number; sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number; nest: number; dismantle: boolean }; // `nest` is the tower counter (the sniper's C key): a sniper builds, climbs or leaves his tower
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type ChatLine = { name: string; team: Team; text: string; at: number; mode?: 'all' | 'team' };
-export type Hud = { myReward: number; myRewardN: number; myCtl: number; myCtlLeft: number; myStreak: number; myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
+export type Hud = { myReward: number; myRewardN: number; myCtl: number; myCtlLeft: number; myStreak: number; myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; train: number[]; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
 const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0, vx: 0, vy: 0, snapAt: 0, rw: 0, rwN: 0, ctl: 0, ctlLeft: 0, streak: 0 });
-const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], mapId: 'city', gas: [], booms: [], corpses: [], callouts: [], pops: [], crates: [], progress: 0, zone: [0, 0, 0, 0, 0, 0], points: [0, 0], round: { n: 1, e: 0, s: 'live', l: 0, w: null, mp: 'city', mr: 1, mt: 3, nx: '' }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [], ms: [], ping: 0 });
+const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], mapId: 'city', gas: [], booms: [], corpses: [], callouts: [], pops: [], crates: [], progress: 0, train: [0, 0, 0, 0, 0], zone: [0, 0, 0, 0, 0, 0], points: [0, 0], round: { n: 1, e: 0, s: 'live', l: 0, w: null, mp: 'city', mr: 1, mt: 3, nx: '' }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [], ms: [], ping: 0 });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** Owns the socket. The canvas reads `world` and writes `input` through refs, so 60 fps drawing never re-renders React. */
@@ -132,6 +133,7 @@ export function useGame() {
         round: w.round,
         progress: w.progress,
         points: w.points,
+        train: w.train,
         green: units.filter((u) => u.team === 'green').length,
         red: units.filter((u) => u.team === 'red').length,
         myHp: me?.hp ?? 0,
@@ -334,6 +336,12 @@ export function useGame() {
             w.progress = m.c;
             w.points = m.pt ?? [0, 0];
             if (m.hz) w.zone = m.hz;
+            {
+              const tr: number[] = m.tr ?? [0, 0, 0, 0, 0];
+              if (tr[0] === 1 && w.train[0] !== 1) playTrainHorn();
+              if (tr[0] === 2 && w.train[0] !== 2) playTrainPass();
+              w.train = tr;
+            }
             if (m.r && (m.r.n !== w.round.n || m.r.e !== w.round.e)) w.corpses = []; // a new round (or an admin restart) wipes the field
             if (m.r?.mp && m.r.mp !== w.mapId) w.mapId = m.r.mp; // the series moved to the next map
             w.round = m.r;

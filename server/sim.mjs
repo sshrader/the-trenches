@@ -76,6 +76,11 @@ export const CFG = {
   ROCKET_OUTER_MIN: 25,
   BASE_PAD: 32, // each side's safe zone: its spawn trench plus this much ground in front of it
   BASE_NO_FIRE: true, // nobody inside his own safe zone can shoot, throw or call a strike out of it (no sniping from invulnerability)
+  TRAIN_EVERY_S: 70, // maps with a `train` (Industry): one passes this often, alternating track and direction ...
+  TRAIN_FIRST_S: 40, // ... the first one this long into a round
+  TRAIN_WARN_S: 5, // the track flashes and a horn sounds this long before it arrives
+  TRAIN_SPEED: 900, // px per second (about 4 s to cross)
+  TRAIN_DMG: 80, // taken once per pass by anyone on the rails
   HARDPOINT: true, // Hardpoint mode: the scoring zone moves round the map's hardpoints; false = the zone stays on the plaza (server env MODE=capture)
   HARDPOINT_S: 45, // each zone stays this long ...
   HARDPOINT_WARN_S: 5, // ... and the next one is shown for the last this many seconds
@@ -202,6 +207,7 @@ export function createWorld(map, rng = Math.random, opts = {}) {
     teamKills: { green: 0, red: 0 }, // kills this round
     wins: { green: 0, red: 0 }, // rounds won since the server started
     points: { green: 0, red: 0 }, // round points from holding the plaza
+    train: { c: CFG.TRAIN_FIRST_S, n: 0, run: null }, // the next train countdown, passes so far, and the one running now
     zone: { i: 0, left: CFG.HARDPOINT_S }, // which hardpoint is live, and how long it has left
     progress: 0, // the lead as a fraction of POINTS_TO_WIN, -1 (red) .. +1 (green): drives the bar
     round: { n: 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 },
@@ -226,6 +232,57 @@ export const blockedAt = (w, x, y, r = CFG.RADIUS) =>
 /** The scoring zones of the map in rotation order: its hardpoints, or just the plaza when the mode is off. */
 const zoneList = (w) => (CFG.HARDPOINT && w.map.hardpoints?.length ? w.map.hardpoints : [w.map.capture]);
 const zoneCount = (w) => zoneList(w).length;
+/** Which track and way the n-th train takes: north then south, east then west, and so on. */
+const trainRoute = (n) => ({ track: n % 2, dir: (n >> 1) % 2 ? -1 : 1 });
+/** The span a running train covers: [back, front] along x, and its track. */
+function trainBody(w) {
+  const r = w.train?.run;
+  if (!r) return null;
+  const tr = w.map.train.tracks[r.track];
+  const a = r.head, b = r.head - r.dir * w.map.train.len;
+  return { tr, lo: Math.max(tr.x0, Math.min(a, b)), hi: Math.min(tr.x1, Math.max(a, b)) };
+}
+/** Is a point on a running train's cars? */
+function trainAt(w, x, y, pad = 0) {
+  const b = trainBody(w);
+  return !!b && b.lo < b.hi && x >= b.lo - pad && x <= b.hi + pad && y >= b.tr.y - pad && y <= b.tr.y + b.tr.h + pad;
+}
+function trainStep(w, dt, now) {
+  const t = w.train;
+  if (t.run) {
+    const r = t.run;
+    r.head += r.dir * CFG.TRAIN_SPEED * dt;
+    for (const p of w.players.values()) {
+      if (p.hp <= 0 || r.hit.has(p.id) || now < p.protectUntil || isSafe(w, p)) continue;
+      if (trainAt(w, p.x, p.y, CFG.RADIUS)) {
+        r.hit.add(p.id);
+        hurt(w, p, CFG.TRAIN_DMG, 0, null, now, 'train');
+      }
+    }
+    const tr = w.map.train.tracks[r.track];
+    if (r.dir > 0 ? r.head - w.map.train.len > tr.x1 : r.head + w.map.train.len < tr.x0) t.run = null;
+  }
+  t.c -= dt;
+  if (t.c <= 0) {
+    const { track, dir } = trainRoute(t.n);
+    const tr = w.map.train.tracks[track];
+    t.run = { track, dir, head: dir > 0 ? tr.x0 : tr.x1, hit: new Set() };
+    t.n++;
+    t.c += CFG.TRAIN_EVERY_S;
+    w.events.push({ t: 'train', track, dir });
+  }
+}
+/** [state (0 none, 1 warning, 2 running), track, way, head x, whole seconds to arrival] for the snapshot. */
+function trainSnap(w) {
+  const t = w.train;
+  if (t.run) return [2, t.run.track, t.run.dir, Math.round(t.run.head), 0];
+  if (t.c <= CFG.TRAIN_WARN_S) {
+    const { track, dir } = trainRoute(t.n);
+    return [1, track, dir, 0, Math.ceil(t.c)];
+  }
+  return [0, 0, 0, 0, 0];
+}
+
 /** The live zone (or the one `step` ahead in the rotation). */
 export const zoneAt = (w, step = 0) => {
   const l = zoneList(w);
@@ -656,6 +713,7 @@ function startRound(w, now, n) {
   w.progress = 0;
   w.points = { green: 0, red: 0 };
   w.zone = { i: 0, left: CFG.HARDPOINT_S };
+  w.train = { c: CFG.TRAIN_FIRST_S, n: 0, run: null };
   w.towers = [];
   w.clouds = [];
   w.drops = [];
@@ -1102,6 +1160,10 @@ export function step(w, dt, now = Date.now()) {
         dead = true; // spent: it has lost all its power out in the fog
         break;
       }
+      if (!b.air && trainAt(w, b.x, b.y)) {
+        dead = true; // the train's cars stop bullets
+        break;
+      }
       if (!b.air && solidAt(w, b.x, b.y)) {
         // Sniper rounds punch through light cover (barricades, rubble) but not buildings, wrecks or the map edge.
         const tx = Math.floor(b.x / w.tile), ty = Math.floor(b.y / w.tile);
@@ -1293,6 +1355,9 @@ export function step(w, dt, now = Date.now()) {
     }
   }
 
+  // The train (Industry): counts down, warns, then crosses one track and hurts whatever is on the rails.
+  if (w.map.train) trainStep(w, dt, now);
+
   // The scoring zone: the plaza in capture mode, or the live hardpoint, which moves on every HARDPOINT_S seconds.
   if (zoneCount(w) > 1) {
     w.zone.left -= dt;
@@ -1390,6 +1455,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,
     hz: zoneSnap(w),
+    ...(w.map.train ? { tr: trainSnap(w) } : {}),
     pt: [Math.floor(w.points.green), Math.floor(w.points.red)],
     r: { n: w.round.n, e: w.epoch ?? 0, mp: w.mapId, mr: w.mapRound, mt: CFG.ROUNDS_PER_MAP, nx: w.round.state === 'ended' && seriesOver(w) ? nextMapId(w) : '', s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
   };

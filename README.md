@@ -130,6 +130,10 @@ To add a map: write a generator that outputs `shared/<id>.json` (same 120×68 gr
 
 **The industry yard** (`node scripts/make-industry.mjs` -> `shared/industry.json`): a container port. Rows of shipping containers (solid, stop bullets), concrete barriers, pallet stacks, drums and wrecked trucks make the cover; asphalt lanes and rail tracks run across the yard, and a warehouse in the middle has open floor inside.
 
+**The train** (Industry only; the map's `train` entry): every 70 s (`CFG.TRAIN_EVERY_S`, the first at 40 s into a round) a train crosses one of the two rail tracks, alternating north and south and east and west. The track flashes yellow with a banner and a horn for the 5 s before it arrives (`CFG.TRAIN_WARN_S`); it then takes about 4 s to cross. Anyone on the rails takes 80 damage once per pass (`CFG.TRAIN_DMG`, kill feed: "was run over by the train"), and the cars stop bullets (not helicopter fire).
+
+The Hardpoint zones stay clear of the clinic tents, so a tent's healing never sits inside a zone.
+
 **The forest** (`node scripts/make-forest.mjs` -> `shared/forest.json`): grass and dirt tracks, a creek you can wade, trees (solid, stop every bullet), boulders and fallen logs (solid cover; sniper rounds punch through them, and a sniper on a tower shoots over them), and **bushes**. A soldier standing in a bush is hidden from the enemy until an enemy soldier gets within `CFG.BUSH_REVEAL` (110 px), a UAV covers him, or he fires (revealed for `CFG.BUSH_FIRE_REVEAL_S`, 1.5 s). His own side always sees him. Bullets pass through bushes.
 
 ## Fill-in bots (5v5)

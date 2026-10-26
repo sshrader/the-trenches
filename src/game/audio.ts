@@ -373,3 +373,53 @@ export function heliRotor(dist: number | null) {
 export function heliGun(dist: number) {
   keepLoop('minigun', dist, 1.1);
 }
+
+/** The train's warning: two blasts of a deep horn. */
+export function playTrainHorn() {
+  if (muted || !ctx || ctx.state !== 'running') return;
+  const t = ctx.currentTime;
+  for (const [at, len] of [[0, 0.7], [0.9, 1.1]]) {
+    for (const hz of [196, 247, 294]) {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = hz;
+      const f = ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 900;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t + at);
+      g.gain.linearRampToValueAtTime(volume * 0.16, t + at + 0.05);
+      g.gain.setValueAtTime(volume * 0.16, t + at + len - 0.12);
+      g.gain.linearRampToValueAtTime(0.0001, t + at + len);
+      o.connect(f).connect(g).connect(ctx.destination);
+      o.start(t + at);
+      o.stop(t + at + len + 0.05);
+    }
+  }
+}
+
+/** The train going past: a low rumble of filtered noise that swells and fades over about 4 s. */
+export function playTrainPass() {
+  if (muted || !ctx || ctx.state !== 'running') return;
+  const t = ctx.currentTime;
+  const secs = 4.2;
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * secs), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < d.length; i++) {
+    last = last * 0.97 + (Math.random() * 2 - 1) * 0.03; // brown-ish noise
+    d[i] = last * 6;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const f = ctx.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = 260;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(volume * 0.9, t + 1.2);
+  g.gain.linearRampToValueAtTime(volume * 0.9, t + 2.8);
+  g.gain.linearRampToValueAtTime(0.0001, t + secs);
+  src.connect(f).connect(g).connect(ctx.destination);
+  src.start(t);
+}

@@ -15,6 +15,7 @@ let CAP = { x: 0, y: 0, r: 0 };
 let PROPS: NonNullable<MapData['props']> = [];
 let CRATES: NonNullable<MapData['crates']> = [];
 let TENTS: NonNullable<MapData['tents']> = [];
+let TRAIN: MapData['train'] = undefined;
 let NESTS: NonNullable<MapData['nests']> = [];
 let ROADS: { v: number[][]; h: number[][] } = { v: [], h: [] };
 let THEME = 'city';
@@ -32,6 +33,7 @@ function applyMap(id: string) {
   PROPS = m.props ?? [];
   CRATES = m.crates ?? [];
   TENTS = m.tents ?? [];
+  TRAIN = m.train;
   NESTS = m.nests ?? [];
   ROADS = m.roads ?? { v: [], h: [] };
   THEME = m.theme ?? 'city';
@@ -1627,6 +1629,67 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
         const py = cr.y - camY;
         if (px > -40 && py > -40 && px < VW + 40 && py < VH + 40) drawCrate(ctx, cr.team, w.crates[i] !== 0, px, py);
       });
+      // The train: the track flashes while it is coming, then the cars cross it
+      if (TRAIN && w.train[0] > 0) {
+        const [st, ti, dirT, head] = w.train;
+        const tk = TRAIN.tracks[ti];
+        if (st === 1) {
+          const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 110);
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(tk.x0 - camX, tk.y - camY, tk.x1 - tk.x0, tk.h);
+          ctx.clip();
+          ctx.fillStyle = `rgba(250,204,21,${0.12 + pulse * 0.18})`;
+          ctx.fillRect(tk.x0 - camX, tk.y - camY, tk.x1 - tk.x0, tk.h);
+          ctx.fillStyle = `rgba(20,20,20,${0.25 + pulse * 0.2})`;
+          for (let x = Math.floor((camX - tk.x0) / 48) * 48 + tk.x0 - 48; x < camX + VW + 48; x += 48) {
+            ctx.beginPath();
+            ctx.moveTo(x - camX, tk.y - camY + tk.h);
+            ctx.lineTo(x - camX + 24, tk.y - camY + tk.h);
+            ctx.lineTo(x - camX + 48, tk.y - camY);
+            ctx.lineTo(x - camX + 24, tk.y - camY);
+            ctx.fill();
+          }
+          ctx.restore();
+        } else {
+          const back = head - dirT * TRAIN.len;
+          const lo = Math.max(tk.x0, Math.min(head, back));
+          const hi = Math.min(tk.x1, Math.max(head, back));
+          if (hi > lo) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(tk.x0 - camX, tk.y - 6 - camY, tk.x1 - tk.x0, tk.h + 12);
+            ctx.clip();
+            const y0 = tk.y + 6 - camY;
+            const hh = tk.h - 12;
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            ctx.fillRect(lo - camX + 3, y0 + 6, hi - lo, hh);
+            // cars from the tail towards the locomotive at the head
+            const CAR = 150, GAP = 8;
+            const n = Math.ceil(TRAIN.len / (CAR + GAP));
+            for (let i = 0; i < n; i++) {
+              const along = TRAIN.len - (i + 1) * (CAR + GAP) + GAP; // distance of the car's tail end behind the head
+              const a = dirT > 0 ? head - along - CAR : head + along;
+              const loco = i === n - 1;
+              ctx.fillStyle = loco ? '#2c3e50' : ['#7a3b2e', '#3d5a45', '#5b5b63', '#7a6a3a'][i % 4];
+              ctx.fillRect(a - camX, y0, CAR, hh);
+              ctx.fillStyle = 'rgba(0,0,0,0.28)';
+              for (let r = 8; r < CAR - 6; r += 10) ctx.fillRect(a - camX + r, y0 + 3, 3, hh - 6);
+              ctx.fillStyle = 'rgba(255,255,255,0.18)';
+              ctx.fillRect(a - camX, y0, CAR, 3);
+              if (loco) {
+                ctx.fillStyle = '#facc15';
+                ctx.fillRect(dirT > 0 ? a - camX + CAR - 14 : a - camX, y0, 14, hh);
+                ctx.fillStyle = '#fff7c2';
+                const hx = dirT > 0 ? a - camX + CAR - 5 : a - camX + 1;
+                ctx.fillRect(hx, y0 + 8, 4, 8);
+                ctx.fillRect(hx, y0 + hh - 16, 4, 8);
+              }
+            }
+            ctx.restore();
+          }
+        }
+      }
       // Capture point
       const p = w.progress;
       const [zx, zy, zr, zleft, znx, zny] = w.zone[2] ? w.zone : [CAP.x, CAP.y, CAP.r, 0, 0, 0];

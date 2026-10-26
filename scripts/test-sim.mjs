@@ -540,6 +540,7 @@ test('hardpoint: the zone moves every 45 s, only the live zone scores, and the s
   assert.deepEqual([z0.x, z0.y], [ind.capture.x, ind.capture.y], 'the first zone is the centre');
   assert.notDeepEqual([z0.x, z0.y], [z1.x, z1.y]);
   for (const z of ind.hardpoints) assert.ok(!solidAt(w, z.x, z.y), 'every hardpoint is on open ground');
+  for (const m of [map, JSON.parse(fs.readFileSync(new URL('../shared/forest.json', import.meta.url), 'utf8')), ind]) for (const z of m.hardpoints) for (const tent of m.tents) assert.ok(Math.hypot(z.x - tent.x, z.y - tent.y) > z.r + CFG.TENT_R, 'no hardpoint overlaps a clinic tent');
   const hz = snapshot(w, 1000, 'green').hz;
   assert.deepEqual(hz.slice(0, 3), [z0.x, z0.y, z0.r]);
   assert.deepEqual(hz.slice(4), [z1.x, z1.y], 'the snapshot names the next zone');
@@ -563,6 +564,46 @@ test('hardpoint: the zone moves every 45 s, only the live zone scores, and the s
   now += 50;
   step(w, 0.05, now);
   assert.equal(w.zone.i, 0, 'after the last zone it is the centre again');
+});
+
+test('train (Industry): warns for 5 s, then crosses a track once, hurting anyone on the rails by 80, and stops bullets', () => {
+  const ind = JSON.parse(fs.readFileSync(new URL('../shared/industry.json', import.meta.url), 'utf8'));
+  const w = createWorld(ind, rng);
+  applyMap(w, ind, 'industry');
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  const tk = ind.train.tracks[0];
+  assert.equal(snapshot(w, 1000, 'green').tr[0], 0, 'no train at first');
+  w.train.c = 4.9;
+  let now = 1000;
+  now += 50; step(w, 0.05, now);
+  const warn = snapshot(w, now, 'green').tr;
+  assert.equal(warn[0], 1, 'a warning');
+  assert.deepEqual(warn.slice(1, 3), [0, 1], 'the north track, heading east, comes first');
+  place(a, 1900, tk.y + tk.h / 2);
+  a.protectUntil = 0;
+  w.train.c = 0.04;
+  now += 50; step(w, 0.05, now);
+  assert.equal(snapshot(w, now, 'green').tr[0], 2, 'the train is running');
+  let hits = 0, last = a.hp;
+  for (let i = 0; i < 120; i++) {
+    now += 50;
+    a.x = 1900; a.y = tk.y + tk.h / 2; // stays on the rails
+    step(w, 0.05, now);
+    if (a.hp < last) hits++;
+    last = a.hp;
+  }
+  assert.equal(hits, 1, 'hit once per pass');
+  assert.equal(a.hp, 20, 'for 80 damage');
+  assert.equal(snapshot(w, now, 'green').tr[0], 0, 'and it has gone');
+  // a bullet fired across the rails while the cars pass is stopped
+  w.train.c = 0.04; w.train.n = 1; // next: the south track heading east
+  now += 50; step(w, 0.05, now);
+  const r = w.train.run;
+  const st = ind.train.tracks[r.track];
+  r.head = 1900 + 100;
+  w.bullets.push({ x: 1900, y: st.y - 20, vx: 0, vy: 600, speed: 600, damage: 10, weapon: 'rifle', life: 1, owner: 0, team: 'red', pierce: 0, sx: 1900, sy: st.y - 20 });
+  now += 50; step(w, 0.05, now);
+  assert.equal(w.bullets.length, 0, 'the bullet hit the train');
 });
 
 test('a medic has a limited medkit, so he cannot out-heal forever; wounded test bot', () => {

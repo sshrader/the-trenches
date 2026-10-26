@@ -445,12 +445,13 @@ export default function Play() {
                     </>
                   ) : (
                     <>
-                      <b className={f.kteam}>{f.killer}</b> {f.tk ? (f.weapon === 'artillery' ? 'shelled teammate' : 'blew up teammate') : f.weapon === 'grenade' || f.weapon === 'rocket' ? 'blew up' : f.weapon === 'artillery' ? 'shelled' : 'eliminated'} <b className={f.vteam}>{f.victim}</b>
+                      {f.weapon === 'train' ? (<><b className={f.vteam}>{f.victim}</b> was run over by the train</>) : (<><b className={f.kteam}>{f.killer}</b> {f.tk ? (f.weapon === 'artillery' ? 'shelled teammate' : 'blew up teammate') : f.weapon === 'grenade' || f.weapon === 'rocket' ? 'blew up' : f.weapon === 'artillery' ? 'shelled' : 'eliminated'} <b className={f.vteam}>{f.victim}</b></>)}
                     </>
                   )}
                 </p>
               ))}
             </div>
+            {h.train[0] === 1 && h.round.s === 'live' && <div className="train-warn" role="alert">⚠ TRAIN INCOMING · {h.train[1] === 0 ? 'north' : 'south'} track · {h.train[4]}</div>}
             {h.myHp <= 0 && h.round.s === 'live' && <div className="overlay">Eliminated. Back at your base shortly…</div>}
             {h.round.s === 'ended' && (
               <div className="overlay big">

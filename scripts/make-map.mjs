@@ -287,7 +287,7 @@ const map = {
   tents,
   nests: [...nests.map((q) => ({ ...q, team: 'green' })), ...nests.map((q) => ({ x: W * TILE - q.x, y: q.y, team: 'red' }))],
   capture: { x: (W * TILE) / 2, y: (H * TILE) / 2, r: 3.5 * TILE },
-  hardpoints: [{"x": 1920, "y": 1088, "r": 112}, {"x": 1264, "y": 1048, "r": 112}, {"x": 1944, "y": 380, "r": 112}, {"x": 2576, "y": 1048, "r": 112}, {"x": 1944, "y": 1784, "r": 112}], // the Hardpoint zones, in rotation order (centre, west, north, east, south)
+  hardpoints: [{"x": 1920, "y": 1088, "r": 112}, {"x": 1040, "y": 1044, "r": 112}, {"x": 1944, "y": 380, "r": 112}, {"x": 2800, "y": 1044, "r": 112}, {"x": 1944, "y": 1784, "r": 112}], // the Hardpoint zones, in rotation order (centre, west, north, east, south), all clear of the clinic tents
   spawns: {
     green: { x0: 1 * TILE, x1: 7 * TILE, y0: 2 * TILE, y1: (H - 2) * TILE },
     red: { x0: (W - 7) * TILE, x1: (W - 1) * TILE, y0: 2 * TILE, y1: (H - 2) * TILE },

@@ -157,7 +157,8 @@ const map = {
   tents: city.tents,
   nests: [...nests.map((q) => ({ ...q, team: 'green' })), ...nests.map((q) => ({ x: W * TILE - q.x, y: q.y, team: 'red' }))],
   capture: city.capture,
-  hardpoints: [{"x": 1920, "y": 1088, "r": 112}, {"x": 1328, "y": 1080, "r": 112}, {"x": 1912, "y": 508, "r": 112}, {"x": 2512, "y": 1080, "r": 112}, {"x": 1912, "y": 1656, "r": 112}], // the Hardpoint zones, in rotation order (centre, west, north, east, south)
+  hardpoints: [{"x": 1920, "y": 1088, "r": 112}, {"x": 1040, "y": 1140, "r": 112}, {"x": 1912, "y": 508, "r": 112}, {"x": 2800, "y": 1140, "r": 112}, {"x": 1912, "y": 1656, "r": 112}], // the Hardpoint zones, in rotation order (centre, west, north, east, south), all clear of the clinic tents
+  train: { len: 900, tracks: [{ y: 16 * 32, h: 64, x0: 13 * 32, x1: 107 * 32 }, { y: 50 * 32, h: 64, x0: 15 * 32, x1: 105 * 32 }] }, // a train crosses a track now and then: it hurts anything on the rails and stops bullets
   spawns: city.spawns,
 };
 fs.writeFileSync(new URL('../shared/industry.json', import.meta.url), JSON.stringify(map, null, 1));

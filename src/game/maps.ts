@@ -14,6 +14,7 @@ export type MapData = {
   tents?: { x: number; y: number; team: string }[];
   nests?: { x: number; y: number; team: string }[];
   capture: { x: number; y: number; r: number };
+  train?: { len: number; tracks: { y: number; h: number; x0: number; x1: number }[] }; // Industry: a train crosses a track now and then
 };
 
 export const MAPS: Record<string, MapData> = {
