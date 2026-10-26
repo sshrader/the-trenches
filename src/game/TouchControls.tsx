@@ -25,9 +25,11 @@ function Stick({ className, onVec, onEnd, label }: { className: string; onVec: (
     let dx = p.x - base.cx;
     let dy = p.y - base.cy;
     const d = Math.hypot(dx, dy);
-    if (d > R) { dx = (dx / d) * R; dy = (dy / d) * R; }
+    const ux = d > 0 ? dx / d : 0; // the direction, always a unit vector (so the soldier runs at full speed however far out the finger is)
+    const uy = d > 0 ? dy / d : 0;
+    if (d > R) { dx = ux * R; dy = uy * R; } // the knob stays on the ring
     const mag = Math.min(1, d / R);
-    onVec(d > 0 ? dx / Math.max(d, 1e-6) : 0, d > 0 ? dy / Math.max(d, 1e-6) : 0, mag);
+    onVec(ux, uy, mag);
     return { x: base.cx + dx, y: base.cy + dy };
   };
   return (
