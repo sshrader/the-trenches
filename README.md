@@ -79,7 +79,7 @@ Each side has one bazooka crate in its own half, between 10 and 28 tiles from it
 
 ## Shotgunner class
 
-140 HP (`hp` on the class), a pump shotgun that fires 8 pellets in a spread (`pellets`, `spread`): 5 shells, one shot every 450 ms (quicker than the rifle's 700 ms, slower than the SMG's 110 ms), pellets reach only about 200 px, so it is deadly up close and weak at range. It also carries a 12-round pistol with its own ammo; mouse wheel or **Q** cycles main weapon, pistol and (if you hold one) the bazooka. He sprints 1.5x as long as other classes (`staminaX` on the class). Medics and the clinic tent heal him up to 140. Rockets and artillery still kill him inside their lethal ring.
+140 HP (`hp` on the class), a pump shotgun that fires 8 pellets in a spread (`pellets`, `spread`): 5 shells, one shot every 450 ms (quicker than the rifle's 700 ms, slower than the SMG's 110 ms), pellets reach about 240 px (full damage out to 100 px), so it is deadly up close and weak at range. It also carries a 12-round pistol with its own ammo; mouse wheel or **Q** cycles main weapon, pistol and (if you hold one) the bazooka. He sprints 1.5x as long as other classes (`staminaX` on the class). Medics and the clinic tent heal him up to 140. Rockets and artillery still kill him inside their lethal ring.
 
 
 **Sniper aids:** rounds pierce barricades and rubble; enemies picked out by a scoped teammate pulse as red dots on the minimap. The intro splash shows once per visitor (footer link "How to play" or `/?intro` shows it again).
