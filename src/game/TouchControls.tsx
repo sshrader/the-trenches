@@ -80,7 +80,9 @@ function Btn({ children, onDown, onUp, className = '', title }: { children: Reac
   );
 }
 
-type Tool = 'fire' | 'nade' | 'arty';
+type Tool = 'fire' | 'nade' | 'arty' | 'special';
+const THROWN_SPECIAL = [0, 1, 2, 5]; // class indexes whose special lands where you point: smoke, flash, medic flare, squad leader UAV (the shield acts at once, the sniper builds his tower)
+const SPECIAL_NAME: Record<number, string> = { 0: 'the smoke', 1: 'the flashbang', 2: 'the flare', 5: 'the UAV' };
 
 export default function TouchControls({ input, aim, world, onScores, onMenu }: { input: MutableRefObject<Input>; aim: MutableRefObject<TouchAim>; world: MutableRefObject<World>; onScores: () => void; onMenu: () => void }) {
   const cls = () => world.current.units.get(world.current.me)?.cls ?? 0;
@@ -102,9 +104,8 @@ export default function TouchControls({ input, aim, world, onScores, onMenu }: {
           const m = mag < 0.18 ? 0 : 1; // a small dead zone, then full speed
           input.current.dx = vx * m;
           input.current.dy = vy * m;
-          if (!sprint) input.current.sprint = mag > 0.88; // push the stick well out to run
         }}
-        onEnd={() => { input.current.dx = input.current.dy = 0; if (!sprint) input.current.sprint = false; }}
+        onEnd={() => { input.current.dx = input.current.dy = 0; }}
       />
       <Stick
         className="right"
@@ -129,17 +130,21 @@ export default function TouchControls({ input, aim, world, onScores, onMenu }: {
             a.py = e.clientY;
             a.tapAt = performance.now();
             const t = toolRef.current;
-            later(() => { if (t === 'nade') input.current.nade += 1; else input.current.arty += 1; });
+            later(() => { if (t === 'nade') input.current.nade += 1; else if (t === 'arty') input.current.arty += 1; else input.current.special += 1; });
             setToolBoth('fire');
           }}
         />
       )}
-      {tool !== 'fire' && <div className="tc-hint">{tool === 'nade' ? 'Tap where to throw the grenade' : 'Tap where to call the artillery strike'}</div>}
+      {tool !== 'fire' && <div className="tc-hint">{tool === 'nade' ? 'Tap where to throw the grenade' : tool === 'arty' ? 'Tap where to call the artillery strike' : `Tap where to put ${SPECIAL_NAME[cls()] ?? 'it'}`}</div>}
       <div className="tc-btns">
         <Btn title="Grenade: then tap where to throw" className={tool === 'nade' ? 'latched' : ''} onDown={() => setToolBoth(toolRef.current === 'nade' ? 'fire' : 'nade')}>G<small>grenade</small></Btn>
         <Btn title="Artillery: then tap the target" className={tool === 'arty' ? 'latched' : ''} onDown={() => setToolBoth(toolRef.current === 'arty' ? 'fire' : 'arty')}>T<small>artillery</small></Btn>
         <Btn title="Reload" onDown={() => { input.current.reload += 1; }}>R<small>reload</small></Btn>
-        <Btn title="Class special" onDown={() => { if (cls() === 3) input.current.nest += 1; else input.current.special += 1; }}>C<small>special</small></Btn>
+        <Btn title="Class special" className={tool === 'special' ? 'latched' : ''} onDown={() => {
+          if (cls() === 3) input.current.nest += 1; // the sniper's tower
+          else if (THROWN_SPECIAL.includes(cls())) setToolBoth(toolRef.current === 'special' ? 'fire' : 'special'); // then tap where it should land
+          else input.current.special += 1; // the shield
+        }}>C<small>special</small></Btn>
         <Btn title="Kill-streak reward" onDown={() => { input.current.streak += 1; }}>Z<small>streak</small></Btn>
         <Btn title="Swap weapon" onDown={() => { input.current.swap += 1; }}>Q<small>swap</small></Btn>
         <Btn title="Sprint" className={sprint ? 'latched' : ''} onDown={() => { const s = !sprint; setSprint(s); input.current.sprint = s; }}>⇧<small>sprint</small></Btn>
