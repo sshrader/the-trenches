@@ -19,15 +19,15 @@ export const CFG = {
   // Classes. `life` is how long a bullet flies, so speed x life is the weapon's reach.
   CLASSES: {
     // Assault (id 'rifleman'): a modern AR. Three hits kill; held on full auto it climbs and the shots spread (tap or burst to stay accurate).
-    rifleman: { label: 'Assault', weapon: 'rifle', mag: 15, reloadS: 2.2, fireMs: 140, damage: 34, speed: 760, life: 1.1, recoil: { per: 0.2, max: 0.17 }, special: { id: 'smoke', charges: 1 } },
+    rifleman: { label: 'Assault', weapon: 'rifle', mag: 15, reloadS: 2.2, fireMs: 140, damage: 34, speed: 760, life: 1.1, recoil: { per: 0.18, max: 0.12 }, special: { id: 'smoke', charges: 1 } },
     smg: { label: 'SMG', weapon: 'smg', mag: 20, reloadS: 2, fireMs: 110, damage: 21, speed: 620, life: 0.6, special: { id: 'flash', charges: 1 } }, // five hits kill, short reach
     sniper: { label: 'Sniper', weapon: 'sniper', mag: 5, reloadS: 3.5, fireMs: 1800, damage: 100, speed: 2600, life: 0.65, grenades: 1, arty: 0, side: { weapon: 'pistol', mag: 8, reloadS: 1.5, fireMs: 350, damage: 20, speed: 600, life: 0.5 } }, // one hit kills; hold scope to see far, but slow, only 5 rounds, a weak 8-round pistol to swap to, no artillery strike, and each shot gives him away
     shotgunner: { label: 'Shotgunner', weapon: 'shotgun', mag: 5, reloadS: 2.5, fireMs: 450, damage: 25, falloff: [100, 240, 0.25], speed: 700, life: 0.34, pellets: 8, spread: 0.2, hp: 140, staminaX: 1.5, side: { weapon: 'pistol', mag: 12, reloadS: 1.5, fireMs: 280, damage: 20, speed: 600, life: 0.55 }, special: { id: 'shield', durS: 5, rechargeS: 20 } }, // 140 HP, 8-pellet shotgun (deadly up close, 5 shells, quicker than the rifle, slower than the SMG) and a pistol to swap to
     medic: { label: 'Medic', weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5, special: { id: 'drop', charges: 1 } },
     // Squad leader: the Assault's AR plus a pistol, and a UAV that shows the whole team where the enemy is. Not refilled by resupply.
-    squad: { label: 'Squad Leader', weapon: 'rifle', mag: 15, reloadS: 2.2, fireMs: 140, damage: 34, speed: 760, life: 1.1, recoil: { per: 0.2, max: 0.17 }, arty: 1, grenades: 2, side: { weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, special: { id: 'uav', durS: 10, rechargeS: 60 } }, // heals teammates next to him
+    squad: { label: 'Squad Leader', weapon: 'rifle', mag: 15, reloadS: 2.2, fireMs: 140, damage: 34, speed: 760, life: 1.1, recoil: { per: 0.18, max: 0.12 }, arty: 1, grenades: 2, side: { weapon: 'pistol', mag: 10, reloadS: 2, fireMs: 350, damage: 25, speed: 600, life: 0.5 }, special: { id: 'uav', durS: 10, rechargeS: 60 } }, // heals teammates next to him
   },
-  RECOIL_DECAY: 0.8, // how fast an AR settles per second when you let off the trigger
+  RECOIL_DECAY: 0.9, // how fast an AR settles per second when you let off the trigger
   SMOKE_R: 140, // a smoke grenade's cloud: enemies cannot see in, out of, or through it; its own side can
   SMOKE_S: 12,
   SMOKE_POINT_BLANK: 60, // ... except a target this close
