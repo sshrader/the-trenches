@@ -249,8 +249,8 @@ export default function Play() {
               <img className="brand-logo" src={ruinsLogo} alt="" width={132} height={158} />
               <div>
                 <p className="eyebrow">Multiplayer · Green vs Red</p>
-                <h1>The Ruins</h1>
-                <p className="lede">Two crews hold opposite ends of a ruined city. Take cover, hold the plaza in the middle, stay out of the open.</p>
+                <h1>Frontline</h1>
+                <p className="lede">Two crews fight across city streets, forest and a container yard. Take cover, hold the moving zone, stay out of the open.</p>
               </div>
             </div>
             <Banner team="red" />

@@ -25,7 +25,7 @@ const KEYS: [string, string][] = [
 ];
 
 const OBJECTIVES = [
-  'Hold the plaza in the middle of the ruined city. Stand in the circle with no enemy inside it and your side scores 1 point a second, more with extra soldiers in it.',
+  'Hold the Hardpoint, the glowing zone that moves round the map every 45 seconds. Stand in the circle with no enemy inside it and your side scores 1 point a second, more with extra soldiers in it.',
   'First side to 100 points wins the round. If the 6 minute clock runs out first, whoever has more points wins.',
   'Use cover: walls, wrecked cars, barriers and rubble all stop bullets. Grenades fly over cover, and blasts hurt your own side too. Each side has a bazooka crate near its base: grab it for two rockets.',
   'Heal at your clinic tent or from a Medic, and restock at your crates. You respawn 4 seconds after you fall.',
@@ -53,7 +53,7 @@ export default function Splash({ onEnter }: { onEnter: () => void }) {
       <div className="splash-art" style={{ backgroundImage: `url(${art})` }}>
         <div className="splash-title">
           <p className="eyebrow">Browser multiplayer shooter</p>
-          <h1>The Ruins</h1>
+          <h1>Frontline</h1>
           <p className="splash-tag">Survivors versus Raiders. One plaza in the middle. Hold the block.</p>
         </div>
       </div>

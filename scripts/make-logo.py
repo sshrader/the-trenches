@@ -88,7 +88,7 @@ def op(tag, c):
 GREEN = dict(uni='#4a5d3a', vest='#3c4a2e', pouch='#2f3b24', pad='#2a3320', helm='#4a5a3e', mask='#2c3a26', acc='#4ade80')
 RED = dict(uni='#4a2a26', vest='#34282a', pouch='#2a1f21', pad='#2a1c1c', helm='#3a2e30', mask='#2c1c1c', acc='#f87171')
 
-svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 360" role="img" aria-label="The Ruins">
+svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 360" role="img" aria-label="Frontline">
   <defs>
     <linearGradient id="bronze" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#d9b46a"/><stop offset=".45" stop-color="#8a6a33"/><stop offset="1" stop-color="#4a3718"/>

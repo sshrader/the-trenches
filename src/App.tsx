@@ -25,7 +25,7 @@ export default function App() {
   return (
     <>
       <header className="top">
-        <a className="brand" href="/">The Ruins</a>
+        <a className="brand" href="/">Frontline</a>
         {WALLET_LOGIN && <WalletMultiButton />}
       </header>
       <main>
