@@ -15,7 +15,6 @@
     <g id="g">
       <!-- shadow behind -->
       <ellipse cx="0" cy="150" rx="78" ry="20" fill="#000" opacity=".35"/>
-      <!-- rifle slung across the chest (behind the arms) -->
       <!-- shoulders and torso -->
       <path d="M-70 200 L-70 112 Q-70 74 -34 64 L34 64 Q70 74 70 112 L70 200Z" fill="#4a5d3a" stroke="#0b0c0a" stroke-width="3"/>
       <!-- plate carrier -->
@@ -33,19 +32,44 @@
       <path d="M-70 96 Q-66 70 -38 66 L-34 84 Q-52 86 -58 108Z M70 96 Q66 70 38 66 L34 84 Q52 86 58 108Z" fill="#2a3320" stroke="#0b0c0a" stroke-width="2.5"/>
       <!-- neck -->
       <rect x="-13" y="44" width="26" height="28" fill="#17181a"/>
-      <!-- rifle -->
+      <!-- arms: sleeves from the shoulders to the hands on the rifle -->
+      <path d="M-56 104 L-10.4 183.7" stroke="#0b0c0a" stroke-width="25" stroke-linecap="round"/><path d="M-56 104 L-10.4 183.7" stroke="#4a5d3a" stroke-width="21" stroke-linecap="round"/>
+      <path d="M56 104 L56.7 140.1" stroke="#0b0c0a" stroke-width="25" stroke-linecap="round"/><path d="M56 104 L56.7 140.1" stroke="#4a5d3a" stroke-width="21" stroke-linecap="round"/>
+      <path d="M-56 118 L-8.4 173.7" stroke="#2a3320" stroke-width="6" stroke-linecap="round" opacity=".7"/>
+      <!-- AR-15 style carbine, held across the chest -->
       <g transform="rotate(-20 0 148)">
-        <rect x="-86" y="140" width="176" height="17" rx="4" fill="#1f2226" stroke="#050505" stroke-width="2.5"/>
-        <rect x="-86" y="143" width="40" height="11" rx="3" fill="#3a3f45"/>
-        <rect x="-32" y="128" width="46" height="13" rx="3" fill="#14161a" stroke="#050505" stroke-width="2"/>
-        <circle cx="-9" cy="134.5" r="4.4" fill="#0a0b0c" stroke="#4ade80" stroke-width="1.6"/>
-        <rect x="-6" y="157" width="12" height="26" rx="2" fill="#17191c" stroke="#050505" stroke-width="2"/>
-        <rect x="64" y="144" width="52" height="9" rx="4.5" fill="#101215" stroke="#050505" stroke-width="2"/>
-        <path d="M-20 143 H60" stroke="#8d949c" stroke-width="1.4" opacity=".6"/>
+        <!-- collapsible stock and buffer tube -->
+        <path d="M-94 141 L-70 141 L-66 163 L-90 161Z" fill="#17191c" stroke="#050505" stroke-width="2"/>
+        <rect x="-70" y="144" width="40" height="9" rx="2" fill="#1f2226" stroke="#050505" stroke-width="2"/>
+        <!-- lower receiver, pistol grip, magazine well and a curved 30-round magazine -->
+        <path d="M-32 146 L8 146 L8 163 L-4 163 L-4 160 L-26 160Z" fill="#1c1e21" stroke="#050505" stroke-width="2"/>
+        <path d="M-27 158 L-17 160 L-23 186 L-34 184Z" fill="#17191c" stroke="#050505" stroke-width="2"/>
+        <path d="M-2 160 L14 160 L26 200 L10 204Z" fill="#2a2d31" stroke="#050505" stroke-width="2"/>
+        <path d="M3 168 L18 168 M6 180 L21 180 M9 191 L24 191" stroke="#000" stroke-width="1.4" opacity=".5"/>
+        <rect x="9" y="182" width="12" height="4" fill="#4ade80" opacity=".85" transform="rotate(15 15 184)"/>
+        <path d="M-2 160 Q4 172 10 172 L12 160" fill="none" stroke="#050505" stroke-width="2"/>
+        <!-- upper receiver with ejection port, charging handle and the flat-top rail -->
+        <path d="M-34 135 L28 135 L28 148 L-34 148Z" fill="#26292d" stroke="#050505" stroke-width="2.4"/>
+        <rect x="-34" y="130" width="8" height="5" rx="1.5" fill="#14161a" stroke="#050505" stroke-width="1.4"/>
+        <rect x="-14" y="139" width="14" height="5" rx="1" fill="#0a0b0c"/>
+        <path d="M-28 131 H58" stroke="#050505" stroke-width="4"/><path d="M-26 131 H56" stroke="#8d949c" stroke-width="1.6" stroke-dasharray="2.4 1.8"/>
+        <!-- red-dot optic -->
+        <path d="M-8 118 L14 118 L16 131 L-10 131Z" fill="#14161a" stroke="#050505" stroke-width="2"/>
+        <rect x="9" y="120" width="5" height="9" rx="1.5" fill="url(#glens)" stroke="#050505" stroke-width="1"/>
+        <!-- free-float handguard with M-LOK slots, a vertical grip, and a short barrel with a suppressor -->
+        <rect x="28" y="133" width="66" height="19" rx="2" fill="#2a2d31" stroke="#050505" stroke-width="2.4"/>
+        <g fill="#050505" opacity=".75"><rect x="36" y="140" width="9" height="3" rx="1.5"/><rect x="50" y="140" width="9" height="3" rx="1.5"/><rect x="64" y="140" width="9" height="3" rx="1.5"/><rect x="78" y="140" width="9" height="3" rx="1.5"/></g>
+        <path d="M30 135 H92" stroke="#8d949c" stroke-width="1.2" opacity=".55"/>
+        <path d="M50 152 L58 152 L56 168 L52 168Z" fill="#17191c" stroke="#050505" stroke-width="1.8"/>
+        <rect x="94" y="140" width="11" height="6" fill="#1a1c1f" stroke="#050505" stroke-width="1.6"/>
+        <rect x="104" y="136" width="36" height="14" rx="4" fill="#15171a" stroke="#050505" stroke-width="2.4"/>
+        <path d="M110 138 H136" stroke="#8d949c" stroke-width="1.2" opacity=".5"/>
+        <path d="M86 126 L88 126 L88 133 L86 133Z" fill="#050505"/>
       </g>
       <!-- gloved hands -->
-      <ellipse cx="-24" cy="170" rx="13" ry="10" fill="#17181a" stroke="#050505" stroke-width="2"/>
-      <ellipse cx="38" cy="140" rx="12" ry="10" fill="#17181a" stroke="#050505" stroke-width="2"/>
+      <ellipse cx="-10.4" cy="183.7" rx="11" ry="8.5" fill="#202326" stroke="#050505" stroke-width="2"/>
+      <ellipse cx="56.7" cy="140.1" rx="11" ry="8.5" fill="#202326" stroke="#050505" stroke-width="2"/>
+      <path d="M50.7 134.1 L50.7 145.1 M56.7 133.1 L56.7 146.1 M62.7 134.1 L62.7 145.1" stroke="#34373b" stroke-width="1.3" opacity=".7"/>
       <!-- head: balaclava -->
       <path d="M-25 -2 C-27 -26 -14 -40 0 -40 C14 -40 27 -26 25 -2 C26 22 14 46 0 48 C-14 46 -26 22 -25 -2Z" fill="#1a1c1e" stroke="#050505" stroke-width="2.5"/>
       <!-- lower face mask with a panel pattern -->
@@ -73,7 +97,6 @@
     <g id="r">
       <!-- shadow behind -->
       <ellipse cx="0" cy="150" rx="78" ry="20" fill="#000" opacity=".35"/>
-      <!-- rifle slung across the chest (behind the arms) -->
       <!-- shoulders and torso -->
       <path d="M-70 200 L-70 112 Q-70 74 -34 64 L34 64 Q70 74 70 112 L70 200Z" fill="#4a2a26" stroke="#0b0c0a" stroke-width="3"/>
       <!-- plate carrier -->
@@ -91,19 +114,44 @@
       <path d="M-70 96 Q-66 70 -38 66 L-34 84 Q-52 86 -58 108Z M70 96 Q66 70 38 66 L34 84 Q52 86 58 108Z" fill="#2a1c1c" stroke="#0b0c0a" stroke-width="2.5"/>
       <!-- neck -->
       <rect x="-13" y="44" width="26" height="28" fill="#17181a"/>
-      <!-- rifle -->
+      <!-- arms: sleeves from the shoulders to the hands on the rifle -->
+      <path d="M-56 104 L-10.4 183.7" stroke="#0b0c0a" stroke-width="25" stroke-linecap="round"/><path d="M-56 104 L-10.4 183.7" stroke="#4a2a26" stroke-width="21" stroke-linecap="round"/>
+      <path d="M56 104 L56.7 140.1" stroke="#0b0c0a" stroke-width="25" stroke-linecap="round"/><path d="M56 104 L56.7 140.1" stroke="#4a2a26" stroke-width="21" stroke-linecap="round"/>
+      <path d="M-56 118 L-8.4 173.7" stroke="#2a1c1c" stroke-width="6" stroke-linecap="round" opacity=".7"/>
+      <!-- AR-15 style carbine, held across the chest -->
       <g transform="rotate(-20 0 148)">
-        <rect x="-86" y="140" width="176" height="17" rx="4" fill="#1f2226" stroke="#050505" stroke-width="2.5"/>
-        <rect x="-86" y="143" width="40" height="11" rx="3" fill="#3a3f45"/>
-        <rect x="-32" y="128" width="46" height="13" rx="3" fill="#14161a" stroke="#050505" stroke-width="2"/>
-        <circle cx="-9" cy="134.5" r="4.4" fill="#0a0b0c" stroke="#f87171" stroke-width="1.6"/>
-        <rect x="-6" y="157" width="12" height="26" rx="2" fill="#17191c" stroke="#050505" stroke-width="2"/>
-        <rect x="64" y="144" width="52" height="9" rx="4.5" fill="#101215" stroke="#050505" stroke-width="2"/>
-        <path d="M-20 143 H60" stroke="#8d949c" stroke-width="1.4" opacity=".6"/>
+        <!-- collapsible stock and buffer tube -->
+        <path d="M-94 141 L-70 141 L-66 163 L-90 161Z" fill="#17191c" stroke="#050505" stroke-width="2"/>
+        <rect x="-70" y="144" width="40" height="9" rx="2" fill="#1f2226" stroke="#050505" stroke-width="2"/>
+        <!-- lower receiver, pistol grip, magazine well and a curved 30-round magazine -->
+        <path d="M-32 146 L8 146 L8 163 L-4 163 L-4 160 L-26 160Z" fill="#1c1e21" stroke="#050505" stroke-width="2"/>
+        <path d="M-27 158 L-17 160 L-23 186 L-34 184Z" fill="#17191c" stroke="#050505" stroke-width="2"/>
+        <path d="M-2 160 L14 160 L26 200 L10 204Z" fill="#2a2d31" stroke="#050505" stroke-width="2"/>
+        <path d="M3 168 L18 168 M6 180 L21 180 M9 191 L24 191" stroke="#000" stroke-width="1.4" opacity=".5"/>
+        <rect x="9" y="182" width="12" height="4" fill="#f87171" opacity=".85" transform="rotate(15 15 184)"/>
+        <path d="M-2 160 Q4 172 10 172 L12 160" fill="none" stroke="#050505" stroke-width="2"/>
+        <!-- upper receiver with ejection port, charging handle and the flat-top rail -->
+        <path d="M-34 135 L28 135 L28 148 L-34 148Z" fill="#26292d" stroke="#050505" stroke-width="2.4"/>
+        <rect x="-34" y="130" width="8" height="5" rx="1.5" fill="#14161a" stroke="#050505" stroke-width="1.4"/>
+        <rect x="-14" y="139" width="14" height="5" rx="1" fill="#0a0b0c"/>
+        <path d="M-28 131 H58" stroke="#050505" stroke-width="4"/><path d="M-26 131 H56" stroke="#8d949c" stroke-width="1.6" stroke-dasharray="2.4 1.8"/>
+        <!-- red-dot optic -->
+        <path d="M-8 118 L14 118 L16 131 L-10 131Z" fill="#14161a" stroke="#050505" stroke-width="2"/>
+        <rect x="9" y="120" width="5" height="9" rx="1.5" fill="url(#rlens)" stroke="#050505" stroke-width="1"/>
+        <!-- free-float handguard with M-LOK slots, a vertical grip, and a short barrel with a suppressor -->
+        <rect x="28" y="133" width="66" height="19" rx="2" fill="#2a2d31" stroke="#050505" stroke-width="2.4"/>
+        <g fill="#050505" opacity=".75"><rect x="36" y="140" width="9" height="3" rx="1.5"/><rect x="50" y="140" width="9" height="3" rx="1.5"/><rect x="64" y="140" width="9" height="3" rx="1.5"/><rect x="78" y="140" width="9" height="3" rx="1.5"/></g>
+        <path d="M30 135 H92" stroke="#8d949c" stroke-width="1.2" opacity=".55"/>
+        <path d="M50 152 L58 152 L56 168 L52 168Z" fill="#17191c" stroke="#050505" stroke-width="1.8"/>
+        <rect x="94" y="140" width="11" height="6" fill="#1a1c1f" stroke="#050505" stroke-width="1.6"/>
+        <rect x="104" y="136" width="36" height="14" rx="4" fill="#15171a" stroke="#050505" stroke-width="2.4"/>
+        <path d="M110 138 H136" stroke="#8d949c" stroke-width="1.2" opacity=".5"/>
+        <path d="M86 126 L88 126 L88 133 L86 133Z" fill="#050505"/>
       </g>
       <!-- gloved hands -->
-      <ellipse cx="-24" cy="170" rx="13" ry="10" fill="#17181a" stroke="#050505" stroke-width="2"/>
-      <ellipse cx="38" cy="140" rx="12" ry="10" fill="#17181a" stroke="#050505" stroke-width="2"/>
+      <ellipse cx="-10.4" cy="183.7" rx="11" ry="8.5" fill="#202326" stroke="#050505" stroke-width="2"/>
+      <ellipse cx="56.7" cy="140.1" rx="11" ry="8.5" fill="#202326" stroke="#050505" stroke-width="2"/>
+      <path d="M50.7 134.1 L50.7 145.1 M56.7 133.1 L56.7 146.1 M62.7 134.1 L62.7 145.1" stroke="#34373b" stroke-width="1.3" opacity=".7"/>
       <!-- head: balaclava -->
       <path d="M-25 -2 C-27 -26 -14 -40 0 -40 C14 -40 27 -26 25 -2 C26 22 14 46 0 48 C-14 46 -26 22 -25 -2Z" fill="#1a1c1e" stroke="#050505" stroke-width="2.5"/>
       <!-- lower face mask with a panel pattern -->
