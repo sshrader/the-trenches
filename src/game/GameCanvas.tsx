@@ -1421,6 +1421,7 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
       input.current.dismantle = false;
     };
     const onMouseUp = (e: globalThis.MouseEvent) => {
+      if (touch) return; // a touch screen sends a mouse click after every tap: the touch controls handle firing themselves
       if (e.button === 2) {
         right = false;
         input.current.scope = false;
@@ -1428,6 +1429,7 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
       } else input.current.fire = false;
     };
     const onMouseDown = (e: globalThis.MouseEvent) => {
+      if (touch) return;
       if (e.button === 2 && (e.target as HTMLElement | null)?.tagName === 'CANVAS') {
         right = true;
         if (world.current.units.get(world.current.me)?.ctl === 2) {
@@ -1463,7 +1465,7 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
       window.removeEventListener('mouseup', onMouseUp);
       onBlur();
     };
-  }, [input]);
+  }, [input, touch]);
 
   // Drawing loop.
   useEffect(() => {
@@ -1539,37 +1541,36 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
       w.cam.x = camX;
       w.cam.y = camY;
       if (you && touch?.current.on) {
-        // touch: a tapped target (for a grenade or strike) wins for a moment; otherwise the aim stick; otherwise he faces the way he walks
+        // touch: a tapped target (for a grenade, strike or special) wins for a moment; then the point a finger is on; otherwise he faces the way he walks
         const tc = touch.current;
         const r = cv.getBoundingClientRect();
+        const toView = (px: number, py: number) => ({ x: ((px - r.left) * VIEW_W) / r.width, y: ((py - r.top) * VIEW_H) / r.height });
         if (performance.now() - tc.tapAt < 450) {
-          mouse.current = { x: ((tc.px - r.left) * VIEW_W) / r.width, y: ((tc.py - r.top) * VIEW_H) / r.height };
+          mouse.current = toView(tc.px, tc.py);
+        } else if (tc.held) {
+          let m = toView(tc.px, tc.py);
+          if (!you.ctl && you.hp > 0) {
+            // a light aim assist: if an enemy he can see stands close to the touched spot, the aim goes to him
+            const wx = camX + m.x / zoom, wy = camY + m.y / zoom;
+            let bd = 64;
+            for (const e of w.units.values()) {
+              if (e.team === you.team || e.hp <= 0) continue;
+              const dd = Math.hypot(e.tx - wx, e.ty - wy);
+              if (dd < bd && clearLine(you.tx, you.ty, e.tx, e.ty)) { bd = dd; m = { x: (e.tx - camX) * zoom, y: (e.ty - camY) * zoom }; }
+            }
+          }
+          mouse.current = m;
+          const ddx = m.x / zoom - (focusX - camX), ddy = m.y / zoom - (focusY - camY);
+          const l = Math.hypot(ddx, ddy);
+          if (l > 1) { tc.ax = ddx / l; tc.ay = ddy / l; } // remembered, so he keeps facing that way after the finger lifts
         } else {
-          if (!tc.held && (input.current.dx || input.current.dy)) {
+          if (input.current.dx || input.current.dy) {
             const l = Math.hypot(input.current.dx, input.current.dy);
             tc.ax = input.current.dx / l;
             tc.ay = input.current.dy / l;
           }
-          let a = Math.atan2(tc.ay, tc.ax);
-          const flyingNow = !!you.ctl;
-          if (!flyingNow && you.hp > 0) {
-            // a gentle aim assist: if an enemy he can see is almost in line, the aim leans halfway to him, and he shoots by himself while the stick holds the aim on one
-            let best: Unit | null = null, bd = 1e9, bdiff = 1;
-            for (const e of w.units.values()) {
-              if (e.team === you.team || e.hp <= 0) continue;
-              const dist = Math.hypot(e.tx - you.tx, e.ty - you.ty);
-              if (dist > 460 || dist >= bd) continue;
-              let diff = Math.atan2(e.ty - you.ty, e.tx - you.tx) - a;
-              diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-              if (Math.abs(diff) > 0.2) continue;
-              if (!clearLine(you.tx, you.ty, e.tx, e.ty)) continue;
-              best = e; bd = dist; bdiff = diff;
-            }
-            if (best && tc.held) a += bdiff * 0.5;
-            input.current.fire = !!best && tc.held;
-          } else input.current.fire = tc.held && tc.mag > 0.6; // flying: shoot (or explode) when the stick is pushed out
-          const d = 160;
-          mouse.current = { x: (focusX - camX + Math.cos(a) * d) * zoom, y: (focusY - camY + Math.sin(a) * d) * zoom };
+          const a = Math.atan2(tc.ay, tc.ax);
+          mouse.current = { x: (focusX - camX + Math.cos(a) * 160) * zoom, y: (focusY - camY + Math.sin(a) * 160) * zoom };
         }
       }
       if (you) {
@@ -2520,7 +2521,7 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
       onMouseMove={toCanvas}
       onMouseDown={(e) => {
         toCanvas(e);
-        if (e.button === 0) input.current.fire = true;
+        if (e.button === 0 && !touch) input.current.fire = true;
       }}
       onContextMenu={(e) => e.preventDefault()}
       aria-label="Battlefield. Move with W A S D, aim with the mouse, hold the left button or space to fire."

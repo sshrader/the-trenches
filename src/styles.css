@@ -293,7 +293,8 @@ body { background: radial-gradient(1200px 500px at 50% -120px, #2a2417 0%, trans
 .tc-zone { position: absolute; bottom: 0; height: 72%; pointer-events: auto; touch-action: none; }
 .tc-zone.left { left: 0; width: 36%; }
 .tc-zone.right { right: 0; width: 40%; }
-.tc-zone.aim { left: 0; right: 0; top: 0; bottom: 0; height: auto; width: auto; background: rgba(251,191,36,0.06); }
+.tc-zone.aim { left: 0; right: 0; top: 0; bottom: 0; height: auto; width: auto; }
+.tc-zone.aim.armed { background: rgba(251,191,36,0.06); }
 .tc-hint { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); padding: 6px 14px; border-radius: 8px; background: rgba(251,191,36,0.92); color: #1a1500; font-weight: 800; font-size: 14px; pointer-events: none; }
 .tc-base { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.08); }
 .tc-knob { position: absolute; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(255,255,255,0.45); border: 2px solid rgba(255,255,255,0.7); }
