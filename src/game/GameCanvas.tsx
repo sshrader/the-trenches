@@ -1629,13 +1629,35 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       });
       // Capture point
       const p = w.progress;
+      const [zx, zy, zr, zleft, znx, zny] = w.zone[2] ? w.zone : [CAP.x, CAP.y, CAP.r, 0, 0, 0];
       ctx.beginPath();
-      ctx.arc(CAP.x - camX, CAP.y - camY, CAP.r, 0, Math.PI * 2);
+      ctx.arc(zx - camX, zy - camY, zr, 0, Math.PI * 2);
       ctx.fillStyle = p > 0 ? `rgba(74,222,128,${0.1 + p * 0.3})` : p < 0 ? `rgba(248,113,113,${0.1 - p * 0.3})` : 'rgba(255,255,255,0.08)';
       ctx.fill();
       ctx.lineWidth = 3;
       ctx.strokeStyle = p > 0.02 ? GREEN : p < -0.02 ? RED : 'rgba(255,255,255,0.5)';
       ctx.stroke();
+      if (zleft > 0) {
+        // Hardpoint: a label and timer on the live zone, and the next zone outlined for its last few seconds
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 13px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillText(`HARDPOINT · moves in ${zleft}`, zx - camX, zy - camY - zr - 8);
+        if (zleft <= 5) {
+          const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 120);
+          ctx.setLineDash([10, 8]);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = `rgba(250,204,21,${0.55 + pulse * 0.4})`;
+          ctx.beginPath();
+          ctx.arc(znx - camX, zny - camY, zr, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = `rgba(250,204,21,${0.7 + pulse * 0.3})`;
+          ctx.fillText(`NEXT ZONE · ${zleft}`, znx - camX, zny - camY - zr - 8);
+        }
+        ctx.restore();
+      }
       // Bullets
       ctx.fillStyle = '#fde68a';
       for (const [bx, by] of w.bullets) {
@@ -2254,8 +2276,17 @@ export default function GameCanvas({ world, input, typing }: { world: MutableRef
       ctx.fillRect(mx + mw - 8 * TILE * k, my, 8 * TILE * k, mh);
       ctx.strokeStyle = 'rgba(255,255,255,0.6)';
       ctx.beginPath();
-      ctx.arc(mx + CAP.x * k, my + CAP.y * k, CAP.r * k, 0, Math.PI * 2);
+      const mz = w.zone[2] ? w.zone : [CAP.x, CAP.y, CAP.r, 0, 0, 0];
+      ctx.arc(mx + mz[0] * k, my + mz[1] * k, mz[2] * k, 0, Math.PI * 2);
       ctx.stroke();
+      if (mz[3] > 0 && mz[3] <= 5) {
+        ctx.strokeStyle = 'rgba(250,204,21,0.95)';
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.arc(mx + mz[4] * k, my + mz[5] * k, mz[2] * k, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       for (const t of TENTS) {
         // medic tents: a team-coloured square with a white cross
         const tx = mx + t.x * k;

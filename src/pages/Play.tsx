@@ -306,7 +306,7 @@ export default function Play() {
         <section className="stage">
           <div className="hud-top">
             <span className={`pill ${h.myTeam ?? ''}`}>You: {h.myTeam === 'green' ? 'Green' : 'Red'}</span>
-            <div className="capbar points" role="img" aria-label={`Round points: green ${h.points[0]}, red ${h.points[1]}, first to 100 wins`} title="Hold the plaza alone to score: 1 point per second, more with extra soldiers inside. First to 100 wins the round.">
+            <div className="capbar points" role="img" aria-label={`Round points: green ${h.points[0]}, red ${h.points[1]}, first to 100 wins`} title="Hold the glowing zone alone to score: 1 point per second, more with extra soldiers inside. The zone moves every 45 s. First to 100 wins the round.">
               <div className="fill green" style={{ left: 0, width: `${Math.min(100, h.points[0])}%` }} />
               <div className="fill red" style={{ right: 0, width: `${Math.min(100, h.points[1])}%` }} />
               <span className="pts"><b className="green">{h.points[0]}</b> / 100 / <b className="red">{h.points[1]}</b></span>

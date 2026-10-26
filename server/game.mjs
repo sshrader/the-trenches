@@ -29,6 +29,7 @@ const world = sim.createWorld(MAPS[ORDER[0]], Math.random, { id: ORDER[0], maps:
 const TICK_MS = 50;
 const MAX_PLAYERS = Number(process.env.MAX_PLAYERS || 60);
 const MAX_PER_IP = Number(process.env.MAX_CONN_PER_IP || 4);
+if (process.env.MODE === 'capture') sim.CFG.HARDPOINT = false; // MODE=capture: the old fixed plaza instead of Hardpoint
 const TRAINING = process.env.TRAINING_BOT === '1' || (process.env.TRAINING_BOT !== '0' && process.env.NODE_ENV !== 'production'); // lets players add a wounded test bot
 const WALLET_REQUIRED = process.env.WALLET_REQUIRED === '1'; // default: guests may play, wallet sign-in is optional
 

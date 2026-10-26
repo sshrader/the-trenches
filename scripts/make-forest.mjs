@@ -186,6 +186,7 @@ const map = {
   tents: city.tents,
   nests: [...nests.map((q) => ({ ...q, team: 'green' })), ...nests.map((q) => ({ x: W * TILE - q.x, y: q.y, team: 'red' }))],
   capture: city.capture,
+  hardpoints: [{"x": 1920, "y": 1088, "r": 112}, {"x": 1232, "y": 1080, "r": 112}, {"x": 1880, "y": 412, "r": 112}, {"x": 2608, "y": 1080, "r": 112}, {"x": 1912, "y": 1848, "r": 112}], // the Hardpoint zones, in rotation order (centre, west, north, east, south)
   spawns: city.spawns,
 };
 fs.writeFileSync(new URL('../shared/forest.json', import.meta.url), JSON.stringify(map, null, 1));

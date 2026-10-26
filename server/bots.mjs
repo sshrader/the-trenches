@@ -91,7 +91,7 @@ function think(w, p, view, enemies, mates, now, dt) {
   const ai = brain(p);
   const base = STYLE[p.cls] ?? STYLE.rifleman;
   const st = { ...base, engage: base.engage * L.engage, on: base.on * L.on };
-  const cap = w.map.capture;
+  const cap = sim.zoneAt(w);
   const hpMax = sim.maxHp(p);
   const cool = (k, ms) => (now >= (ai.cd[k] ?? 0) ? ((ai.cd[k] = now + ms), true) : false);
   const input = { dx: 0, dy: 0, aim: p.aim, fire: false, sprint: false, scope: false, range: 200 };

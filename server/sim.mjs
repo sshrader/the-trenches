@@ -76,6 +76,9 @@ export const CFG = {
   ROCKET_OUTER_MIN: 25,
   BASE_PAD: 32, // each side's safe zone: its spawn trench plus this much ground in front of it
   BASE_NO_FIRE: true, // nobody inside his own safe zone can shoot, throw or call a strike out of it (no sniping from invulnerability)
+  HARDPOINT: true, // Hardpoint mode: the scoring zone moves round the map's hardpoints; false = the zone stays on the plaza (server env MODE=capture)
+  HARDPOINT_S: 45, // each zone stays this long ...
+  HARDPOINT_WARN_S: 5, // ... and the next one is shown for the last this many seconds
   POINTS_TO_WIN: 100, // first side to this many points wins the round
   POINT_RATE: 1, // points per second for a side that holds the point alone with one soldier ...
   POINT_EXTRA: 0.5, // ... plus this much for each extra soldier standing in it (up to CAP_MAX soldiers)
@@ -155,6 +158,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /** Point the world at a map (the ground, the clinic tents, the crates). Used when the world is made and when the series moves to the next map. */
 export function applyMap(w, map, id = 'map') {
+  w.zone = { i: 0, left: CFG.HARDPOINT_S };
   for (const q of w.players.values()) { q.mapKills = 0; q.healed = 0; q.healAcc = 0; } // the map summary counts one map
   w.map = map;
   w.mapId = id;
@@ -198,6 +202,7 @@ export function createWorld(map, rng = Math.random, opts = {}) {
     teamKills: { green: 0, red: 0 }, // kills this round
     wins: { green: 0, red: 0 }, // rounds won since the server started
     points: { green: 0, red: 0 }, // round points from holding the plaza
+    zone: { i: 0, left: CFG.HARDPOINT_S }, // which hardpoint is live, and how long it has left
     progress: 0, // the lead as a fraction of POINTS_TO_WIN, -1 (red) .. +1 (green): drives the bar
     round: { n: 1, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 },
     events: [],
@@ -217,6 +222,16 @@ export const solidAt = (w, px, py) => {
 export const inBush = (w, px, py) => w.rows[Math.floor(py / w.tile)]?.[Math.floor(px / w.tile)] === 'g';
 export const blockedAt = (w, x, y, r = CFG.RADIUS) =>
   solidAt(w, x - r, y - r) || solidAt(w, x + r, y - r) || solidAt(w, x - r, y + r) || solidAt(w, x + r, y + r);
+
+/** The scoring zones of the map in rotation order: its hardpoints, or just the plaza when the mode is off. */
+const zoneList = (w) => (CFG.HARDPOINT && w.map.hardpoints?.length ? w.map.hardpoints : [w.map.capture]);
+const zoneCount = (w) => zoneList(w).length;
+/** The live zone (or the one `step` ahead in the rotation). */
+export const zoneAt = (w, step = 0) => {
+  const l = zoneList(w);
+  const z = l[((w.zone?.i ?? 0) + step) % l.length];
+  return { x: z.x, y: z.y, r: z.r ?? w.map.capture.r };
+};
 
 /** Is there open ground (no wall or cover) between two points? Used so a blast does not go through cover. */
 export function lineClear(w, x1, y1, x2, y2) {
@@ -640,6 +655,7 @@ function startRound(w, now, n) {
   w.round = { n, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
   w.points = { green: 0, red: 0 };
+  w.zone = { i: 0, left: CFG.HARDPOINT_S };
   w.towers = [];
   w.clouds = [];
   w.drops = [];
@@ -1277,8 +1293,16 @@ export function step(w, dt, now = Date.now()) {
     }
   }
 
-  // Capture point.
-  const cap = w.map.capture;
+  // The scoring zone: the plaza in capture mode, or the live hardpoint, which moves on every HARDPOINT_S seconds.
+  if (zoneCount(w) > 1) {
+    w.zone.left -= dt;
+    if (w.zone.left <= 0) {
+      w.zone.i = (w.zone.i + 1) % zoneCount(w);
+      w.zone.left += CFG.HARDPOINT_S;
+      w.events.push({ t: 'zone', i: w.zone.i });
+    }
+  }
+  const cap = zoneAt(w);
   const inside = { green: 0, red: 0 };
   for (const p of w.players.values()) {
     if (p.hp > 0 && Math.hypot(p.x - cap.x, p.y - cap.y) <= cap.r) inside[p.team]++;
@@ -1365,12 +1389,21 @@ export function snapshot(w, now = Date.now(), team = null) {
     ts: [w.teamKills.green, w.teamKills.red, w.wins.green, w.wins.red],
     k: w.crates.map((c) => (now >= c.readyAt ? 1 : 0)),
     c: Math.round(w.progress * 1000) / 1000,
+    hz: zoneSnap(w),
     pt: [Math.floor(w.points.green), Math.floor(w.points.red)],
     r: { n: w.round.n, e: w.epoch ?? 0, mp: w.mapId, mr: w.mapRound, mt: CFG.ROUNDS_PER_MAP, nx: w.round.state === 'ended' && seriesOver(w) ? nextMapId(w) : '', s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
   };
 }
 
 export const roster = (w) => [...w.players.values()].map((p) => ({ id: p.id, name: p.name, team: p.team, bot: !!p.isBot }));
+
+/** [x, y, r, whole seconds left, nextX, nextY], or the plaza alone when the zone does not move. */
+function zoneSnap(w) {
+  const z = zoneAt(w);
+  if (zoneCount(w) < 2) return [Math.round(z.x), Math.round(z.y), z.r, 0, 0, 0];
+  const n = zoneAt(w, 1);
+  return [Math.round(z.x), Math.round(z.y), z.r, Math.ceil(Math.max(0, w.zone.left)), Math.round(n.x), Math.round(n.y)];
+}
 
 export function scoreboard(w) {
   return [...w.players.values()]

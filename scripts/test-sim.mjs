@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as bots from '../server/bots.mjs';
-import { CFG, applyMap, restartSeries, hurt, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount, scoreboard } from '../server/sim.mjs';
+import { CFG, applyMap, restartSeries, hurt, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount, scoreboard, zoneAt } from '../server/sim.mjs';
 
 CFG.FRIENDLY_FIRE = false; // the server ships with these on for testing; the checks below are about normal play
 CFG.FRIENDLY_FLASH = false;
@@ -529,6 +529,40 @@ test('healing counts towards the medic streak: every 100 HP heals like a kill, a
   bot.x = m2.x + 30; bot.y = m2.y;
   for (let i = 0; i < 100; i++) { now += 50; bot.hp = Math.min(bot.hp, 30); m2.medkit = 100; step(w, 0.05, now); }
   assert.equal(m2.healed, 0, 'dummies do not count');
+});
+
+test('hardpoint: the zone moves every 45 s, only the live zone scores, and the snapshot shows it with the next one', () => {
+  const ind = JSON.parse(fs.readFileSync(new URL('../shared/industry.json', import.meta.url), 'utf8'));
+  const w = createWorld(ind, rng);
+  applyMap(w, ind, 'industry');
+  const a = addPlayer(w, { name: 'a', want: 'green' });
+  const z0 = zoneAt(w), z1 = zoneAt(w, 1);
+  assert.deepEqual([z0.x, z0.y], [ind.capture.x, ind.capture.y], 'the first zone is the centre');
+  assert.notDeepEqual([z0.x, z0.y], [z1.x, z1.y]);
+  for (const z of ind.hardpoints) assert.ok(!solidAt(w, z.x, z.y), 'every hardpoint is on open ground');
+  const hz = snapshot(w, 1000, 'green').hz;
+  assert.deepEqual(hz.slice(0, 3), [z0.x, z0.y, z0.r]);
+  assert.deepEqual(hz.slice(4), [z1.x, z1.y], 'the snapshot names the next zone');
+  // standing in the NEXT zone earns nothing now, standing in the live one does
+  place(a, z1.x, z1.y);
+  a.protectUntil = 0;
+  let now = 1000;
+  for (let i = 0; i < 20; i++) { now += 50; a.x = z1.x; a.y = z1.y; step(w, 0.05, now); }
+  assert.equal(w.points.green, 0, 'the next zone does not score yet');
+  w.zone.left = 0.04; // it is about to move
+  now += 50;
+  a.x = z1.x; a.y = z1.y;
+  step(w, 0.05, now);
+  assert.equal(w.zone.i, 1, 'the zone moved on');
+  for (let i = 0; i < 20; i++) { now += 50; a.x = z1.x; a.y = z1.y; step(w, 0.05, now); }
+  assert.ok(w.points.green > 0.5, 'now it scores');
+  assert.ok(w.zone.left > 40, 'and it stays for about 45 s');
+  // five zones, and the rotation loops
+  w.zone.i = ind.hardpoints.length - 1;
+  w.zone.left = 0.04;
+  now += 50;
+  step(w, 0.05, now);
+  assert.equal(w.zone.i, 0, 'after the last zone it is the centre again');
 });
 
 test('a medic has a limited medkit, so he cannot out-heal forever; wounded test bot', () => {
