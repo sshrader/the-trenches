@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as bots from '../server/bots.mjs';
-import { CFG, applyMap, restartSeries, hurt, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount } from '../server/sim.mjs';
+import { CFG, applyMap, restartSeries, hurt, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount, scoreboard } from '../server/sim.mjs';
 
 CFG.FRIENDLY_FIRE = false; // the server ships with these on for testing; the checks below are about normal play
 CFG.FRIENDLY_FLASH = false;
@@ -499,6 +499,36 @@ test('teams are rebalanced when one side gets ahead', () => {
   run(w2, 0.2);
   assert.equal(teamCount(w2, 'green'), 1);
   assert.equal(teamCount(w2, 'red'), 1);
+});
+
+test('healing counts towards the medic streak: every 100 HP heals like a kill, and the map summary counts it', () => {
+  const w = fresh();
+  const m = addPlayer(w, { name: 'm', want: 'green', cls: 'medic' });
+  const t = addPlayer(w, { name: 't', want: 'green' });
+  m.team = t.team = 'green';
+  place(m, 400, LANE);
+  place(t, 430, LANE);
+  m.streak = 2; // two kills in, then a hundred HP of healing is the third step
+  let now = 1000;
+  for (let i = 0; i < 600 && m.streak < 3; i++) {
+    now += 50;
+    t.hp = 20; // keep him wounded
+    m.medkit = 100;
+    step(w, 0.05, now);
+  }
+  assert.equal(m.streak, 3, 'a hundred HP healed = one streak step');
+  assert.deepEqual(m.rewards, ['uav'], 'and the streak reward comes with it');
+  assert.ok(m.healed >= 100);
+  const row = scoreboard(w).find((r) => r.id === m.id);
+  assert.ok(row.h >= 100 && row.mk === 0, 'the scoreboard shows HP healed and map kills');
+  // healing the stationary test dummy earns nothing
+  const m2 = addPlayer(w, { name: 'm2', want: 'green', cls: 'medic' });
+  m2.team = 'green';
+  place(m2, 500, LANE);
+  const bot = addBot(w, m2.id, now);
+  bot.x = m2.x + 30; bot.y = m2.y;
+  for (let i = 0; i < 100; i++) { now += 50; bot.hp = Math.min(bot.hp, 30); m2.medkit = 100; step(w, 0.05, now); }
+  assert.equal(m2.healed, 0, 'dummies do not count');
 });
 
 test('a medic has a limited medkit, so he cannot out-heal forever; wounded test bot', () => {

@@ -40,7 +40,7 @@ function Banner({ team }: { team: 'green' | 'red' }) {
     </svg>
   );
 }
-import type { ClassId, Team } from '../game/useGame';
+import type { ClassId, Score, Team } from '../game/useGame';
 import { WALLET_LOGIN } from '../config';
 import Leaderboard from './Leaderboard';
 import { isMuted, setMuted, unlockAudio } from '../game/audio';
@@ -86,6 +86,16 @@ function LobbyRoster() {
       {col('red', 'Red')}
     </div>
   );
+}
+
+/** The map summary shown in the pause after a map's last round: the most kills and the most HP healed on that map. */
+function mapAwards(board: Score[]) {
+  const out: { label: string; name: string; team: Team; value: string }[] = [];
+  const top = [...board].sort((a, b) => b.mk - a.mk)[0];
+  if (top && top.mk > 0) out.push({ label: 'Top killer', name: top.name, team: top.team, value: `${top.mk} kills` });
+  const med = [...board].sort((a, b) => b.h - a.h)[0];
+  if (med && med.h > 0) out.push({ label: 'Most healing', name: med.name, team: med.team, value: `${med.h} HP` });
+  return out;
 }
 
 export default function Play() {
@@ -447,6 +457,9 @@ export default function Play() {
                 {h.round.w === 'draw' ? 'Draw' : `${h.round.w === 'green' ? 'Green' : 'Red'} holds the point`}
                 {h.round.nx ? (
                   <small>
+                    {mapAwards(h.board).map((a) => (
+                      <span key={a.label} className="award"><b className={a.team}>{a.name}</b> {a.label}: {a.value}</span>
+                    ))}
                     {h.score[2] === h.score[3] ? 'Map drawn' : `${h.score[2] > h.score[3] ? 'Green' : 'Red'} takes ${mapName(h.round.mp)}, ${Math.max(h.score[2], h.score[3])}–${Math.min(h.score[2], h.score[3])}`} · next map: {mapName(h.round.nx)} in {h.round.l}s
                   </small>
                 ) : (
@@ -459,8 +472,8 @@ export default function Play() {
                 {(['red', 'green'] as const).map((team) => (
                   <table key={team} className={`team-${team}`}>
                     <thead>
-                      <tr><th colSpan={4} className={`team-head ${team}`}>Team {team === 'red' ? 'Red' : 'Green'}</th></tr>
-                      <tr><th>Soldier</th><th>K</th><th>D</th><th>Mute</th></tr>
+                      <tr><th colSpan={5} className={`team-head ${team}`}>Team {team === 'red' ? 'Red' : 'Green'}</th></tr>
+                      <tr><th>Soldier</th><th>K</th><th>D</th><th title="HP healed this map">Heal</th><th>Mute</th></tr>
                     </thead>
                     <tbody>
                       {h.board.filter((r) => r.team === team).sort((x, y) => y.k - x.k || x.d - y.d).map((r) => (
@@ -468,6 +481,7 @@ export default function Play() {
                           <td>{r.name}</td>
                           <td>{r.k}</td>
                           <td>{r.d}</td>
+                          <td>{r.h || ''}</td>
                           <td>
                             {r.id !== game.world.current.me && (
                               <button

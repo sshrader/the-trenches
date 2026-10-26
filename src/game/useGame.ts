@@ -31,7 +31,7 @@ export const CLASSES: { id: ClassId; label: string; mag: number; hp: number; sid
 ];
 export type RoundInfo = { n: number; e: number; s: 'live' | 'ended'; l: number; w: string | null; mp: string; mr: number; mt: number; nx: string }; // mp: map id, mr/mt: round on this map of how many, nx: the next map's id once this map's last round is over
 export type FeedLine = { self: boolean; tk: boolean; weapon: string; text: string; kteam: Team; vteam: Team; at: number; killer: string; victim: string };
-export type Score = { id: number; name: string; team: Team; k: number; d: number };
+export type Score = { id: number; name: string; team: Team; k: number; d: number; mk: number; h: number }; // mk: kills this map, h: HP healed this map
 export type World = {
   me: number;
   units: Map<number, Unit>;

@@ -41,6 +41,7 @@ export const CFG = {
   DROP_DELAY_S: 1.5, // medic flare: the air drop lands this long after the flare ...
   DROP_S: 10, // ... and heals friendlies near it for this long
   DROP_R: 75,
+  HEAL_POINT: 100, // every this many HP a medic heals (medkit or air drop) counts as one kill towards his streak rewards
   DROP_RATE: 22, // HP per second
   SHIELD_ARC: 1.15, // riot shield: stops bullets arriving within this many radians of where he faces
   SHIELD_HP: 200, // damage the shield can soak before it breaks (then the recharge starts)
@@ -154,6 +155,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /** Point the world at a map (the ground, the clinic tents, the crates). Used when the world is made and when the series moves to the next map. */
 export function applyMap(w, map, id = 'map') {
+  for (const q of w.players.values()) { q.mapKills = 0; q.healed = 0; q.healAcc = 0; } // the map summary counts one map
   w.map = map;
   w.mapId = id;
   w.rows = map.rows;
@@ -351,6 +353,9 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman',
     respawnAt: 0,
     kills: 0,
     deaths: 0,
+    healed: 0, // HP healed this map (shown on the scoreboard and in the map summary)
+    mapKills: 0,
+    healAcc: 0,
     tentReadyAt: 0,
     tentUsing: false,
     nextCls: null,
@@ -630,7 +635,7 @@ function newRound(w, now) {
 /** Clear the field and put everyone back in their base for round number `n`. */
 function startRound(w, now, n) {
   w.epoch = (w.epoch ?? 0) + 1; // clients clear what they were remembering (bodies) when this changes
-  for (const q of w.players.values()) { q.streak = 0; q.rewards = []; q.control = null; }
+  for (const q of w.players.values()) { q.streak = 0; q.healAcc = 0; q.rewards = []; q.control = null; }
   w.teamKills = { green: 0, red: 0 };
   w.round = { n, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
@@ -683,12 +688,29 @@ export function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   if (k && !own) {
     k.kills++;
     w.teamKills[k.team]++;
-    k.streak = (k.streak ?? 0) + 1;
-    const rw = CFG.STREAK_REWARDS[k.streak];
-    if (rw && !k.isBot) k.rewards.push(rw);
-    if (CFG.STREAK_CALLOUTS.includes(k.streak)) w.events.push({ t: 'streak', id: k.id, name: k.name, team: k.team, n: k.streak });
+    k.mapKills++;
+    streakPoint(w, k);
   }
   w.events.push({ t: 'kill', killer: k ? k.name : '?', kteam: ownerTeam, victim: t.name, vteam: t.team, weapon, self: k === t, tk: own && k !== t, kid: k ? k.id : 0, vid: t.id });
+}
+
+/** One step on a soldier's streak: a kill, or CFG.HEAL_POINT HP of healing. Rewards come at the CFG.STREAK_REWARDS counts. */
+function streakPoint(w, k) {
+  k.streak = (k.streak ?? 0) + 1;
+  const rw = CFG.STREAK_REWARDS[k.streak];
+  if (rw && !k.isBot) k.rewards.push(rw);
+  if (CFG.STREAK_CALLOUTS.includes(k.streak)) w.events.push({ t: 'streak', id: k.id, name: k.name, team: k.team, n: k.streak });
+}
+
+/** A medic healed a teammate: count the HP, and every HEAL_POINT of it moves his streak on like a kill. Test dummies do not count. */
+function creditHeal(w, m, t, amt) {
+  if (!m || t.dummy || amt <= 0) return;
+  m.healed += amt;
+  m.healAcc += amt;
+  while (m.healAcc >= CFG.HEAL_POINT) {
+    m.healAcc -= CFG.HEAL_POINT;
+    streakPoint(w, m);
+  }
 }
 
 const NADE_SPEC = () => ({ r: CFG.NADE_RADIUS, lethal: CFG.NADE_LETHAL, hi: CFG.NADE_OUTER_MAX, lo: CFG.NADE_OUTER_MIN });
@@ -885,7 +907,7 @@ function controlStep(w, p, now, dt) {
 function land(w, n, now) {
   w.events.push({ t: 'pop', x: Math.round(n.x), y: Math.round(n.y), kind: n.kind });
   if (n.kind === 'smoke') w.clouds.push({ x: n.x, y: n.y, r: CFG.SMOKE_R, left: CFG.SMOKE_S, team: n.team });
-  else if (n.kind === 'flare') w.drops.push({ x: n.x, y: n.y, team: n.team, delay: CFG.DROP_DELAY_S, left: CFG.DROP_S });
+  else if (n.kind === 'flare') w.drops.push({ x: n.x, y: n.y, team: n.team, owner: n.owner, delay: CFG.DROP_DELAY_S, left: CFG.DROP_S });
   else if (n.kind === 'flash') {
     for (const t of w.players.values()) {
       if ((t.team === n.team && !CFG.FRIENDLY_FLASH) || t.hp <= 0 || Math.hypot(t.x - n.x, t.y - n.y) > CFG.FLASH_R || !lineClear(w, n.x, n.y, t.x, t.y)) continue;
@@ -1189,7 +1211,10 @@ export function step(w, dt, now = Date.now()) {
     if (d.delay > 0) continue;
     for (const t of w.players.values()) {
       if (t.team !== d.team || t.hp <= 0 || t.hp >= maxHp(t) || Math.hypot(t.x - d.x, t.y - d.y) > CFG.DROP_R) continue;
-      t.hp = Math.min(maxHp(t), t.hp + CFG.DROP_RATE * dt);
+      const gain = Math.min(CFG.DROP_RATE * dt, maxHp(t) - t.hp);
+      t.hp += gain;
+      const o = w.players.get(d.owner);
+      if (o && o.team === d.team && o !== t && o.hp > 0) creditHeal(w, o, t, gain);
     }
   }
 
@@ -1206,6 +1231,7 @@ export function step(w, dt, now = Date.now()) {
       t.hp += amt;
       m.medkit -= amt;
       m.healing = true;
+      creditHeal(w, m, t, amt);
     }
   }
   // Test bots get wounded again a few seconds after they are fully healed.
@@ -1350,8 +1376,7 @@ export function scoreboard(w) {
   return [...w.players.values()]
     .filter((p) => !p.isBot)
     .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths)
-    .slice(0, 10)
-    .map((p) => ({ id: p.id, name: p.name, team: p.team, k: p.kills, d: p.deaths }));
+    .map((p) => ({ id: p.id, name: p.name, team: p.team, k: p.kills, d: p.deaths, mk: p.mapKills, h: Math.round(p.healed) }));
 }
 
 export const drainEvents = (w) => w.events.splice(0, w.events.length);
