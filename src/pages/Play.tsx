@@ -158,7 +158,7 @@ export default function Play() {
     setDeviceState(d);
   };
   const touchMode = device === 'touch';
-  const touchAim = useRef<TouchAim>({ on: false, ax: 1, ay: 0, mag: 0.5 });
+  const touchAim = useRef<TouchAim>({ on: false, px: 0, py: 0 });
   const [touchMenu, setTouchMenu] = useState(false);
   const [portrait, setPortrait] = useState(() => window.innerHeight > window.innerWidth);
   useEffect(() => {
@@ -253,7 +253,7 @@ export default function Play() {
     } catch {
       /* private window: the name just is not remembered */
     }
-    if (touchMode) touchAim.current = { on: true, ax: team === 'red' ? -1 : 1, ay: 0, mag: 0.5 }; // face the enemy to start
+    if (touchMode) touchAim.current = { on: false, px: 0, py: 0 };
     void game.join(team, name.trim(), useWalletLogin && connected, cls);
     if (touchMode) toggleFull(); // a phone or tablet plays full screen (done inside the tap, which the browser requires)
   };
