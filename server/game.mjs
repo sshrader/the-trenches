@@ -358,7 +358,8 @@ export function attachGame(server) {
         broadcastByTeam((team) => {
           eyesBy[team] ??= sim.eyesFor(world, team);
           const near = sim.canSee(eyesBy[team], e.x, e.y, 200);
-          return near || (e.t === 'arty' && e.team === team) ? e : null;
+          if (e.t === 'arty') return e.late ? (e.team !== team && near ? e : null) : e.team === team ? e : null; // the calling side hears the gun and the shell; the enemy only the last of the whistle
+          return near ? e : null;
         });
         continue;
       }

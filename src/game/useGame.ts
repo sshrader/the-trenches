@@ -353,7 +353,7 @@ export function useGame() {
             // the gun fires now; the shell whistles in over the last second and a half
             const me = w.units.get(w.me);
             const near = (x: number, y: number) => (me ? Math.hypot(x - me.tx, y - me.ty) : 800);
-            playCannon(near(m.fx, m.fy));
+            if (!m.late) playCannon(near(m.fx, m.fy)); // (the enemy never hears the gun, only the last of the shell)
             const wait = Math.max(0, m.delay - 1.6);
             window.setTimeout(() => playWhistle(near(m.x, m.y), Math.min(1.6, m.delay)), wait * 1000);
           } else if (m.t === 'got') {

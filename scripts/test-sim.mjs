@@ -1665,4 +1665,30 @@ test('leaderboard: guests are ranked by their browser id and name, bots and team
   assert.deepEqual(rows.map((r) => [r.name, r.k, r.d, r.w]), [['Ann', 1, 0, 1]]);
 });
 
+
+test('artillery: the enemy sees and hears a strike only in its last 0.75 s', () => {
+  const w = fresh();
+  const g = mk(w, 'g', 'green', 'rifleman', 400);
+  const r = mk(w, 'r', 'red', 'rifleman', 640, Math.PI);
+  setInput(w, g.id, { dx: 0, dy: 0, aim: 0, range: 240, fire: false, arty: 0 });
+  step(w, 0.05, 1000);
+  setInput(w, g.id, { dx: 0, dy: 0, aim: 0, range: 240, fire: false, arty: 1 });
+  let now = 1050;
+  step(w, 0.05, now);
+  const calls = [];
+  const watch = () => { for (const e of drainEvents(w)) if (e.t === 'arty') calls.push(e); };
+  watch();
+  assert.equal(calls.length, 1, 'the calling side is told at once');
+  assert.ok(!calls[0].late);
+  assert.equal(snapshot(w, now, 'green').a.length, 1, 'our side sees the marker');
+  assert.equal(snapshot(w, now, 'red').a.length, 0, 'the enemy does not');
+  for (let i = 0; i < 40; i++) { now += 50; step(w, 0.05, now); watch(); } // 2 s in
+  assert.equal(snapshot(w, now, 'red').a.length, 0, 'still hidden from the enemy');
+  assert.equal(calls.length, 1);
+  for (let i = 0; i < 12; i++) { now += 50; step(w, 0.05, now); watch(); } // 2.6 s in
+  assert.equal(calls.length, 2, 'the enemy warning went out');
+  assert.ok(calls[1].late && calls[1].delay <= 0.75);
+  assert.equal(snapshot(w, now, 'red').a.length, 1, 'now the enemy sees it');
+});
+
 console.log(`\n${n} checks passed`);

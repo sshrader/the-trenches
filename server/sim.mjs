@@ -105,6 +105,7 @@ export const CFG = {
   MAX_PER_TEAM: 30,
   ARTY: 1, // artillery strikes per life
   ARTY_DELAY_S: 3, // call-in to impact
+  ARTY_WARN_S: 0.75, // the enemy sees (and hears the shell of) a strike only this long before it lands; the calling side knows at once
   ARTY_RADIUS: 130, // the shell bursts like a big grenade: kills inside ARTY_LETHAL, hurts out to this reach
   ARTY_LETHAL: 55,
   ARTY_OUTER_MAX: 70,
@@ -1168,6 +1169,10 @@ export function step(w, dt, now = Date.now()) {
   const incoming = [];
   for (const a of w.arty) {
     a.delay -= dt;
+    if (!a.warned && a.delay > 0 && a.delay <= CFG.ARTY_WARN_S) {
+      a.warned = true;
+      w.events.push({ t: 'arty', late: true, x: Math.round(a.x), y: Math.round(a.y), delay: Math.round(a.delay * 100) / 100, team: a.team }); // the enemy's warning
+    }
     if (a.delay <= 0) explode(w, a, now, ARTY_SPEC(), 'artillery');
     else incoming.push(a);
   }
@@ -1322,7 +1327,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     b,
     f: w.shots.filter(([x, y, id]) => (vis(x, y) && !(owner(id) && bushHidden(owner(id)))) || owner(id)?.team === team || now < (owner(id)?.revealUntil ?? 0)),
     g: w.nades.filter((n) => vis(n.x, n.y) || n.team === team).map((n) => [Math.round(n.x), Math.round(n.y), n.flight > 0 ? Math.round((n.flight / CFG.NADE_FLIGHT_S) * 100) / 100 : 0, n.kind === 'smoke' ? 1 : n.kind === 'flash' ? 2 : n.kind === 'flare' ? 3 : 0]),
-    a: w.arty.filter((a) => vis(a.x, a.y) || a.team === team).map((a) => [Math.round(a.x), Math.round(a.y), 0, Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100]),
+    a: w.arty.filter((a) => a.team === team || (a.delay <= CFG.ARTY_WARN_S && vis(a.x, a.y))).map((a) => [Math.round(a.x), Math.round(a.y), 0, Math.round((a.delay / CFG.ARTY_DELAY_S) * 100) / 100]),
     rk: w.rockets.filter((r) => r.team === team || vis(r.x, r.y)).map((r) => [Math.round(r.x), Math.round(r.y), Math.round(r.aim * 100) / 100]),
     u: w.pickups.filter((q) => !team || q.team === team).map((q) => [q.x, q.y, team && holdsBazooka(w, team) ? 1 : 0]), // your side's crate only; 1 = your side already holds a bazooka, so it cannot be taken yet
     cl: w.clouds.filter((c) => !eyes || c.team === team || canSee(eyes, c.x, c.y, c.r)).map((c) => [Math.round(c.x), Math.round(c.y), c.r, Math.round((c.left / CFG.SMOKE_S) * 100) / 100, c.team === 'green' ? 0 : 1]),
