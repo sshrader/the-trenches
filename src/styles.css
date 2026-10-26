@@ -264,3 +264,9 @@ body { background: radial-gradient(1200px 500px at 50% -120px, #2a2417 0%, trans
 .side.red { background: linear-gradient(180deg, #3a1818, #1b0e0e); box-shadow: 0 0 0 1px rgba(248,113,113,.25), 0 8px 22px rgba(248,113,113,.12); }
 .side.random { background: linear-gradient(180deg, #25251d, #15160f); }
 .roster-col { background: linear-gradient(180deg, #1b1d16, #14160f); }
+
+.board table + table { margin-top: 12px; }
+.board th.team-head { font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; padding-bottom: 4px; }
+.board th.team-head.red { color: var(--red); }
+.board th.team-head.green { color: var(--green); }
+.board th.team-head { text-align: left !important; width: auto !important; }

@@ -456,32 +456,35 @@ export default function Play() {
             )}
             {showBoard && (
               <div className="board">
-                <table>
-                  <thead>
-                    <tr><th>Soldier</th><th>K</th><th>D</th><th>Mute</th></tr>
-                  </thead>
-                  <tbody>
-                    {h.board.map((r) => (
-                      <tr key={r.id} className={r.team}>
-                        <td>{r.name}</td>
-                        <td>{r.k}</td>
-                        <td>{r.d}</td>
-                        <td>
-                          {r.id !== game.world.current.me && (
-                            <button
-                              type="button"
-                              className={`mute-btn${game.voice.mutedIds.includes(r.id) ? ' on' : ''}`}
-                              title={game.voice.mutedIds.includes(r.id) ? 'Unmute: hear their voice and chat again' : 'Mute their voice and chat'}
-                              onClick={() => game.voice.toggleMute(r.id)}
-                            >
-                              {game.voice.mutedIds.includes(r.id) ? '🔇' : '🔊'}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {(['red', 'green'] as const).map((team) => (
+                  <table key={team} className={`team-${team}`}>
+                    <thead>
+                      <tr><th colSpan={4} className={`team-head ${team}`}>Team {team === 'red' ? 'Red' : 'Green'}</th></tr>
+                      <tr><th>Soldier</th><th>K</th><th>D</th><th>Mute</th></tr>
+                    </thead>
+                    <tbody>
+                      {h.board.filter((r) => r.team === team).sort((x, y) => y.k - x.k || x.d - y.d).map((r) => (
+                        <tr key={r.id} className={r.team}>
+                          <td>{r.name}</td>
+                          <td>{r.k}</td>
+                          <td>{r.d}</td>
+                          <td>
+                            {r.id !== game.world.current.me && (
+                              <button
+                                type="button"
+                                className={`mute-btn${game.voice.mutedIds.includes(r.id) ? ' on' : ''}`}
+                                title={game.voice.mutedIds.includes(r.id) ? 'Unmute: hear their voice and chat again' : 'Mute their voice and chat'}
+                                onClick={() => game.voice.toggleMute(r.id)}
+                              >
+                                {game.voice.mutedIds.includes(r.id) ? '🔇' : '🔊'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ))}
               </div>
             )}
           </div>
