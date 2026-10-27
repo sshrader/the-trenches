@@ -16,6 +16,7 @@ import { blockedCountry } from './guard.mjs';
 import * as sim from './sim.mjs';
 import * as stats from './stats.mjs';
 import * as bots from './bots.mjs';
+import { isAdminToken } from './admin.mjs';
 
 // The maps, played in this order (a best-of-3 on each, then the next one). MAP_ORDER=forest,city overrides it, e.g. to start on the forest.
 const MAPS = {
@@ -231,11 +232,10 @@ export function attachGame(server) {
           const [cmd, ...rest] = text.slice(1).split(/\s+/);
           const arg = rest.join(' ').trim();
           if (cmd.toLowerCase() === 'admin') {
-            const want = process.env.ADMIN_TOKEN || '';
             const key = `${ip}`;
             const tries = adminTries.get(key) || { n: 0, until: 0 };
             if (nowMs < tries.until) return reply('Too many tries. Wait a minute.');
-            const ok = want.length >= 12 && arg.length === want.length && crypto.timingSafeEqual(Buffer.from(arg), Buffer.from(want));
+            const ok = isAdminToken(arg); // ADMIN_TOKEN or ADMIN_TOKEN_2
             if (!ok) {
               tries.n++;
               if (tries.n >= 5) { tries.until = nowMs + 60_000; tries.n = 0; }

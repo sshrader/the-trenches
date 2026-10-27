@@ -1,4 +1,5 @@
 // The Trenches server: serves the built site, the wallet sign-in nonce, and the multiplayer socket.
+import { isAdminToken } from './admin.mjs';
 import 'dotenv/config';
 import http from 'node:http';
 import path from 'node:path';
@@ -7,7 +8,6 @@ import express from 'express';
 import { Connection, clusterApiUrl } from '@solana/web3.js';
 import { applyGuards, checkNetwork } from './guard.mjs';
 import { newNonce } from './auth.mjs';
-import crypto from 'node:crypto';
 import { attachGame, onlineCount, lobbyRoster, getBotSettings, setBotSettings } from './game.mjs';
 import { leaderboard } from './stats.mjs';
 
@@ -33,15 +33,10 @@ app.get('/api/leaderboard', (req, res) => {
 });
 app.get('/api/nonce', (_req, res) => res.json(newNonce()));
 
-// Admin: fill-in bots. Needs ADMIN_TOKEN set on the server and sent as the x-admin-token header; without ADMIN_TOKEN these routes do not exist.
+// Admin: fill-in bots. Needs ADMIN_TOKEN (or the optional ADMIN_TOKEN_2) set on the server and sent as the x-admin-token header; without one these routes do not exist.
 //   curl -H "x-admin-token: $ADMIN_TOKEN" https://your-site/api/admin/bots
 //   curl -X POST -H "x-admin-token: $ADMIN_TOKEN" -H "content-type: application/json" -d '{"enabled":true,"size":5}' https://your-site/api/admin/bots
-const adminOk = (req) => {
-  const want = process.env.ADMIN_TOKEN;
-  const got = String(req.headers['x-admin-token'] || '');
-  if (!want || want.length < 12 || got.length !== want.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want));
-};
+const adminOk = (req) => isAdminToken(req.headers['x-admin-token']); // ADMIN_TOKEN or ADMIN_TOKEN_2
 app.get('/api/admin/bots', (req, res) => (adminOk(req) ? res.json(getBotSettings()) : res.status(404).json({ error: 'not found' })));
 app.post('/api/admin/bots', express.json({ limit: '1kb' }), (req, res) => {
   if (!adminOk(req)) return res.status(404).json({ error: 'not found' });
