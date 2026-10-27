@@ -115,7 +115,7 @@ const broadcastByTeam = (make) => {
 };
 
 export function attachGame(server) {
-  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 1024 });
+  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
 
   wss.on('connection', (ws, req) => {
     const ip = ipOf(req);
