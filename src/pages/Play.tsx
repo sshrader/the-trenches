@@ -434,6 +434,21 @@ export default function Play() {
                   <b className="green">{h.points[0]}</b> <span>{fmt(h.round.l)}</span> <b className="red">{h.points[1]}</b>
                 </div>
                 <TouchControls input={game.input} aim={touchAim} world={game.world} onScores={() => setShowBoard((s) => !s)} onMenu={() => setTouchMenu((m) => !m)} />
+                <div className="tc-top2">
+                  <button type="button" className="tc-btn sq" aria-label="Type a chat message" onClick={() => { setChatOpen(false); setChatText(''); setTyping(true); }}>💬</button>
+                  <button type="button" className={`tc-btn sq${chatOpen ? ' latched' : ''}`} aria-label="Quick team chat" onClick={() => setChatOpen((o) => !o)}>⚡</button>
+                  {game.voice.on && !game.voice.openMic && (
+                    <button
+                      type="button"
+                      className={`tc-btn sq${game.voice.talking ? ' latched' : ''}`}
+                      aria-label="Hold to talk"
+                      onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); game.voice.push(true); }}
+                      onPointerUp={() => game.voice.push(false)}
+                      onPointerCancel={() => game.voice.push(false)}
+                      onContextMenu={(e) => e.preventDefault()}
+                    >🎙</button>
+                  )}
+                </div>
                 {touchMenu && (
                   <div className="touch-menu" role="menu">
                     <p className="muted small">Change class (works at once in your base, otherwise next life)</p>
@@ -441,6 +456,18 @@ export default function Play() {
                       <button key={c.id} className={`btn${h.myClassId === c.id ? ' on' : ''}`} onClick={() => { game.setClass(c.id); setCls(c.id); setTouchMenu(false); }}>{c.label}</button>
                     ))}
                     <button className="btn" onClick={() => { setMuted(!muted); setMutedState(!muted); }}>{muted ? 'Sound off' : 'Sound on'}</button>
+                    {game.voice.on ? (
+                      <>
+                        <span className="muted small">{game.voice.chan === 'all' ? 'All-player voice' : 'Team voice'} · {game.voice.openMic ? 'mic open' : 'hold 🎙 to talk'}</span>
+                        <button className="btn" onClick={() => game.voice.setOpenMic(!game.voice.openMic)}>{game.voice.openMic ? 'Switch to hold-to-talk' : 'Open mic (always on)'}</button>
+                        <button className="btn" onClick={() => game.voice.leave()}>Leave voice</button>
+                      </>
+                    ) : (
+                      <>
+                        <button className="btn" onClick={() => void game.voice.join('team')}>Join team voice</button>
+                        <button className="btn" onClick={() => void game.voice.join('all')}>Join all-player voice</button>
+                      </>
+                    )}
                     <button className="btn" onClick={() => { setTouchMenu(false); game.leave(); }}>Leave match</button>
                     <button className="btn" onClick={() => setTouchMenu(false)}>Close</button>
                   </div>
@@ -459,12 +486,17 @@ export default function Play() {
                   setTyping(false);
                 }}
               >
-                <span className={'chatmode ' + chatMode}>{chatMode === 'team' ? 'TEAM' : 'ALL'}</span>
+                {touchMode ? (
+                  <button type="button" className={'chatmode ' + chatMode} onClick={() => setChatMode((m) => (m === 'all' ? 'team' : 'all'))}>{chatMode === 'team' ? 'TEAM' : 'ALL'}</button>
+                ) : (
+                  <span className={'chatmode ' + chatMode}>{chatMode === 'team' ? 'TEAM' : 'ALL'}</span>
+                )}
                 <input
                   ref={chatInputRef}
+                  autoFocus={touchMode}
                   value={chatText}
                   maxLength={120}
-                  placeholder="Enter to send · Tab switches All/Team · Esc cancels"
+                  placeholder={touchMode ? 'Message (tap ALL / TEAM to switch)' : 'Enter to send · Tab switches All/Team · Esc cancels'}
                   onChange={(e) => setChatText(e.target.value)}
                   onKeyDown={(e) => {
                     e.stopPropagation();
@@ -472,13 +504,19 @@ export default function Play() {
                     else if (e.key === 'Escape') { setChatText(''); setTyping(false); }
                   }}
                   onKeyUp={(e) => e.stopPropagation()}
-                  onBlur={() => setTyping(false)}
+                  onBlur={() => { if (!touchMode) setTyping(false); }}
                 />
+                {touchMode && (
+                  <>
+                    <button type="submit" className="chatsend">Send</button>
+                    <button type="button" className="chatsend" onClick={() => { setChatText(''); setTyping(false); }}>✕</button>
+                  </>
+                )}
               </form>
             )}
             {chatOpen && (
               <div className="quickchat" role="menu" aria-label="Team chat">
-                <p className="muted small">Team chat · press a number</p>
+                <p className="muted small">{touchMode ? 'Team chat · tap a line' : 'Team chat · press a number'}</p>
                 {['Cover me!', "I'll cover you!", 'Throw a grenade!', 'Call in artillery!', "Let's go for the CP!"].map((t, i) => (
                   <button key={t} role="menuitem" onClick={() => { game.say(i + 1); setChatOpen(false); }}>
                     <kbd>{i + 1}</kbd> {t}
