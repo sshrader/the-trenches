@@ -1616,6 +1616,18 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
         else if (pr.kind === 'debris') drawDebris(ctx, pr, px, py);
         else if (pr.kind === 'tent') drawTent(ctx, pr, px, py);
       }
+      // Standing in your own clinic circle while it is recharging: say so (it heals once, then waits out a cooldown)
+      if (you && you.hp > 0 && you.tent > 0 && TENTS.some((t) => t.team === you.team && Math.hypot(you.x - t.x, you.y - t.y) <= 80)) {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillStyle = '#fde68a';
+        const msg = `Clinic recharging: ${you.tent}s`;
+        ctx.strokeText(msg, you.x - camX, you.y - camY - 34);
+        ctx.fillText(msg, you.x - camX, you.y - camY - 34);
+        ctx.textAlign = 'left';
+      }
       // Sniper towers the snipers have built
       for (const t of w.towers) {
         const tx0 = t[2] - 48 - camX;
