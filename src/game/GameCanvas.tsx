@@ -1739,14 +1739,15 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
         }
       }
       // Capture point
-      const p = w.progress;
-      const [zx, zy, zr, zleft, znx, zny] = w.zone[2] ? w.zone : [CAP.x, CAP.y, CAP.r, 0, 0, 0];
+      const [zx, zy, zr, zleft, znx, zny, zhold = 0] = w.zone[2] ? w.zone : [CAP.x, CAP.y, CAP.r, 0, 0, 0, 0];
+      // the zone shows who holds it right now (green alone, red alone, contested, or nobody), not who leads on points
+      const p = zhold === 1 ? 1 : zhold === 2 ? -1 : 0;
       ctx.beginPath();
       ctx.arc(zx - camX, zy - camY, zr, 0, Math.PI * 2);
-      ctx.fillStyle = p > 0 ? `rgba(74,222,128,${0.1 + p * 0.3})` : p < 0 ? `rgba(248,113,113,${0.1 - p * 0.3})` : 'rgba(255,255,255,0.08)';
+      ctx.fillStyle = p > 0 ? 'rgba(74,222,128,0.32)' : p < 0 ? 'rgba(248,113,113,0.32)' : zhold === 3 ? 'rgba(250,204,21,0.2)' : 'rgba(255,255,255,0.08)';
       ctx.fill();
       ctx.lineWidth = 3;
-      ctx.strokeStyle = p > 0.02 ? GREEN : p < -0.02 ? RED : 'rgba(255,255,255,0.5)';
+      ctx.strokeStyle = p > 0 ? GREEN : p < 0 ? RED : zhold === 3 ? '#facc15' : 'rgba(255,255,255,0.5)';
       ctx.stroke();
       if (zleft > 0) {
         // Hardpoint: a label and timer on the live zone, and the next zone outlined for its last few seconds
@@ -2387,7 +2388,8 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
       ctx.fillRect(mx + mw - 8 * TILE * k, my, 8 * TILE * k, mh);
       ctx.strokeStyle = 'rgba(255,255,255,0.6)';
       ctx.beginPath();
-      const mz = w.zone[2] ? w.zone : [CAP.x, CAP.y, CAP.r, 0, 0, 0];
+      const mz = w.zone[2] ? w.zone : [CAP.x, CAP.y, CAP.r, 0, 0, 0, 0];
+      ctx.strokeStyle = mz[6] === 1 ? GREEN : mz[6] === 2 ? RED : mz[6] === 3 ? '#facc15' : 'rgba(255,255,255,0.6)';
       ctx.arc(mx + mz[0] * k, my + mz[1] * k, mz[2] * k, 0, Math.PI * 2);
       ctx.stroke();
       if (mz[3] > 0 && mz[3] <= 5) {

@@ -543,7 +543,8 @@ test('hardpoint: the zone moves every 45 s, only the live zone scores, and the s
   for (const m of [map, JSON.parse(fs.readFileSync(new URL('../shared/forest.json', import.meta.url), 'utf8')), ind]) for (const z of m.hardpoints) for (const tent of m.tents) assert.ok(Math.hypot(z.x - tent.x, z.y - tent.y) > z.r + CFG.TENT_R, 'no hardpoint overlaps a clinic tent');
   const hz = snapshot(w, 1000, 'green').hz;
   assert.deepEqual(hz.slice(0, 3), [z0.x, z0.y, z0.r]);
-  assert.deepEqual(hz.slice(4), [z1.x, z1.y], 'the snapshot names the next zone');
+  assert.deepEqual(hz.slice(4, 6), [z1.x, z1.y], 'the snapshot names the next zone');
+  assert.equal(hz[6], 0, 'nobody holds it yet');
   // standing in the NEXT zone earns nothing now, standing in the live one does
   place(a, z1.x, z1.y);
   a.protectUntil = 0;
@@ -1807,6 +1808,23 @@ test('artillery: the enemy sees and hears a strike only in its last 0.75 s', () 
   assert.equal(calls.length, 2, 'the enemy warning went out');
   assert.ok(calls[1].late && calls[1].delay <= 0.75);
   assert.equal(snapshot(w, now, 'red').a.length, 1, 'now the enemy sees it');
+});
+
+test('hardpoint: the zone reports who is standing in it now, whatever the score lead is', () => {
+  const w = createWorld(map, rng);
+  applyMap(w, map, 'city');
+  const g = addPlayer(w, { name: 'g', want: 'green' }), r = addPlayer(w, { name: 'r', want: 'red' });
+  g.team = 'green'; r.team = 'red';
+  const z = zoneAt(w);
+  w.points.green = 60; // green leads big
+  let now = 1000;
+  const run = () => { for (let i = 0; i < 3; i++) { now += 50; g.protectUntil = r.protectUntil = 0; step(w, 0.05, now); } return snapshot(w, now, 'red').hz[6]; };
+  place(r, z.x, z.y); place(g, z.x + 2000, z.y);
+  assert.equal(run(), 2, 'red alone in the zone shows red even though green leads');
+  place(g, z.x, z.y);
+  assert.equal(run(), 3, 'both inside is contested');
+  place(r, z.x + 2000, z.y);
+  assert.equal(run(), 1, 'green alone shows green');
 });
 
 console.log(`\n${n} checks passed`);

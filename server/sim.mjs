@@ -1374,6 +1374,7 @@ export function step(w, dt, now = Date.now()) {
   }
   // Holding the plaza alone earns points every second: POINT_RATE for one soldier, more for each extra one. A contested point scores nothing.
   const rateFor = (n) => CFG.POINT_RATE + CFG.POINT_EXTRA * (Math.min(n, CFG.CAP_MAX) - 1);
+  w.holder = inside.green && inside.red ? 3 : inside.green ? 1 : inside.red ? 2 : 0; // who is in the zone right now: 1 green alone, 2 red alone, 3 both (contested), 0 nobody
   if (inside.green && !inside.red) w.points.green += rateFor(inside.green) * dt;
   else if (inside.red && !inside.green) w.points.red += rateFor(inside.red) * dt;
   w.progress = clamp((w.points.green - w.points.red) / CFG.POINTS_TO_WIN, -1, 1);
@@ -1463,12 +1464,13 @@ export function snapshot(w, now = Date.now(), team = null) {
 
 export const roster = (w) => [...w.players.values()].map((p) => ({ id: p.id, name: p.name, team: p.team, bot: !!p.isBot }));
 
-/** [x, y, r, whole seconds left, nextX, nextY], or the plaza alone when the zone does not move. */
+/** [x, y, r, whole seconds left, nextX, nextY, who holds it now], or the plaza alone when the zone does not move. */
 function zoneSnap(w) {
   const z = zoneAt(w);
-  if (zoneCount(w) < 2) return [Math.round(z.x), Math.round(z.y), z.r, 0, 0, 0];
+  const hold = w.holder ?? 0;
+  if (zoneCount(w) < 2) return [Math.round(z.x), Math.round(z.y), z.r, 0, 0, 0, hold];
   const n = zoneAt(w, 1);
-  return [Math.round(z.x), Math.round(z.y), z.r, Math.ceil(Math.max(0, w.zone.left)), Math.round(n.x), Math.round(n.y)];
+  return [Math.round(z.x), Math.round(z.y), z.r, Math.ceil(Math.max(0, w.zone.left)), Math.round(n.x), Math.round(n.y), hold];
 }
 
 export function scoreboard(w) {
