@@ -91,13 +91,18 @@ export const CFG = {
   ROUND_S: 360,
   END_S: 10,
   AUTO_BALANCE_S: 15, // sides that stay two or more people apart this long are evened out by moving someone over (0 = off)
-  STREAK_REWARDS: { 3: 'uav', 5: 'drone', 7: 'heli' }, // kills in a row that earn a reward, used with Z (lost on death)
+  STREAK_REWARDS: { 3: 'uav', 5: 'drone', 7: 'heli', 10: 'jug' }, // kills in a row that earn a reward, used with Z (lost on death)
   BIGUAV_S: 8, // the streak UAV: the whole map's fog lifts and every enemy shows, for this long
   DRONE_S: 15, // attack drone: flown with WASD over everything, click (or Z) to blow it up; invisible to the enemy
   DRONE_SPEED: 240,
   DRONE_RADIUS: 170,
   DRONE_LETHAL: 90,
   DRONE_VISION: 320, // like a UAV: the owner's side sees this far around the drone
+  JUG_S: 15, // Juggernaut: the 10-kill reward, a heavily armoured soldier with a minigun for this long
+  JUG_HP: 400,
+  JUG_TAKE: 0.5, // super armour: he takes this fraction of every hit (so 400 HP stops like 800)
+  JUG_SPEED: 0.7,
+  JUG_GUN: { label: 'Minigun', weapon: 'minigun', mag: 400, reloadS: 3, fireMs: 50, damage: 11, speed: 720, life: 0.8, recoil: { per: 0.05, max: 0.1 } },
   HELI_S: 15, // attack helicopter flight time
   HELI_SPEED: 210,
   HELI_VISION: 340,
@@ -105,7 +110,7 @@ export const CFG = {
   HELI_DAMAGE: 14,
   HELI_SPREAD: 0.09,
   HELI_ROCKET_MS: 900,
-  STREAK_CALLOUTS: [3, 5, 7], // kills in a row (without dying) that are announced to everyone
+  STREAK_CALLOUTS: [3, 5, 7, 10], // kills in a row (without dying) that are announced to everyone
   ROUNDS_PER_MAP: 3, // a map is played as a best-of series, then the server moves to the next map and the round wins start again
   MAP_EARLY_END: true, // a side that has won more than half of the series (2 of 3) ends the map without playing the rest
   END_MAP_S: 14, // the pause after the last round on a map is a little longer: the result, then the next map's name
@@ -142,12 +147,12 @@ export const CFG = {
 
 export const CLASS_IDS = ['rifleman', 'smg', 'medic', 'sniper', 'shotgunner', 'squad']; // the client uses the index, so new classes go on the end
 const cls = (p) => CFG.CLASSES[p.cls];
-export const maxHp = (p) => cls(p).hp ?? CFG.HP;
+export const maxHp = (p) => (p.jug ? CFG.JUG_HP : cls(p).hp ?? CFG.HP);
 /** The weapon a soldier is holding: his class weapon, or his sidearm if he has one and switched to it. */
-const spec = (p) => (p.weapon === 'side' && cls(p).side ? cls(p).side : cls(p));
-const ammoOf = (p) => (spec(p) === cls(p) ? p.ammo : p.sideAmmo);
+const spec = (p) => (p.jug ? CFG.JUG_GUN : p.weapon === 'side' && cls(p).side ? cls(p).side : cls(p));
+const ammoOf = (p) => (p.jug || spec(p) === cls(p) ? p.ammo : p.sideAmmo);
 const setAmmo = (p, v) => {
-  if (spec(p) === cls(p)) p.ammo = v;
+  if (p.jug || spec(p) === cls(p)) p.ammo = v;
   else p.sideAmmo = v;
 };
 const maxGren = (p) => cls(p).grenades ?? CFG.GRENADES;
@@ -392,6 +397,7 @@ export function addPlayer(w, { name, want = 'random', cls: wantCls = 'rifleman',
     wantStreak: false,
     streakSeq: null,
     rewards: [],
+    jug: null,
     control: null,
     specReadyAt: 0,
     shieldUntil: 0,
@@ -707,7 +713,7 @@ function newRound(w, now) {
 /** Clear the field and put everyone back in their base for round number `n`. */
 function startRound(w, now, n) {
   w.epoch = (w.epoch ?? 0) + 1; // clients clear what they were remembering (bodies) when this changes
-  for (const q of w.players.values()) { q.streak = 0; q.healAcc = 0; q.rewards = []; q.control = null; }
+  for (const q of w.players.values()) { q.streak = 0; q.healAcc = 0; q.rewards = []; q.control = null; q.jug = null; }
   w.teamKills = { green: 0, red: 0 };
   w.round = { n, state: 'live', left: CFG.ROUND_S, winner: null, endLeft: 0 };
   w.progress = 0;
@@ -745,7 +751,7 @@ export function restartSeries(w, now = Date.now(), mapId = null) {
 }
 
 export function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
-  t.hp -= amount;
+  t.hp -= t.jug ? amount * CFG.JUG_TAKE : amount;
   if (t.hp > 0) return;
   t.hp = 0;
   t.deaths++;
@@ -755,6 +761,7 @@ export function hurt(w, t, amount, ownerId, ownerTeam, now, weapon) {
   t.wantNade = t.wantReload = t.wantArty = t.wantNest = t.wantSpecial = t.wantStreak = false;
   t.rewards = []; // an unused reward is lost with the life
   t.control = null;
+  t.jug = null;
   t.shieldUntil = 0;
   const k = w.players.get(ownerId);
   const own = !!k && k.team === t.team; // killed himself or a teammate: no credit
@@ -899,7 +906,7 @@ function useSpecial(w, p, now) {
   }
 }
 
-const REWARD_RANK = { uav: 1, drone: 2, heli: 3 };
+const REWARD_RANK = { uav: 1, drone: 2, heli: 3, jug: 4 };
 /** The best reward he holds (3 heli, 2 drone, 1 UAV, 0 none). */
 export const rewardCode = (p) => p.rewards.reduce((m, r) => Math.max(m, REWARD_RANK[r]), 0);
 
@@ -910,6 +917,7 @@ function useStreak(w, p, now) {
     if (p.control.kind === 'drone') p.control.detonate = true; // Z again: blow it where it is
     return;
   }
+  if (p.jug) return; // already a Juggernaut
   const code = rewardCode(p);
   if (!code) return;
   const kind = Object.keys(REWARD_RANK).find((k) => REWARD_RANK[k] === code);
@@ -919,6 +927,16 @@ function useStreak(w, p, now) {
     w.uavAreas.push({ team: p.team, x: (w.W * w.tile) / 2, y: (w.H * w.tile) / 2, r: 1e5, until, big: true });
     w.uav[p.team] = Math.max(w.uav[p.team], until);
     w.events.push({ t: 'uav', team: p.team, big: true });
+  } else if (kind === 'jug') {
+    // the armour and the minigun replace his own for CFG.JUG_S seconds; his own health and ammo come back afterwards
+    p.jug = { left: CFG.JUG_S, hp: p.hp, ammo: p.ammo, side: p.sideAmmo, weapon: p.weapon };
+    p.hp = CFG.JUG_HP;
+    p.weapon = 'main';
+    p.ammo = CFG.JUG_GUN.mag;
+    p.reloadLeft = 0;
+    p.heat = 0;
+    p.elevated && leaveTower(w, p);
+    w.events.push({ t: 'jug', team: p.team, id: p.id });
   } else if (kind === 'drone') {
     p.dx = p.dy = 0;
     p.fire = false;
@@ -1035,9 +1053,23 @@ export function step(w, dt, now = Date.now()) {
       if (p.control) continue; // while flying he stands still: no moving, shooting or throwing
     }
     p.heat = Math.max(0, p.heat - CFG.RECOIL_DECAY * dt);
-    p.scoped = p.cls === 'sniper' && p.scope && p.weapon === 'main'; // holding the scope: sees farther, moves slowly, no sprint
+    if (p.jug) {
+      p.jug.left -= dt;
+      p.weapon = 'main';
+      if (p.jug.left <= 0) {
+        const j = p.jug;
+        p.jug = null;
+        p.hp = Math.min(maxHp(p), Math.max(1, j.hp));
+        p.ammo = j.ammo;
+        p.sideAmmo = j.side;
+        p.weapon = j.weapon === 'rocket' && p.rockets <= 0 ? 'main' : j.weapon;
+        p.reloadLeft = 0;
+        w.events.push({ t: 'jugend', id: p.id });
+      }
+    }
+    p.scoped = !p.jug && p.cls === 'sniper' && p.scope && p.weapon === 'main'; // holding the scope: sees farther, moves slowly, no sprint
     const len = Math.hypot(p.dx, p.dy);
-    const sprinting = !p.scoped && p.sprint && len > 0 && !p.winded && p.stamina > 0;
+    const sprinting = !p.scoped && !p.jug && p.sprint && len > 0 && !p.winded && p.stamina > 0;
     if (sprinting) {
       p.stamina = Math.max(0, p.stamina - (CFG.STAMINA_DRAIN / (cls(p).staminaX ?? 1)) * dt); // a shotgunner's stamina lasts 1.5x as long
       p.sprintRest = CFG.STAMINA_DELAY_S;
@@ -1048,7 +1080,7 @@ export function step(w, dt, now = Date.now()) {
       if (p.winded && p.stamina >= CFG.STAMINA_RESUME) p.winded = false;
     }
     if (len > 0 && !p.elevated) {
-      const k = (len > 1 ? 1 / len : 1) * CFG.SPEED * (sprinting ? CFG.SPRINT_MULT : p.scoped ? CFG.SCOPE_SPEED : 1) * (now < p.shieldUntil ? CFG.SHIELD_SPEED : 1) * dt;
+      const k = (len > 1 ? 1 / len : 1) * CFG.SPEED * (sprinting ? CFG.SPRINT_MULT : p.scoped ? CFG.SCOPE_SPEED : 1) * (now < p.shieldUntil ? CFG.SHIELD_SPEED : 1) * (p.jug ? CFG.JUG_SPEED : 1) * dt;
       const nx = p.x + p.dx * k;
       if (!blockedAt(w, nx, p.y) && !inEnemyBase(w, p.team, nx)) p.x = nx;
       const ny = p.y + p.dy * k;
@@ -1079,11 +1111,13 @@ export function step(w, dt, now = Date.now()) {
     if (!p.fire) p.fireHold = false;
     if (p.wantSwap) {
       p.wantSwap = false;
+      if (!p.jug) {
       // cycle through what he carries: main weapon, sidearm (if his class has one), bazooka (if he holds rockets)
       const slots = ['main', ...(cls(p).side ? ['side'] : []), ...(p.rockets > 0 ? ['rocket'] : [])];
       if (slots.length > 1) {
         p.weapon = slots[(Math.max(0, slots.indexOf(p.weapon)) + 1) % slots.length];
         p.reloadLeft = 0; // switching cancels a reload in progress
+      }
       }
     }
     if (p.weapon === 'rocket' && p.rockets <= 0) p.weapon = 'main';
@@ -1430,7 +1464,7 @@ export function snapshot(w, now = Date.now(), team = null) {
   for (const q of w.players.values()) {
     if (team && q.team !== team && !vis(q.x, q.y) && !(now < q.revealUntil)) continue; // hidden in the fog (a sniper who just fired is not)
     if (bushHidden(q)) continue;
-    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0, Math.max(0, Math.ceil((q.blindUntil - now) / 100)), q.spec, Math.max(0, Math.ceil((q.specReadyAt - now) / 1000)), Math.max(0, Math.ceil((q.shieldUntil - now) / 100)), Math.round(q.heat * 100), now < q.shieldUntil ? Math.max(0, Math.round(q.shieldHp)) : 0, !team || q.team === team ? rewardCode(q) : 0, !team || q.team === team ? q.rewards.length : 0, q.control ? (q.control.kind === 'heli' ? 2 : 1) : 0, q.control ? Math.max(0, Math.ceil(q.control.left * 10)) : 0, q.streak ?? 0]);
+    p.push([q.id, Math.round(q.x), Math.round(q.y), Math.round(q.aim * 100) / 100, Math.ceil(q.hp), now < q.protectUntil ? 1 : 0, q.grenades, ammoOf(q), q.reloadLeft > 0 ? Math.round((q.reloadLeft / spec(q).reloadS) * 100) / 100 : 0, q.arty, CLASS_IDS.indexOf(q.cls), q.healing ? 1 : 0, q.tentUsing ? -1 : Math.max(0, Math.ceil((q.tentReadyAt - now) / 1000)), q.nextCls ? CLASS_IDS.indexOf(q.nextCls) : -1, Math.round(q.medkit), q.kills, q.deaths, Math.round(q.stamina), q.winded ? 1 : 0, q.scoped ? 1 : 0, q.rockets, q.weapon === 'rocket' ? 1 : q.weapon === 'side' ? 2 : 0, q.elevated ? 1 : 0, Math.max(0, Math.ceil((q.blindUntil - now) / 100)), q.spec, Math.max(0, Math.ceil((q.specReadyAt - now) / 1000)), Math.max(0, Math.ceil((q.shieldUntil - now) / 100)), Math.round(q.heat * 100), now < q.shieldUntil ? Math.max(0, Math.round(q.shieldHp)) : 0, !team || q.team === team ? rewardCode(q) : 0, !team || q.team === team ? q.rewards.length : 0, q.control ? (q.control.kind === 'heli' ? 2 : 1) : 0, q.control ? Math.max(0, Math.ceil(q.control.left * 10)) : 0, q.streak ?? 0, q.jug ? Math.max(0, Math.ceil(q.jug.left * 10)) : 0]);
   }
   const b = w.bullets.filter((x) => x.team === team || vis(x.x, x.y)).map((x) => [Math.round(x.x), Math.round(x.y)]);
   const owner = (id) => w.players.get(id);

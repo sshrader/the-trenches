@@ -1827,4 +1827,48 @@ test('hardpoint: the zone reports who is standing in it now, whatever the score 
   assert.equal(run(), 1, 'green alone shows green');
 });
 
+test('juggernaut: the 10-kill reward is 15 s of armour and a minigun, then he is himself again', () => {
+  const w = createWorld(map, rng);
+  applyMap(w, map, 'city');
+  const j = addPlayer(w, { name: 'j', want: 'green' }), e = addPlayer(w, { name: 'e', want: 'red' });
+  j.team = 'green'; e.team = 'red';
+  place(j, 1600, 1100); place(e, 1900, 1100);
+  j.protectUntil = e.protectUntil = 0;
+  j.hp = 70; j.streak = 9;
+  const k = addPlayer(w, { name: 'v', want: 'red' }); k.team = 'red'; place(k, 3000, 300); k.hp = 1;
+  hurt(w, k, 5, j.id, 'green', 1000, 'rifle');
+  assert.equal(j.streak, 10);
+  assert.deepEqual(j.rewards, ['jug'], 'ten kills in a row earns the Juggernaut');
+  assert.equal(snapshot(w, 1000, 'green').p.find((q) => q[0] === j.id)[33], 10);
+  let now = 1000;
+  j.wantStreak = true; now += 50; step(w, 0.05, now);
+  assert.ok(j.jug && j.hp === CFG.JUG_HP, 'now a Juggernaut with 400 HP');
+  assert.equal(j.ammo, CFG.JUG_GUN.mag);
+  hurt(w, j, 100, e.id, 'red', now, 'rifle');
+  assert.equal(j.hp, CFG.JUG_HP - 100 * CFG.JUG_TAKE, 'super armour halves every hit');
+  // the minigun: lots of fast, weak rounds
+  j.aim = 0; j.fire = true; j.protectUntil = 0;
+  let shots = 0;
+  for (let i = 0; i < 10; i++) { now += 50; step(w, 0.05, now); }
+  shots = CFG.JUG_GUN.mag - j.ammo;
+  assert.ok(shots >= 8, 'it fires about every 50 ms, got ' + shots);
+  j.fire = false;
+  assert.equal(snapshot(w, now, 'red').p.find((q) => q[0] === j.id)[34] > 0, true, 'the snapshot shows the time left');
+  const before = j.x;
+  j.dx = 1; j.dy = 0;
+  for (let i = 0; i < 10; i++) { now += 50; step(w, 0.05, now); }
+  assert.ok(j.x - before < CFG.SPEED * 0.5 * 0.8, 'slower than a normal soldier');
+  // 15 s later he is back: his own gun, his own health from before
+  j.dx = 0;
+  for (let i = 0; i < 300; i++) { now += 50; e.hp = 100; step(w, 0.05, now); }
+  assert.equal(j.jug, null, 'it wears off after 15 s');
+  assert.equal(j.hp, 70, 'with the health he had before');
+  assert.equal(j.ammo, CFG.CLASSES.rifleman.mag);
+  // dying as a Juggernaut ends it
+  j.rewards = ['jug']; j.hp = 100; j.wantStreak = true; now += 50; step(w, 0.05, now);
+  assert.ok(j.jug);
+  hurt(w, j, 5000, e.id, 'red', now, 'rifle');
+  assert.equal(j.jug, null);
+});
+
 console.log(`\n${n} checks passed`);

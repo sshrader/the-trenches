@@ -158,13 +158,14 @@ The change lasts until the server restarts (then `BOTS` / `BOT_TEAM_SIZE` apply 
 
 **Kill streaks:** every soldier (bots too) keeps a count of kills since he last died. At 3, 5 and 7 the server announces it to everyone (`CFG.STREAK_CALLOUTS`): a banner at the top of the screen ("Wolf is on a 5 kill streak!", yellow, orange, red) and a short rising sting, louder when it is you. Dying ends the streak, and a new round starts everyone at zero. 
 
-**Rewards (Z key):** people (not bots) who reach 3, 5 or 7 kills in a row earn a reward, shown as a slot on the hotkey bar. Z spends the best one held; an unused reward is lost when you die or a round restarts. While you fly a drone or helicopter your soldier stands still and can be shot.
+**Rewards (Z key):** people (not bots) who reach 3, 5, 7 or 10 kills in a row earn a reward, shown as a slot on the hotkey bar. Z spends the best one held; an unused reward is lost when you die or a round restarts. While you fly a drone or helicopter your soldier stands still and can be shot.
 
 | Kills | Reward | What it does |
 |---|---|---|
 | 3 | UAV | 8 s: the whole map's fog lifts and every enemy shows on screen and the minimap (`CFG.BIGUAV_S`) |
 | 5 | Attack drone | 15 s (`CFG.DRONE_S`): WASD flies it over everything, the camera rides it, and it lights the fog and shows enemies (screen and minimap) like a UAV. Left click or Z explodes it (blast spares your side). The enemy sees no drone, marker or warning |
 | 7 | Attack helicopter | 15 s (`CFG.HELI_S`): WASD to fly over everything, mouse to aim, hold click for the minigun, right click (or G) for rockets. Enemies who can see it see it |
+| 10 | Juggernaut | 15 s (`CFG.JUG_S`): you stay on the ground as an armoured giant with 400 HP (`JUG_HP`) that takes half of every hit (`JUG_TAKE`, so it stops like 800), carrying a 400-round minigun (`JUG_GUN`: 11 damage every 50 ms, no reload needed in 15 s). He moves at 70% speed, cannot sprint, swap weapons or scope, and everyone sees him (larger sprite, spinning barrels, team-coloured helmet ring). When it ends, or if he dies, he is back to his own class with the health and ammo he had before. Admin: `/reward jug`. |
 
 **Idle kick:** a person who has not moved, fired, scoped, pressed an action key or moved the mouse for 60 s is removed (15 s before that, a "Move or you will be removed" warning appears in chat). They land back in the lobby with a message saying why. `IDLE_KICK_S` changes the time (0 turns it off). Bots are never kicked.
 

@@ -905,7 +905,7 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   ctx.save();
   ctx.translate(sx, sy);
   ctx.rotate(u.aim);
-  ctx.scale(1.25, 1.25); // drawn a little larger than the hitbox so the uniform reads clearly
+  ctx.scale(u.jug > 0 ? 1.75 : 1.25, u.jug > 0 ? 1.75 : 1.25); // drawn a little larger than the hitbox so the uniform reads clearly
   const dark = 'rgba(0,0,0,0.55)';
   const green = u.team === 'green';
   const sniper = u.cls === 3;
@@ -1192,9 +1192,37 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
     ctx.stroke();
   }
 
+  if (u.jug > 0) {
+    // Juggernaut: heavy plates on the shoulders and a six-barrel minigun
+    ctx.fillStyle = '#475569';
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.5;
+    for (const sd of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(-1, sd * 10, 7, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(4, -5, 12, 11); // gearbox
+    ctx.strokeRect(4, -5, 12, 11);
+    const spin = (now / 40) % 6;
+    for (let b = 0; b < 6; b++) {
+      const yy = Math.sin(((b + spin) / 6) * Math.PI * 2) * 4;
+      ctx.fillStyle = '#6b7280';
+      ctx.fillRect(16, 1 + yy - 1, 20, 2);
+    }
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(34, -4, 3, 10);
+    ctx.strokeStyle = teamColor(u.team); // helmet glow in team colour
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 9, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   // muzzle flash
   if (now < u.flash) {
-    const fxm = sniper ? 48 : 34;
+    const fxm = u.jug > 0 ? 42 : sniper ? 48 : 34;
     const g = ctx.createRadialGradient(fxm, 2, 0, fxm, 2, 13);
     g.addColorStop(0, 'rgba(255,248,200,0.95)');
     g.addColorStop(0.5, 'rgba(255,190,70,0.6)');
@@ -1226,7 +1254,7 @@ function drawSoldier(ctx: CanvasRenderingContext2D, u: Unit, sx: number, sy: num
   // Health bar over everyone, so you can see how hurt a soldier is (yours and theirs)
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.fillRect(sx - 16, sy - 29, 32, 7);
-  const top = CLASSES[u.cls]?.hp ?? 100; // a shotgunner has more health than the others
+  const top = u.jug > 0 ? 400 : CLASSES[u.cls]?.hp ?? 100; // a shotgunner has more health than the others
   const frac = Math.max(0, Math.min(1, u.hp / top));
   ctx.fillStyle = frac > 0.5 ? '#4ade80' : frac > 0.25 ? '#fbbf24' : '#f87171';
   ctx.fillRect(sx - 15, sy - 28, 30 * frac, 5);
@@ -2366,7 +2394,7 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
         live.forEach((c, i) => {
           const age = now - c.at;
           const a = age < 250 ? age / 250 : age > 3800 ? Math.max(0, (4500 - age) / 700) : 1;
-          const big = c.n >= 7 ? 3 : c.n >= 5 ? 2 : 1;
+          const big = c.n >= 10 ? 4 : c.n >= 7 ? 3 : c.n >= 5 ? 2 : 1;
           const who = c.id === w.me ? 'You are' : `${c.name} is`;
           const y = 62 + i * 40;
           ctx.save();
@@ -2378,7 +2406,7 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
           const tail = `on a ${c.n} kill streak!`;
           const full = `${who} ${tail}`;
           ctx.strokeText(full, VIEW_W / 2, y);
-          ctx.fillStyle = c.n >= 7 ? '#f87171' : c.n >= 5 ? '#fb923c' : '#fde047';
+          ctx.fillStyle = c.n >= 10 ? '#e879f9' : c.n >= 7 ? '#f87171' : c.n >= 5 ? '#fb923c' : '#fde047';
           ctx.fillText(full, VIEW_W / 2, y);
           ctx.restore();
         });

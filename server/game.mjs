@@ -273,10 +273,10 @@ export function attachGame(server) {
             return announce(`${me.name} restarted the match: round wins 0:0, new timer.`);
           }
           if (cmd.toLowerCase() === 'reward' && me.admin) {
-            const kinds = { uav: 'uav', '3': 'uav', drone: 'drone', missile: 'drone', predator: 'drone', '5': 'drone', heli: 'heli', helicopter: 'heli', '7': 'heli' };
+            const kinds = { uav: 'uav', '3': 'uav', drone: 'drone', missile: 'drone', predator: 'drone', '5': 'drone', heli: 'heli', helicopter: 'heli', '7': 'heli', jug: 'jug', juggernaut: 'jug', '10': 'jug' };
             const a = arg.toLowerCase();
-            const list = a === 'all' ? ['uav', 'drone', 'heli'] : kinds[a] ? [kinds[a]] : null;
-            if (!list) return reply('Use /reward uav, /reward drone, /reward heli or /reward all. It goes on your Z key (only you get it, and it is lost when you die).');
+            const list = a === 'all' ? ['uav', 'drone', 'heli', 'jug'] : kinds[a] ? [kinds[a]] : null;
+            if (!list) return reply('Use /reward uav, /reward drone, /reward heli, /reward jug or /reward all. It goes on your Z key (only you get it, and it is lost when you die).');
             if (me.hp <= 0) return reply('Wait until you have respawned.');
             me.rewards.push(...list);
             console.log(`[admin] ${me.name} gave themself ${list.join(', ')}`);

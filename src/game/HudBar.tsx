@@ -27,6 +27,7 @@ const drawings: Record<string, ReactNode> = {
   uav: (<><rect x="12" y="13" width="8" height="5" rx="2" fill="#cbd5e1" /><path d="M3 12 L12 15 M29 12 L20 15" stroke="#94a3b8" strokeWidth="2" /><circle cx="4" cy="11" r="3" fill="#64748b" /><circle cx="28" cy="11" r="3" fill="#64748b" /><path d="M10 24 q6 4 12 0" stroke="#4ade80" strokeWidth="2" fill="none" /></>),
   drone: (<><path d="M7 7 L25 25 M25 7 L7 25" stroke="#64748b" strokeWidth="3" /><circle cx="6" cy="6" r="5" fill="#cbd5e1" opacity="0.6" /><circle cx="26" cy="6" r="5" fill="#cbd5e1" opacity="0.6" /><circle cx="6" cy="26" r="5" fill="#cbd5e1" opacity="0.6" /><circle cx="26" cy="26" r="5" fill="#cbd5e1" opacity="0.6" /><rect x="11" y="12" width="10" height="8" rx="2" fill="#1f2937" /><circle cx="18" cy="16" r="2" fill="#ef4444" /></>),
   heli: (<><ellipse cx="14" cy="18" rx="10" ry="6" fill="#64748b" /><rect x="22" y="16.5" width="9" height="3" fill="#64748b" /><ellipse cx="10" cy="17" rx="4" ry="3" fill="#7dd3fc" /><rect x="3" y="8" width="26" height="2" rx="1" fill="#e2e8f0" /><rect x="13" y="9" width="2" height="4" fill="#94a3b8" /><rect x="3" y="26" width="14" height="2" fill="#94a3b8" /></>),
+  jug: (<><rect x="9" y="9" width="14" height="17" rx="4" fill="#64748b" /><rect x="11" y="5" width="10" height="7" rx="3" fill="#94a3b8" /><rect x="13" y="7" width="6" height="2" fill="#0f172a" /><rect x="2" y="15" width="10" height="3" fill="#334155" /><rect x="2" y="19" width="10" height="3" fill="#334155" /></>),
   heart: (<path d="M16 28 C2 18 4 7 11 7 C14 7 16 9 16 11 C16 9 18 7 21 7 C28 7 30 18 16 28Z" fill="#ef4444" />),
 };
 
@@ -71,11 +72,13 @@ const REWARDS = [
   { icon: 'uav', sub: 'UAV', title: 'Kill-streak UAV (Z): for 8 seconds the whole map is lit and every enemy shows, on the screen and the minimap.' },
   { icon: 'drone', sub: 'Drone', title: 'Attack drone (Z): fly it with WASD for 15 seconds; it lights the fog and shows enemies like a UAV, and the enemy cannot see it. Left click (or Z) explodes it. You stand still while you fly it.' },
   { icon: 'heli', sub: 'Heli', title: 'Attack helicopter (Z): fly it for 15 seconds with WASD, mouse to aim, click for the minigun, right click (or G) for rockets. You stand still while you fly it.' },
+  { icon: 'jug', sub: 'Juggernaut', title: 'Juggernaut (Z): for 15 seconds you are an armoured giant with 400 HP that takes half damage, and a minigun. You move slower and cannot sprint. When it ends you are back to your own class and health.' },
 ];
 
-/** The kill-streak reward you have earned (3 kills: UAV, 5: attack drone, 7: helicopter). Z spends the best one; dying loses them. */
+/** The kill-streak reward you have earned (3 kills: UAV, 5: attack drone, 7: helicopter, 10: Juggernaut). Z spends the best one; dying loses them. */
 function RewardSlot({ h }: { h: Hud }) {
   const flying = h.myCtl > 0;
+  if (h.myJug > 0) return <Slot icon="jug" value={`${Math.ceil(h.myJug / 10)}s`} sub="Juggernaut" active title="You are the Juggernaut: armour, a minigun and half damage taken until the time runs out." />;
   const r = REWARDS[h.myReward];
   if (!r && !flying) return null;
   if (flying) return <Slot icon={h.myCtl === 2 ? 'heli' : 'drone'} value={`${Math.ceil(h.myCtlLeft / 10)}s`} sub={h.myCtl === 2 ? 'flying' : 'piloting'} keyHint="Z" active title={h.myCtl === 2 ? 'Flying the attack helicopter.' : 'Flying the attack drone. Left click or Z explodes it.'} />;

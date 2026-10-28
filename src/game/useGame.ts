@@ -19,7 +19,7 @@ function guestId(): string {
 }
 
 export type Team = 'green' | 'red';
-export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean; blind: number; spec: number; specCd: number; shield: number; heat: number; shieldHp: number; vx: number; vy: number; snapAt: number; rw: number; rwN: number; ctl: number; ctlLeft: number; streak: number };
+export type Unit = { id: number; name: string; team: Team; x: number; y: number; tx: number; ty: number; aim: number; hp: number; prot: boolean; seen: boolean; flash: number; walk: number; gren: number; ammo: number; reload: number; arty: number; cls: number; healing: boolean; tent: number; next: number; kit: number; bot: boolean; kills: number; deaths: number; say: string; sayUntil: number; stamina: number; winded: boolean; scoped: boolean; rockets: number; bazooka: boolean; sidearm: boolean; elev: boolean; blind: number; spec: number; specCd: number; shield: number; heat: number; shieldHp: number; vx: number; vy: number; snapAt: number; rw: number; rwN: number; ctl: number; ctlLeft: number; streak: number; jug: number };
 export type ClassId = 'rifleman' | 'smg' | 'medic' | 'sniper' | 'shotgunner' | 'squad';
 export const CLASSES: { id: ClassId; label: string; mag: number; hp: number; sideMag?: number; special?: string; blurb: string }[] = [
   { id: 'rifleman', label: 'Assault', mag: 15, hp: 100, special: 'Smoke grenade', blurb: 'All-rounder. 15-round AR, 3 hits kill. It kicks on full auto, so fire in bursts. Smoke hides your push from the enemy.' },
@@ -67,9 +67,9 @@ export type World = {
 export type Input = { streak: number; special: number; sprint: boolean; dx: number; dy: number; aim: number; fire: boolean; nade: number; range: number; reload: number; arty: number; scope: boolean; swap: number; nest: number; dismantle: boolean }; // `nest` is the tower counter (the sniper's C key): a sniper builds, climbs or leaves his tower
 export type Status = 'idle' | 'signing' | 'connecting' | 'playing' | 'error';
 export type ChatLine = { name: string; team: Team; text: string; at: number; mode?: 'all' | 'team' };
-export type Hud = { myReward: number; myRewardN: number; myCtl: number; myCtlLeft: number; myStreak: number; myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; train: number[]; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
+export type Hud = { myReward: number; myRewardN: number; myCtl: number; myCtlLeft: number; myStreak: number; myJug: number; myShieldHp: number; mySpec: number; mySpecCd: number; myShield: number; myHeat: number; myBlind: number; uavMine: number; uavEnemy: number; chat: ChatLine[]; score: [number, number, number, number]; round: RoundInfo; progress: number; train: number[]; points: [number, number]; green: number; red: number; myHp: number; myGren: number; myAmmo: number; myTent: number; myKit: number; myStamina: number; myWinded: boolean; myKills: number; myDeaths: number; training: boolean; myNext: string; myClassId: ClassId; myMag: number; myClass: string; myReload: number; myArty: number; myRockets: number; myBazooka: boolean; myTowerUp: boolean; myTowerProg: number; myElev: boolean; myNearTower: boolean; mySidearm: boolean; myTeam: Team | null; feed: FeedLine[]; board: Score[] };
 
-const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0, vx: 0, vy: 0, snapAt: 0, rw: 0, rwN: 0, ctl: 0, ctlLeft: 0, streak: 0 });
+const newUnit = (id: number, name: string, team: Team, bot = false): Unit => ({ id, name, team, x: 0, y: 0, tx: 0, ty: 0, aim: 0, hp: 100, prot: false, seen: false, flash: 0, walk: 0, gren: 2, ammo: 8, reload: 0, arty: 1, cls: 0, healing: false, tent: 0, next: -1, kit: 100, bot, kills: 0, deaths: 0, say: '', sayUntil: 0, stamina: 100, winded: false, scoped: false, rockets: 0, bazooka: false, sidearm: false, elev: false, blind: 0, spec: 0, specCd: 0, shield: 0, heat: 0, shieldHp: 0, vx: 0, vy: 0, snapAt: 0, rw: 0, rwN: 0, ctl: 0, ctlLeft: 0, streak: 0, jug: 0 });
 const emptyWorld = (): World => ({ me: 0, units: new Map(), bullets: [], nades: [], mapId: 'city', gas: [], booms: [], corpses: [], callouts: [], pops: [], crates: [], progress: 0, train: [0, 0, 0, 0, 0], zone: [0, 0, 0, 0, 0, 0], points: [0, 0], round: { n: 1, e: 0, s: 'live', l: 0, w: null, mp: 'city', mr: 1, mt: 3, nx: '' }, score: [0, 0, 0, 0], cam: { x: 0, y: 0 }, vision: 420, scopeVision: 1000, scopeHalf: 0.3, rockets: [], pickups: [], towers: [], clouds: [], drops: [], uav: [0, 0], uavAreas: [], ms: [], ping: 0 });
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
@@ -164,6 +164,7 @@ export function useGame() {
         mySpecCd: me?.specCd ?? 0,
         myShield: me?.shield ?? 0,
         myShieldHp: me?.shieldHp ?? 0,
+        myJug: me?.jug ?? 0,
         myReward: me?.rw ?? 0,
         myRewardN: me?.rwN ?? 0,
         myCtl: me?.ctl ?? 0,
@@ -237,7 +238,7 @@ export function useGame() {
             w.units.delete(m.id);
           } else if (m.t === 's') {
             const inSight = new Set<number>();
-            for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next, kit, kills, deaths, stamina, winded, scoped, rockets, weap, elev, blind, spec, specCd, shield, heat, shieldHp, rw, rwN, ctl, ctlLeft, streak] of m.p as number[][]) {
+            for (const [id, x, y, aim, hp, prot, gren, ammo, reload, arty, ci, heal, tent, next, kit, kills, deaths, stamina, winded, scoped, rockets, weap, elev, blind, spec, specCd, shield, heat, shieldHp, rw, rwN, ctl, ctlLeft, streak, jug] of m.p as number[][]) {
               const u = w.units.get(id);
               if (!u) continue;
               inSight.add(id);
@@ -297,6 +298,7 @@ export function useGame() {
               u.rw = rw ?? 0;
               u.rwN = rwN ?? 0;
               u.ctl = ctl ?? 0;
+              u.jug = jug ?? 0;
               u.ctlLeft = ctlLeft ?? 0;
               u.streak = streak ?? 0;
               u.rockets = rockets;
@@ -327,7 +329,8 @@ export function useGame() {
               if (air) { heliGun(ear ? Math.hypot(sx - ear.x, sy - ear.y) : 600); continue; }
               const shooter = w.units.get(sid);
               if (shooter) shooter.flash = Date.now() + 90;
-              playShot(me ? Math.hypot(sx - me.tx, sy - me.ty) : 600, shooter?.cls ?? 0, shooter?.sidearm ?? false);
+              if (shooter && shooter.jug > 0) heliGun(ear ? Math.hypot(sx - ear.x, sy - ear.y) : 600);
+              else playShot(me ? Math.hypot(sx - me.tx, sy - me.ty) : 600, shooter?.cls ?? 0, shooter?.sidearm ?? false);
             }
             w.bullets = m.b;
             w.nades = m.g ?? [];
