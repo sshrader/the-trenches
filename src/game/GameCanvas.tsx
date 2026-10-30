@@ -16,6 +16,7 @@ let PROPS: NonNullable<MapData['props']> = [];
 let CRATES: NonNullable<MapData['crates']> = [];
 let TENTS: NonNullable<MapData['tents']> = [];
 let TRAIN: MapData['train'] = undefined;
+let CRANE: MapData['crane'] = undefined;
 let NESTS: NonNullable<MapData['nests']> = [];
 let ROADS: { v: number[][]; h: number[][] } = { v: [], h: [] };
 let THEME = 'city';
@@ -34,6 +35,7 @@ function applyMap(id: string) {
   CRATES = m.crates ?? [];
   TENTS = m.tents ?? [];
   TRAIN = m.train;
+  CRANE = m.crane;
   NESTS = m.nests ?? [];
   ROADS = m.roads ?? { v: [], h: [] };
   THEME = m.theme ?? 'city';
@@ -1717,6 +1719,69 @@ export default function GameCanvas({ world, input, typing, touch }: { world: Mut
         const py = cr.y - camY;
         if (px > -40 && py > -40 && px < VW + 40 && py < VH + 40) drawCrate(ctx, cr.team, w.crates[i] !== 0, px, py);
       });
+      // The crane (Industry): the drop spot is marked, a container comes down on its cable, then it stands as cover for a while
+      if (CRANE && w.crane[0] > 0) {
+        const [cst, cwx, cwy, cval] = w.crane;
+        const X = cwx - camX, Y = cwy - camY, cw = CRANE.w, ch = CRANE.h;
+        const box = (x: number, y: number, s: number, alpha: number) => {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.scale(s, s);
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = 'rgba(0,0,0,0.4)';
+          ctx.fillRect(-cw / 2 + 5, -ch / 2 + 7, cw, ch);
+          ctx.fillStyle = '#b45309';
+          ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
+          ctx.fillStyle = 'rgba(0,0,0,0.28)'; // corrugated ribs
+          for (let rx = -cw / 2 + 8; rx < cw / 2 - 4; rx += 8) ctx.fillRect(rx, -ch / 2 + 3, 3, ch - 6);
+          ctx.fillStyle = 'rgba(255,255,255,0.14)';
+          ctx.fillRect(-cw / 2, -ch / 2, cw, 5);
+          ctx.strokeStyle = '#451a03';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(-cw / 2, -ch / 2, cw, ch);
+          ctx.fillStyle = '#7c2d12'; // the doors at the end
+          ctx.fillRect(cw / 2 - 12, -ch / 2 + 3, 9, ch - 6);
+          ctx.restore();
+        };
+        if (cst === 1) {
+          const left = cval / 10;
+          const prog = Math.max(0, Math.min(1, 1 - left / 4));
+          const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 90);
+          ctx.fillStyle = `rgba(239,68,68,${0.14 + pulse * 0.16 + prog * 0.12})`;
+          ctx.fillRect(X - cw / 2 - 6, Y - ch / 2 - 6, cw + 12, ch + 12);
+          ctx.strokeStyle = `rgba(239,68,68,${0.6 + pulse * 0.4})`;
+          ctx.lineWidth = 3;
+          ctx.setLineDash([12, 8]);
+          ctx.strokeRect(X - cw / 2 - 6, Y - ch / 2 - 6, cw + 12, ch + 12);
+          ctx.setLineDash([]);
+          ctx.beginPath(); // a ring for the shock
+          ctx.arc(X, Y, 130, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(250,204,21,${0.25 + pulse * 0.2})`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          const air = Math.pow(1 - prog, 2); // 1 high up .. 0 on the ground
+          const lift = air * 360;
+          const s = 1 + air * 0.55;
+          ctx.strokeStyle = '#94a3b8'; // the cable down from the crane above
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(X - cw * 0.3 * s, -20); ctx.lineTo(X, Y - lift - ch * 0.5 * s);
+          ctx.moveTo(X + cw * 0.3 * s, -20); ctx.lineTo(X, Y - lift - ch * 0.5 * s);
+          ctx.stroke();
+          box(X, Y - lift, s, 0.55 + prog * 0.45);
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 13px system-ui, sans-serif';
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+          ctx.fillStyle = '#fecaca';
+          ctx.strokeText(`CONTAINER DROP · ${Math.ceil(left)}`, X, Y + ch / 2 + 24);
+          ctx.fillText(`CONTAINER DROP · ${Math.ceil(left)}`, X, Y + ch / 2 + 24);
+          ctx.restore();
+        } else {
+          box(X, Y, 1, 1);
+        }
+      }
       // The train: the track flashes while it is coming, then the cars cross it
       if (TRAIN && w.train[0] > 0) {
         const [st, ti, dirT, head] = w.train;

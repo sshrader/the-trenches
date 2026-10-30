@@ -547,12 +547,13 @@ export default function Play() {
                     </>
                   ) : (
                     <>
-                      {f.weapon === 'train' ? (<><b className={f.vteam}>{f.victim}</b> was run over by the train</>) : (<><b className={f.kteam}>{f.killer}</b> {f.tk ? (f.weapon === 'artillery' ? 'shelled teammate' : 'blew up teammate') : f.weapon === 'grenade' || f.weapon === 'rocket' ? 'blew up' : f.weapon === 'artillery' ? 'shelled' : 'eliminated'} <b className={f.vteam}>{f.victim}</b></>)}
+                      {f.weapon === 'train' ? (<><b className={f.vteam}>{f.victim}</b> was run over by the train</>) : f.weapon === 'crane' ? (<><b className={f.vteam}>{f.victim}</b> was crushed by a container</>) : (<><b className={f.kteam}>{f.killer}</b> {f.tk ? (f.weapon === 'artillery' ? 'shelled teammate' : 'blew up teammate') : f.weapon === 'grenade' || f.weapon === 'rocket' ? 'blew up' : f.weapon === 'artillery' ? 'shelled' : 'eliminated'} <b className={f.vteam}>{f.victim}</b></>)}
                     </>
                   )}
                 </p>
               ))}
             </div>
+            {h.crane[0] === 1 && h.round.s === 'live' && <div className="train-warn crane-warn" role="alert">⚠ CONTAINER DROP · {Math.ceil(h.crane[3] / 10)}</div>}
             {h.train[0] === 1 && h.round.s === 'live' && <div className="train-warn" role="alert">⚠ TRAIN INCOMING · {h.train[1] === 0 ? 'north' : 'south'} track · {h.train[4]}</div>}
             {h.myHp <= 0 && h.round.s === 'live' && <div className="overlay">Eliminated. Back at your base shortly…</div>}
             {h.round.s === 'ended' && (

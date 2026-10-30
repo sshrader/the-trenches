@@ -130,6 +130,8 @@ To add a map: write a generator that outputs `shared/<id>.json` (same 120×68 gr
 
 **The industry yard** (`node scripts/make-industry.mjs` -> `shared/industry.json`): a container port. Rows of shipping containers (solid, stop bullets), concrete barriers, pallet stacks, drums and wrecked trucks make the cover; asphalt lanes and rail tracks run across the yard, and a warehouse in the middle has open floor inside.
 
+**The crane** (Industry only; the map's `crane` entry, a 128 x 64 px container): every 50 s (`CFG.CRANE_EVERY_S`, the first at 30 s into a round) the crane picks a spot on or near the live Hardpoint and marks it with a red box and a countdown banner for 4 s (`CRANE_WARN_S`) while the container comes down on its cable. Anyone under it when it lands takes 150 damage (`CRANE_DMG`, kill feed: "was crushed by a container"), anyone within 130 px takes 35 (`CRANE_SHOCK_*`), and the container then stands for 12 s (`CRANE_STAY_S`) as cover that blocks both walking and bullets. A survivor under it (a Juggernaut) is shoved out. The snapshot field `cr` carries [state, x, y, time].
+
 **The train** (Industry only; the map's `train` entry): every 70 s (`CFG.TRAIN_EVERY_S`, the first at 40 s into a round) a train crosses one of the two rail tracks, alternating north and south and east and west. The track flashes yellow with a banner and a horn for the 5 s before it arrives (`CFG.TRAIN_WARN_S`); it then takes about 4 s to cross. Anyone on the rails takes 80 damage once per pass (`CFG.TRAIN_DMG`, kill feed: "was run over by the train"), and the cars stop bullets (not helicopter fire).
 
 The Hardpoint zones stay clear of the clinic tents, so a tent's healing never sits inside a zone.

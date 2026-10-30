@@ -81,6 +81,13 @@ export const CFG = {
   TRAIN_WARN_S: 5, // the track flashes and a horn sounds this long before it arrives
   TRAIN_SPEED: 900, // px per second (about 4 s to cross)
   TRAIN_DMG: 80, // taken once per pass by anyone on the rails
+  CRANE_EVERY_S: 50, // maps with a `crane` (Industry): it drops a shipping container on the live Hardpoint this often ...
+  CRANE_FIRST_S: 30, // ... the first one this long into a round
+  CRANE_WARN_S: 4, // the drop spot is marked and the container comes down for this long first
+  CRANE_DMG: 150, // under the container: crushed
+  CRANE_SHOCK_R: 130, // the crash also hurts anyone this close to it ...
+  CRANE_SHOCK_DMG: 35,
+  CRANE_STAY_S: 12, // ... and the container then sits there as cover (it stops bullets and blocks walking) for this long
   HARDPOINT: true, // Hardpoint mode: the scoring zone moves round the map's hardpoints; false = the zone stays on the plaza (server env MODE=capture)
   HARDPOINT_S: 45, // each zone stays this long ...
   HARDPOINT_WARN_S: 5, // ... and the next one is shown for the last this many seconds
@@ -212,6 +219,7 @@ export function createWorld(map, rng = Math.random, opts = {}) {
     teamKills: { green: 0, red: 0 }, // kills this round
     wins: { green: 0, red: 0 }, // rounds won since the server started
     points: { green: 0, red: 0 }, // round points from holding the plaza
+    crane: { c: CFG.CRANE_FIRST_S, tgt: null, at: null, stay: 0 }, // the next container drop: countdown, where it is coming down, where one stands, how long it stands
     train: { c: CFG.TRAIN_FIRST_S, n: 0, run: null }, // the next train countdown, passes so far, and the one running now
     zone: { i: 0, left: CFG.HARDPOINT_S }, // which hardpoint is live, and how long it has left
     progress: 0, // the lead as a fraction of POINTS_TO_WIN, -1 (red) .. +1 (green): drives the bar
@@ -232,7 +240,54 @@ export const solidAt = (w, px, py) => {
 /** Is this spot in a bush ('g')? A soldier standing in one is hidden from the enemy until they get close (see snapshot). */
 export const inBush = (w, px, py) => w.rows[Math.floor(py / w.tile)]?.[Math.floor(px / w.tile)] === 'g';
 export const blockedAt = (w, x, y, r = CFG.RADIUS) =>
-  solidAt(w, x - r, y - r) || solidAt(w, x + r, y - r) || solidAt(w, x - r, y + r) || solidAt(w, x + r, y + r);
+  solidAt(w, x - r, y - r) || solidAt(w, x + r, y - r) || solidAt(w, x - r, y + r) || solidAt(w, x + r, y + r) || craneAt(w, x, y, r);
+
+/** Is a point on the container the crane left standing (grown by `pad`)? */
+function craneAt(w, x, y, pad = 0) {
+  const c = w.crane;
+  if (!c || !(c.stay > 0) || !c.at) return false;
+  return Math.abs(x - c.at.x) <= w.map.crane.w / 2 + pad && Math.abs(y - c.at.y) <= w.map.crane.h / 2 + pad;
+}
+/** Pick where the next container lands: on or near the live Hardpoint, on open ground. */
+function craneTarget(w) {
+  const z = zoneAt(w);
+  const { w: cw, h: ch } = w.map.crane;
+  for (let i = 0; i < 20; i++) {
+    const a = w.rng() * Math.PI * 2;
+    const d = i === 19 ? 0 : w.rng() * z.r * 0.6;
+    const x = Math.round(z.x + Math.cos(a) * d), y = Math.round(z.y + Math.sin(a) * d);
+    const clear = [[-1, -1], [1, -1], [-1, 1], [1, 1]].every(([sx, sy]) => !solidAt(w, x + (sx * cw) / 2, y + (sy * ch) / 2));
+    if (clear || i === 19) return { x, y };
+  }
+}
+function craneStep(w, dt, now) {
+  const c = w.crane;
+  if (c.stay > 0) c.stay = Math.max(0, c.stay - dt);
+  c.c -= dt;
+  if (!c.tgt && c.c <= CFG.CRANE_WARN_S) c.tgt = craneTarget(w);
+  if (c.c > 0) return;
+  const { x, y } = c.tgt || craneTarget(w);
+  const { w: cw, h: ch } = w.map.crane;
+  c.at = { x, y };
+  c.tgt = null;
+  c.stay = CFG.CRANE_STAY_S;
+  c.c += CFG.CRANE_EVERY_S;
+  w.events.push({ t: 'boom', x, y, big: true });
+  for (const p of w.players.values()) {
+    if (p.hp <= 0 || now < p.protectUntil || isSafe(w, p)) continue;
+    const under = Math.abs(p.x - x) <= cw / 2 + CFG.RADIUS && Math.abs(p.y - y) <= ch / 2 + CFG.RADIUS;
+    if (under) hurt(w, p, CFG.CRANE_DMG, 0, null, now, 'crane');
+    else if (Math.hypot(p.x - x, p.y - y) <= CFG.CRANE_SHOCK_R) hurt(w, p, CFG.CRANE_SHOCK_DMG, 0, null, now, 'crane');
+    if (under && p.hp > 0) p.y = y + (p.y >= y ? 1 : -1) * (ch / 2 + CFG.RADIUS + 2); // a survivor (a Juggernaut) is shoved out from under it
+  }
+}
+/** [state (0 none, 1 coming, 2 standing), x, y, tenths of a second to the drop (or whole seconds it still stands)] for the snapshot. */
+function craneSnap(w) {
+  const c = w.crane;
+  if (c.tgt && c.c > 0) return [1, c.tgt.x, c.tgt.y, Math.ceil(c.c * 10)];
+  if (c.stay > 0 && c.at) return [2, c.at.x, c.at.y, Math.ceil(c.stay)];
+  return [0, 0, 0, 0];
+}
 
 /** The scoring zones of the map in rotation order: its hardpoints, or just the plaza when the mode is off. */
 const zoneList = (w) => (CFG.HARDPOINT && w.map.hardpoints?.length ? w.map.hardpoints : [w.map.capture]);
@@ -720,6 +775,7 @@ function startRound(w, now, n) {
   w.points = { green: 0, red: 0 };
   w.zone = { i: 0, left: CFG.HARDPOINT_S };
   w.train = { c: CFG.TRAIN_FIRST_S, n: 0, run: null };
+  w.crane = { c: CFG.CRANE_FIRST_S, tgt: null, at: null, stay: 0 };
   w.towers = [];
   w.clouds = [];
   w.drops = [];
@@ -1194,8 +1250,8 @@ export function step(w, dt, now = Date.now()) {
         dead = true; // spent: it has lost all its power out in the fog
         break;
       }
-      if (!b.air && trainAt(w, b.x, b.y)) {
-        dead = true; // the train's cars stop bullets
+      if (!b.air && (trainAt(w, b.x, b.y) || craneAt(w, b.x, b.y))) {
+        dead = true; // the train's cars and a container the crane dropped stop bullets
         break;
       }
       if (!b.air && solidAt(w, b.x, b.y)) {
@@ -1391,6 +1447,7 @@ export function step(w, dt, now = Date.now()) {
 
   // The train (Industry): counts down, warns, then crosses one track and hurts whatever is on the rails.
   if (w.map.train) trainStep(w, dt, now);
+  if (w.map.crane) craneStep(w, dt, now);
 
   // The scoring zone: the plaza in capture mode, or the live hardpoint, which moves on every HARDPOINT_S seconds.
   if (zoneCount(w) > 1) {
@@ -1491,6 +1548,7 @@ export function snapshot(w, now = Date.now(), team = null) {
     c: Math.round(w.progress * 1000) / 1000,
     hz: zoneSnap(w),
     ...(w.map.train ? { tr: trainSnap(w) } : {}),
+    ...(w.map.crane ? { cr: craneSnap(w) } : {}),
     pt: [Math.floor(w.points.green), Math.floor(w.points.red)],
     r: { n: w.round.n, e: w.epoch ?? 0, mp: w.mapId, mr: w.mapRound, mt: CFG.ROUNDS_PER_MAP, nx: w.round.state === 'ended' && seriesOver(w) ? nextMapId(w) : '', s: w.round.state, l: Math.ceil(Math.max(0, w.round.state === 'live' ? w.round.left : w.round.endLeft)), w: w.round.winner },
   };

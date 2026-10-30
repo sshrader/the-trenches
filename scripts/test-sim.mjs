@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as bots from '../server/bots.mjs';
-import { CFG, applyMap, restartSeries, hurt, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount, scoreboard, zoneAt } from '../server/sim.mjs';
+import { blockedAt, CFG, applyMap, restartSeries, hurt, addBot, addPlayer, setClass, createWorld, drainEvents, removePlayer, setInput, snapshot, solidAt, step, teamCount, scoreboard, zoneAt } from '../server/sim.mjs';
 
 CFG.FRIENDLY_FIRE = false; // the server ships with these on for testing; the checks below are about normal play
 CFG.FRIENDLY_FLASH = false;
@@ -1870,5 +1870,39 @@ test('juggernaut: the 10-kill reward is 15 s of armour and a minigun, then he is
   hurt(w, j, 5000, e.id, 'red', now, 'rifle');
   assert.equal(j.jug, null);
 });
+
+test('crane (Industry): a container lands on the live Hardpoint after a warning, crushes what is under it, then stands as cover', () => {
+  const ind = JSON.parse(fs.readFileSync(new URL('../shared/industry.json', import.meta.url), 'utf8'));
+  const w = createWorld(ind, rng);
+  applyMap(w, ind, 'industry');
+  const a = addPlayer(w, { name: 'a', want: 'green' }), b = addPlayer(w, { name: 'b', want: 'red' }), c = addPlayer(w, { name: 'c', want: 'red' });
+  a.team = 'green'; b.team = 'red'; c.team = 'red';
+  const z = zoneAt(w);
+  let now = 1000;
+  const tick = () => { now += 50; for (const p of [a, b, c]) p.protectUntil = 0; step(w, 0.05, now); };
+  assert.deepEqual(snapshot(w, now, 'green').cr, [0, 0, 0, 0], 'nothing yet');
+  w.crane.c = CFG.CRANE_WARN_S - 0.1;
+  tick();
+  const cr = snapshot(w, now, 'red').cr;
+  assert.equal(cr[0], 1, 'the drop is announced');
+  assert.ok(Math.hypot(cr[1] - z.x, cr[2] - z.y) <= z.r, 'on the live Hardpoint');
+  place(a, cr[1], cr[2]); place(b, cr[1] + ind.crane.w / 2 + 40, cr[2]); place(c, cr[1] + 600, cr[2]);
+  tick(); tick(); // (leaving the base grants a moment of protection: let it pass)
+  a.protectUntil = b.protectUntil = c.protectUntil = 0;
+  a.hp = b.hp = c.hp = 100;
+  w.crane.c = 0.04;
+  now += 50; step(w, 0.05, now);
+  assert.equal(a.hp, 0, 'crushed under it');
+  assert.ok(b.hp < 100 && b.hp > 0, 'the shock hurts nearby, got ' + b.hp);
+  assert.equal(c.hp, 100, 'far away is safe');
+  const st = snapshot(w, now, 'green').cr;
+  assert.equal(st[0], 2, 'it stands afterwards');
+  assert.ok(solidAtCrane(w, cr[1], cr[2]), 'it blocks walking');
+  w.crane.stay = 0.04;
+  tick();
+  assert.deepEqual(snapshot(w, now, 'green').cr, [0, 0, 0, 0], 'then it is lifted away');
+  assert.ok(!solidAtCrane(w, cr[1], cr[2]));
+});
+function solidAtCrane(w, x, y) { return blockedAt(w, x, y, 0); }
 
 console.log(`\n${n} checks passed`);
