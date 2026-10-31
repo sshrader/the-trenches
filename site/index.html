@@ -89,6 +89,8 @@
   .soon { grid-column: span 4; min-height: 150px; border-style: dashed; color: var(--dim); display: flex; flex-direction: column; justify-content: space-between; }
   .soon::before, .soon::after { display: none; }
   .soon h3 { margin: 0; font-family: var(--head); font-size: 20px; color: var(--text); text-transform: uppercase; }
+  .soon > * { position: relative; z-index: 1; }
+  .soon .wm { position: absolute; z-index: 0; right: -14px; bottom: -8px; width: 78%; max-width: 280px; height: auto; opacity: .2; pointer-events: none; filter: saturate(.9); }
   .soon .q { color: var(--pink); text-shadow: 0 0 12px rgba(255,43,214,.6); }
 
   .about { margin: 70px 0 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -179,7 +181,7 @@
         </div>
       </a>
 
-      <div class="card soon"><div class="num">PROJECT / 002</div><h3>Next build <span class="q">?</span></h3><span>Coming soon</span></div>
+      <div class="card soon"><img class="wm" src="paydirt-logo.svg" alt="" width="300" height="150"><div class="num">PROJECT / 002</div><h3>Next build <span class="q">?</span></h3><span>Coming soon</span></div>
       <div class="card soon"><div class="num">PROJECT / 003</div><h3>Classified <span class="q">?</span></h3><span>In the lab</span></div>
       <div class="card soon"><div class="num">PROJECT / 004</div><h3>Signal lost <span class="q">?</span></h3><span>Stay tuned</span></div>
     </div>
