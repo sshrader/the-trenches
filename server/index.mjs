@@ -10,6 +10,7 @@ import { applyGuards, checkNetwork } from './guard.mjs';
 import { newNonce } from './auth.mjs';
 import { attachGame, onlineCount, lobbyRoster, getBotSettings, setBotSettings } from './game.mjs';
 import { leaderboard } from './stats.mjs';
+import { siteMiddleware } from './site.mjs';
 
 const PORT = Number(process.env.PORT || 8787);
 const RPC = process.env.SOLANA_RPC_URL || clusterApiUrl('devnet');
@@ -24,6 +25,7 @@ const RPC_HOST = (() => {
 
 const app = express();
 applyGuards(app);
+app.use(siteMiddleware); // synxer.dev (see SITE_HOSTS) gets the main page; every other host gets the game
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, rpc: RPC_HOST, online: onlineCount() }));
 app.get('/api/roster', (_req, res) => res.json(lobbyRoster()));

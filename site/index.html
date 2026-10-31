@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>synxer.dev — projects</title>
+<meta name="description" content="Dev projects by synxer. Games and web experiments.">
+<meta name="theme-color" content="#06070a">
+<link rel="icon" type="image/png" href="avatar.png">
+<meta property="og:title" content="synxer.dev">
+<meta property="og:description" content="Dev projects by synxer. Games and web experiments.">
+<meta property="og:image" content="avatar.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #06070a;
+    --panel: #0c0f13;
+    --line: #1b2229;
+    --text: #d7dde3;
+    --dim: #7c8791;
+    --lime: #b6ff1a;
+    --cyan: #22e5ff;
+    --pink: #ff2bd6;
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    --head: 'Space Grotesk', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: var(--mono); font-size: 15px; line-height: 1.6; overflow-x: hidden;
+  }
+  /* soft neon glow in the corners + faint grid */
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+    background:
+      radial-gradient(60vw 40vh at 85% -5%, rgba(182,255,26,.16), transparent 70%),
+      radial-gradient(50vw 40vh at -5% 100%, rgba(34,229,255,.10), transparent 70%),
+      radial-gradient(40vw 30vh at 100% 95%, rgba(255,43,214,.08), transparent 70%);
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .5;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse at 50% 30%, #000 20%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 30%, #000 20%, transparent 75%);
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
+
+  nav { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+  nav .mark { font-family: var(--head); font-weight: 700; font-size: 18px; letter-spacing: .02em; text-transform: none; }
+  nav .mark b { color: var(--lime); text-shadow: 0 0 12px rgba(182,255,26,.7); }
+  nav .links { display: flex; gap: 22px; color: var(--dim); }
+  nav .links a:hover { color: var(--lime); }
+
+  .hero { padding: 72px 0 56px; }
+  .tag { display: inline-flex; gap: 8px; align-items: center; color: var(--lime); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; border: 1px solid rgba(182,255,26,.35); padding: 5px 12px; border-radius: 99px; background: rgba(182,255,26,.06); }
+  .tag i { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 10px var(--lime); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  h1 {
+    font-family: var(--head); font-weight: 700; margin: 22px 0 0;
+    font-size: clamp(46px, 11vw, 132px); line-height: .92; letter-spacing: -.035em; text-transform: uppercase;
+  }
+  h1 .neon { color: var(--lime); text-shadow: 0 0 18px rgba(182,255,26,.65), 0 0 60px rgba(182,255,26,.3); }
+  h1 .alt { color: transparent; -webkit-text-stroke: 1.5px var(--cyan); text-shadow: 0 0 24px rgba(34,229,255,.45); }
+  .lede { max-width: 560px; margin: 26px 0 0; color: var(--dim); }
+  .lede em { color: var(--text); font-style: normal; }
+  .cta { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+  .btn { padding: 12px 20px; border: 1px solid var(--lime); color: #06070a; background: var(--lime); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: 13px; box-shadow: 0 0 24px rgba(182,255,26,.35); transition: transform .15s, box-shadow .15s; }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 0 40px rgba(182,255,26,.6); }
+  .btn.ghost { background: transparent; color: var(--lime); box-shadow: none; }
+  .btn.ghost:hover { background: rgba(182,255,26,.08); }
+
+  .label { display: flex; align-items: center; gap: 14px; color: var(--dim); font-size: 12px; letter-spacing: .22em; text-transform: uppercase; margin: 18px 0 20px; }
+  .label::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+  .label b { color: var(--lime); font-weight: 400; }
+
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+  .card { position: relative; background: var(--panel); border: 1px solid var(--line); padding: 22px; transition: border-color .2s, transform .2s, box-shadow .2s; overflow: hidden; }
+  .card::before { content: ''; position: absolute; left: 0; top: 0; width: 18px; height: 18px; border-left: 2px solid var(--lime); border-top: 2px solid var(--lime); opacity: .8; }
+  .card::after { content: ''; position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; border-right: 2px solid var(--lime); border-bottom: 2px solid var(--lime); opacity: .8; }
+
+  .project { grid-column: span 12; display: grid; grid-template-columns: 220px 1fr; gap: 30px; align-items: center; padding: 28px; cursor: pointer; }
+  .project:hover { border-color: rgba(182,255,26,.7); transform: translateY(-3px); box-shadow: 0 0 50px rgba(182,255,26,.14), inset 0 0 60px rgba(182,255,26,.04); }
+  .logo { display: grid; place-items: center; aspect-ratio: 5/6; background: radial-gradient(circle at 50% 40%, rgba(182,255,26,.14), transparent 70%); border: 1px solid var(--line); }
+  .logo img { width: 78%; filter: drop-shadow(0 0 18px rgba(182,255,26,.35)); transition: transform .3s; }
+  .project:hover .logo img { transform: scale(1.06) rotate(-1.5deg); }
+  .num { color: var(--dim); font-size: 12px; letter-spacing: .2em; }
+  .project h2 { font-family: var(--head); font-size: clamp(30px, 5vw, 52px); margin: 6px 0 10px; text-transform: uppercase; letter-spacing: -.02em; line-height: 1; }
+  .project h2 span { color: var(--lime); text-shadow: 0 0 16px rgba(182,255,26,.55); }
+  .project p { margin: 0 0 16px; color: var(--dim); max-width: 58ch; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .chip { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; padding: 4px 10px; border: 1px solid var(--line); color: var(--text); }
+  .chip.live { color: var(--lime); border-color: rgba(182,255,26,.5); }
+  .chip.c { color: var(--cyan); border-color: rgba(34,229,255,.4); }
+  .chip.p { color: var(--pink); border-color: rgba(255,43,214,.4); }
+  .go { color: var(--lime); font-weight: 700; text-transform: uppercase; letter-spacing: .1em; font-size: 13px; }
+  .go span { display: inline-block; transition: transform .2s; }
+  .project:hover .go span { transform: translateX(6px); }
+
+  .soon { grid-column: span 4; min-height: 150px; border-style: dashed; color: var(--dim); display: flex; flex-direction: column; justify-content: space-between; }
+  .soon::before, .soon::after { display: none; }
+  .soon h3 { margin: 0; font-family: var(--head); font-size: 20px; color: var(--text); text-transform: uppercase; }
+  .soon .q { color: var(--pink); text-shadow: 0 0 12px rgba(255,43,214,.6); }
+
+  .about { margin: 70px 0 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .about .card h3 { margin: 0 0 8px; font-family: var(--head); text-transform: uppercase; color: var(--cyan); font-size: 15px; letter-spacing: .12em; }
+  .about .card p { margin: 0; color: var(--dim); }
+
+  .xbtn { display: inline-flex; align-items: center; gap: 10px; color: var(--text); }
+  .xbtn:hover { color: var(--lime); }
+  .xbtn svg { width: 15px; height: 15px; fill: currentColor; }
+  .pfp { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--lime); box-shadow: 0 0 12px rgba(182,255,26,.55); object-fit: cover; }
+  .me { display: grid; grid-template-columns: 150px 1fr; gap: 26px; align-items: center; margin-top: 16px; padding: 24px; }
+  .me img { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 2px solid var(--lime); box-shadow: 0 0 0 6px rgba(182,255,26,.08), 0 0 40px rgba(182,255,26,.45), 0 0 90px rgba(34,229,255,.18); }
+  .me h3 { margin: 0; font-family: var(--head); font-size: 30px; text-transform: uppercase; letter-spacing: -.02em; }
+  .me h3 span { color: var(--lime); text-shadow: 0 0 14px rgba(182,255,26,.6); }
+  .me p { margin: 6px 0 16px; color: var(--dim); }
+  .me .btn { display: inline-flex; align-items: center; gap: 10px; }
+  .me .btn svg { width: 15px; height: 15px; fill: currentColor; }
+  .tip { margin-top: 16px; padding: 24px; }
+  .tip h3 { margin: 0 0 6px; font-family: var(--head); font-size: 26px; text-transform: uppercase; letter-spacing: -.01em; }
+  .tip h3 span { color: var(--pink); text-shadow: 0 0 14px rgba(255,43,214,.6); }
+  .tip p { margin: 0 0 16px; color: var(--dim); max-width: 62ch; }
+  .addr { display: flex; max-width: 640px; border: 1px solid var(--line); background: #080a0d; }
+  .addr code { flex: 1; min-width: 0; padding: 12px 14px; font-family: var(--mono); font-size: 13px; color: var(--lime); overflow-wrap: anywhere; user-select: all; }
+  .addr button { border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--lime); font: 700 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: 0 18px; cursor: pointer; }
+  .addr button:hover { background: rgba(182,255,26,.1); }
+  footer { border-top: 1px solid var(--line); margin-top: 50px; padding: 26px 0 40px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--dim); font-size: 12px; letter-spacing: .08em; }
+  footer b { color: var(--lime); font-weight: 400; }
+
+  @media (max-width: 760px) {
+    .me { grid-template-columns: 1fr; justify-items: start; }
+    .me img { width: 120px; height: 120px; }
+    nav .links a:not(.xbtn) { display: none; }
+    .project { grid-template-columns: 1fr; padding: 22px; }
+    .logo { max-width: 200px; }
+    .soon { grid-column: span 12; min-height: 110px; }
+    .about { grid-template-columns: 1fr; }
+    .hero { padding: 44px 0 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="mark" href="#top">synxer<b>.dev</b></a>
+    <div class="links"><a href="#projects">Projects</a><a href="#about">About</a><a href="#support">Donate</a><a class="xbtn" href="https://x.com/synxer" rel="noopener" target="_blank"><img class="pfp" src="avatar.png" alt="" width="30" height="30">@synxer</a></div>
+  </nav>
+
+  <header class="hero" id="top">
+    <span class="tag"><i></i> Online &middot; building in public</span>
+    <h1><span class="neon">Syn</span>xer<br><span class="alt">Dev Lab</span></h1>
+    <p class="lede">Games, tools and web experiments, written from scratch. <em>Everything here runs in your browser</em>, no installs. Pick a project below and jump in.</p>
+    <div class="cta">
+      <a class="btn" href="#projects">Browse projects</a>
+      <a class="btn ghost" href="https://frontline.synxer.dev" rel="noopener">Play Frontline</a>
+      <a class="btn ghost" href="https://x.com/synxer" rel="noopener" target="_blank"><svg style="width:13px;height:13px;fill:currentColor;vertical-align:-1px;margin-right:8px" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Follow on X</a>
+    </div>
+  </header>
+
+  <main id="projects">
+    <div class="label"><b>01</b> Projects</div>
+    <div class="grid">
+
+      <!-- Change the href below if the game moves to a new address (for example https://frontline.synxer.dev) -->
+      <a class="card project" href="https://frontline.synxer.dev" rel="noopener" aria-label="Open Frontline">
+        <div class="logo"><img src="frontline-logo.svg" alt="Frontline logo" width="220" height="264"></div>
+        <div>
+          <div class="num">PROJECT / 001</div>
+          <h2>The <span>Frontline</span></h2>
+          <p>A top-down multiplayer shooter in the browser. Two teams fight over a moving Hardpoint across city, forest and container-port maps. Six classes, kill-streak rewards up to the Juggernaut, trains, voice chat, and it plays on phones and tablets too.</p>
+          <div class="chips">
+            <span class="chip live">&#9679; Live</span>
+            <span class="chip c">Multiplayer</span>
+            <span class="chip c">PC + Mobile</span>
+            <span class="chip p">Free to play</span>
+          </div>
+          <span class="go">Play now <span>&rarr;</span></span>
+        </div>
+      </a>
+
+      <div class="card soon"><div class="num">PROJECT / 002</div><h3>Next build <span class="q">?</span></h3><span>Coming soon</span></div>
+      <div class="card soon"><div class="num">PROJECT / 003</div><h3>Classified <span class="q">?</span></h3><span>In the lab</span></div>
+      <div class="card soon"><div class="num">PROJECT / 004</div><h3>Signal lost <span class="q">?</span></h3><span>Stay tuned</span></div>
+    </div>
+
+    <div class="label" id="about" style="margin-top:70px"><b>02</b> About</div>
+    <section class="about">
+      <div class="card"><h3>What this is</h3><p>The home for my dev projects. Each one is a live site you can open right now, built with plain web tech and a lot of late nights.</p></div>
+      <div class="card"><h3>Feedback</h3><p>Found a bug, or have an idea? Tell me in the game chat or send word through the channel for each project. New builds ship often.</p></div>
+    </section>
+    <section class="card me">
+      <img src="avatar.png" alt="synxer avatar" width="150" height="150">
+      <div>
+        <h3>syn<span>xer</span></h3>
+        <p>Building games and web projects. Follow along for updates, new builds and behind-the-scenes.</p>
+        <a class="btn" href="https://x.com/synxer" rel="noopener" target="_blank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>@synxer on X</a>
+      </div>
+    </section>
+    <div class="label" style="margin-top:70px"><b>03</b> Support</div>
+    <section class="card tip" id="support">
+      <h3>Keep the lights <span>on</span></h3>
+      <p>Everything here is free. If you enjoy it and want to help cover servers and hosting, you can send a little SOL. Totally optional, and thank you.</p>
+      <div class="addr">
+        <code id="sol">22A8vB2FhL74QwbVEL6R5KZGcH3WGMqXiCd7fFdj1PTR</code>
+        <button type="button" id="copy">Copy</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span><b>&gt;</b> synxer.dev &middot; <a href="https://x.com/synxer" rel="noopener" target="_blank" style="color:var(--lime)">x.com/synxer</a></span>
+    <span>&copy; <script>document.write(new Date().getFullYear())</script> synxer &middot; all systems online</span>
+  </footer>
+</div>
+<script>
+  document.getElementById('copy').addEventListener('click', function () {
+    var b = this, el = document.getElementById('sol'), t = el.textContent.trim();
+    var sel = function () { window.getSelection().selectAllChildren(el); };
+    var done = function () { b.textContent = 'Copied!'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, sel); else sel();
+  });
+</script>
+</body>
+</html>
