@@ -108,7 +108,8 @@
   .me p { margin: 6px 0 16px; color: var(--dim); }
   .me .btn { display: inline-flex; align-items: center; gap: 10px; }
   .me .btn svg { width: 15px; height: 15px; fill: currentColor; }
-  .tip { margin-top: 16px; padding: 24px; }
+  .tip { margin-top: 16px; padding: 24px; display: grid; grid-template-columns: 1fr 170px; gap: 26px; align-items: center; }
+  .tip .qr { width: 170px; height: 170px; display: block; border-radius: 14px; box-shadow: 0 0 0 1px var(--line), 0 0 34px rgba(182,255,26,.22); }
   .tip h3 { margin: 0 0 6px; font-family: var(--head); font-size: 26px; text-transform: uppercase; letter-spacing: -.01em; }
   .tip h3 span { color: var(--pink); text-shadow: 0 0 14px rgba(255,43,214,.6); }
   .tip p { margin: 0 0 16px; color: var(--dim); max-width: 62ch; }
@@ -120,6 +121,8 @@
   footer b { color: var(--lime); font-weight: 400; }
 
   @media (max-width: 760px) {
+    .tip { grid-template-columns: 1fr; }
+    .tip .qr { order: -1; width: 150px; height: 150px; }
     .me { grid-template-columns: 1fr; justify-items: start; }
     .me img { width: 120px; height: 120px; }
     nav .links a:not(.xbtn) { display: none; }
@@ -201,12 +204,15 @@
     </section>
     <div class="label" style="margin-top:70px"><b>03</b> Support</div>
     <section class="card tip" id="support">
+      <div>
       <h3>Keep the lights <span>on</span></h3>
       <p>Everything here is free. If you enjoy it and want to help cover servers and hosting, you can send a little SOL. Totally optional, and thank you.</p>
       <div class="addr">
         <code id="sol">22A8vB2FhL74QwbVEL6R5KZGcH3WGMqXiCd7fFdj1PTR</code>
         <button type="button" id="copy">Copy</button>
       </div>
+      </div>
+      <img class="qr" src="solana-qr.png" alt="QR code for the Solana donation address" width="170" height="170">
     </section>
   </main>
 
